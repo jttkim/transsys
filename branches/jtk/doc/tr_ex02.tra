@@ -1,0 +1,18 @@
+transsys example
+{
+  factor F1
+  {
+  }
+
+  gene g1
+  {
+    promoter
+    {
+      constitutive: 1.0;
+    }
+    product
+    {
+      default: F1;
+    }
+  }
+}

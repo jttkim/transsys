@@ -1,0 +1,22 @@
+lsys example
+{
+  symbol shoot_piece;
+
+  axiom shoot_piece;
+
+  rule doubleshoot
+  {
+    shoot_piece --> shoot_piece shoot_piece
+  }
+
+  graphics
+  {
+    shoot_piece
+    {
+      move(0.5);
+      color(0.7, 0.7, 0.7);
+      cylinder(0.1, 1.0);
+      move(0.5);
+    }
+  }
+}

@@ -1,0 +1,4 @@
+  factor F1
+  {
+    decay: 0.5;
+  }

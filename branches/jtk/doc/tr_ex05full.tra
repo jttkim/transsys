@@ -1,0 +1,33 @@
+transsys example
+{
+  factor F1
+  {
+    decay: 0.5;
+  }
+
+  gene g1
+  {
+    promoter
+    {
+      constitutive: 1.0;
+    }
+    product
+    {
+      default: F1;
+    }
+  }
+
+  factor F2 { decay: 1; }
+
+  gene g2
+  {
+    promoter
+    {
+      F1: activate(2, 5);
+    }
+    product
+    {
+      default: F2;
+    }
+  }
+}

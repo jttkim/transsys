@@ -1,0 +1,12 @@
+clusterstring.default         represent tree as parenthesized string
+clusterstring                 generic function for string representations of clusterings
+clusterstring.clustermatrix   make string representations from all clusterings in a matrix
+cluster.microarr              compute a (matrix of) clusterings
+cluster.microarr.allexp       convenience function to make clustering for all experiments
+plot.cluster.microarr         plot method for microarr class
+plot.clustermatrix            plot method for clustermatrix class
+read.genegroups               auxiliary function
+read.experimentspecs          auxiliary function
+read.microarr                 read microarray from tab-separated values
+microarrExtract               extract subsets of experiment series and gene groups
+plot.microarr                 plot method for microarr class
