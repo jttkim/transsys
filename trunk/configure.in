@@ -1,0 +1,93 @@
+dnl Copyright (C) 2001 Jan T. Kim <kim@inb.mu-luebeck.de>
+dnl
+dnl This file is free software; as a special exception the author gives
+dnl unlimited permission to copy and/or distribute it, with or without
+dnl modifications, as long as this notice is preserved.
+dnl
+dnl This program is distributed in the hope that it will be useful, but
+dnl WITHOUT ANY WARRANTY, to the extent permitted by law; without even the
+dnl implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+dnl $Id$
+dnl $Log$
+dnl Revision 1.1  2005/03/08 17:12:01  jtk
+dnl Initial revision
+dnl
+dnl Revision 1.11  2004/04/13 17:36:37  kim
+dnl some changes to adapt to new automake / autoconf under Debian
+dnl
+dnl Revision 1.10  2003/05/12 21:19:30  kim
+dnl switched version back to "current"
+dnl
+dnl Revision 1.9  2003/03/14 01:20:59  kim
+dnl ECAL 2003 version
+dnl
+dnl Revision 1.8  2003/02/27 10:36:48  kim
+dnl added ArrayIntensityFunction class for simulating noisy arrays etc.
+dnl
+dnl Revision 1.7  2003/01/28 21:12:25  kim
+dnl initial toolbox assembly
+dnl
+dnl Revision 1.6  2002/05/28 08:52:32  kim
+dnl added some discrete network stuff to sources
+dnl
+dnl Revision 1.5  2002/01/25 03:38:21  kim
+dnl version 0.1b03
+dnl
+dnl Revision 1.4  2002/01/25 03:36:57  kim
+dnl minor stuff (?)
+dnl
+dnl Revision 1.2  2001/04/05 17:23:55  kim
+dnl Added -v to YYFLAGS
+dnl
+dnl Revision 1.1  2001/04/04 11:11:42  kim
+dnl Initial addition of files previously not CVS managed
+dnl
+
+AC_INIT(src/transcheck.c)
+AM_CONFIG_HEADER(config.h)
+AM_INIT_AUTOMAKE(transsys,current)
+
+AC_PROG_CC
+AC_PROG_CXX
+
+dnl AC_COMPILE_WARNINGS
+AC_PROG_INSTALL
+AC_PROG_RANLIB
+AM_PROG_LEX
+
+# somehow, on IRIX 6.5, LEXLIB is empty. This hack tries
+# to fix this for $LEX == flex
+
+if test "x$LEXLIB" = "x" ; then
+  echo "LEXLIB empty -- searching for it"
+  if "$LEX" = flex ; then
+    if test -f /usr/local/lib/libfl ; then
+      LEXLIB=-lfl
+    fi
+  fi
+fi
+
+AC_PROG_YACC
+AC_PATH_X
+AC_PATH_XTRA
+
+dnl this doesn't work because AC_HELP_STRING is missing...??
+dnl MDL_HAVE_OPENGL
+
+AC_HEADER_STDC
+
+AC_CHECK_LIB(fl, main)
+
+LDFLAGS="$LDFLAGS $X_EXTRA_LIBS $X_PRE_LIBS $X_LIBS"
+
+# hard code glut and OpenGL libs.
+# somehow, $X_LIBS apparently is not configured correctly on IRIX 6.5,
+# so we hard code the X libs too.
+
+LIBS="$LIBS -lglut -lGLU -lGL -lXt -lXext -lXmu -lX11 -lpthread -lm"
+CFLAGS="$CFLAGS $X_CFLAGS"
+YFLAGS="-d -t -v"
+AC_SUBST(YFLAGS)
+AC_OUTPUT(Makefile doc/Makefile src/Makefile toolbox/Makefile)
+

@@ -1,0 +1,135 @@
+#!/usr/bin/env python
+
+# generate a transsys program
+# $Id$
+
+# $Log$
+# Revision 1.1  2005/03/08 17:12:02  jtk
+# Initial revision
+#
+# Revision 1.4  2003/03/05 13:34:52  kim
+# added support for writing / reading RandomTranssysParameter instances
+#
+# Revision 1.3  2003/02/04 23:43:42  kim
+# minor changes, script is not yet adapted to use stored
+#     RandomTranssysParameters yet
+#
+# Revision 1.2  2003/01/29 11:54:42  kim
+# switched to use of generate_transsys() method
+#
+# Revision 1.1  2003/01/28 21:12:05  kim
+# initial toolbox assembly
+#
+
+
+import sys
+import getopt
+import string
+
+import transrnd
+import transsys
+
+
+def usage() :
+  print 'random_transsys -- generate transsys programs at random'
+  print
+  print '-n <num>: specify number of genes'
+  print '-k <num>: specify number of incoming regulatory links per gene'
+  print '-a <float>: specify a_spec for activation'
+  print '-b <float>: specify a_spec for repression'
+  print '-A <float>: specify a_max for activation'
+  print '-B <float>: specify a_max for repression'
+  print '-c <float>: specify constitutive expression'
+  print '-d <float>: spceify decay'
+  print '-r <num>: specify random seed'
+  print '-R <filename>: specifiy file from which to read parameters'
+  print '    Attention: this is mutually exclusive with above options for'
+  print '    specifying parameters via command line'
+  print '-o <filename>: specify file for random transsys parameters'
+  print '    (file may then be used with -R option)'
+  print '-h: print this help and exit'
+
+
+vmax_activation = None
+vmax_repression = None
+rndseed = 1
+rtp = transsys.RandomTranssysParameters()
+rtp.topology = 'random_nk'
+rtp.n = 5
+rtp.k = 2
+rtp.set_km_activation(1.0)
+rtp.set_km_repression(1.0)
+rtp.set_constitutive(0.0)
+rtp.set_decay(0.5)
+rtp.set_diffusibility(0.0)
+rtp_cmdline = 0
+rtp_fname = None
+rtp_outfname = None
+
+options, args = getopt.getopt(sys.argv[1:], 'a:b:A:B:c:d:r:n:k:R:o:h')
+for opt in options :
+  if opt[0] == '-n' :
+    rtp.n = string.atoi(opt[1])
+    rtp_cmdline = 1
+  elif opt[0] == '-k' :
+    rtp.k = string.atoi(opt[1])
+    rtp_cmdline = 1
+  elif opt[0] == '-a' :
+    rtp.set_km_activation(string.atof(opt[1]))
+    rtp_cmdline = 1
+  elif opt[0] == '-b' :
+    rtp.set_km_repression(string.atof(opt[1]))
+    rtp_cmdline = 1
+  elif opt[0] == '-A' :
+    vmax_activation = string.atof(opt[1])
+    rtp_cmdline = 1
+  elif opt[0] == '-B' :
+    vmax_repression = string.atof(opt[1])
+    rtp_cmdline = 1
+  elif opt[0] == '-c' :
+    rtp.set_constitutive(string.atof(opt[1]))
+    rtp_cmdline = 1
+  elif opt[0] == '-d' :
+    rtp.set_decay(string.atof(opt[1]))
+    rtp_cmdline = 1
+  elif opt[0] == '-r' :
+    rndseed = string.atoi(opt[1])
+    rtp_cmdline = 1
+  elif opt[0] == '-R' :
+    rtp_fname = opt[1]
+  elif opt[0] == '-o' :
+    rtp_outfname = opt[1]
+  elif opt[0] == '-h' :
+    usage()
+    sys.exit()
+  else :
+    sys.stderr.write('unknown option %s\n' % opt[0])
+if rtp_fname is not None :
+  if rtp_cmdline :
+    raise StandardError, 'combining parameter specification by file and by command line not supported'
+  rtp.parse(open(rtp_fname, 'r'))
+else :
+  if vmax_activation is None :
+    vmax_activation = float(rtp.num_genes()) / rtp.num_links()
+  if vmax_repression is None :
+    vmax_repression = float(rtp.num_genes()) / rtp.num_links()
+  rtp.set_vmax_activation(vmax_activation)
+  rtp.set_vmax_repression(vmax_repression)
+if len(args) > 0 :
+  transsys_name = args[0]
+else :
+  transsys_name = 'rnd%d' % rndseed
+if len(args) > 1 :
+  outfile = open(args[1], 'w')
+else :
+  outfile = sys.stdout
+rtp.set_seed(rndseed)
+if rtp_outfname is not None :
+  rtp.write(open(rtp_outfname, 'w'))
+tp = rtp.generate_transsys(transsys_name)
+# tp.factor_list[1].name = 'stue'
+# tp.factor_list[-1].name = 'banck'
+outfile.write(str(tp))
+
+#transsys.write_random_transsys(outfile, transsys_name, rtp)
+

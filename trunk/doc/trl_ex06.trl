@@ -1,0 +1,15 @@
+  symbol [;
+  symbol ];
+
+  graphics
+  {
+    [ { push(); }
+    ] { pop(); }
+  }
+
+  rule branch
+  {
+    shoot_piece --> [ left shoot_piece ] [ right shoot_piece ]
+		    shoot_piece shoot_piece
+  }
+}

@@ -1,0 +1,1370 @@
+/* Copyright (C) 2001 Jan T. Kim <kim@inb.mu-luebeck.de> */
+
+/*
+ * $Id$
+ *
+ * $Log$
+ * Revision 1.1  2005/03/08 17:12:02  jtk
+ * Initial revision
+ *
+ * Revision 1.3  2002/01/25 03:35:03  kim
+ * Added gnuplot link functionality to transexpr, transscatter, improved
+ *     PostScript stuff
+ *
+ * Revision 1.1  2001/04/04 11:12:00  kim
+ * Initial addition of files previously not CVS managed
+ *
+ */
+
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "trconfig.h"
+#include "transsys.h"
+
+
+void free_deadbeef(void *p)
+{
+  int *ip = p;
+
+  *ip = 0xdeadbeef;
+#ifdef FREE_DEADBEEF
+#  undef free
+#endif
+  free(p);
+#ifdef FREE_DEADBEEF
+#  define free(x) free_deadbeef(x)
+#endif
+
+}
+
+
+INTEGER_ARRAY *extend_integer_array(INTEGER_ARRAY *ia, int v)
+{
+  int *new_array;
+
+  if (ia == NULL)
+  {
+    ia = (INTEGER_ARRAY *) malloc(sizeof(INTEGER_ARRAY));
+    if (ia == NULL)
+    {
+      fprintf(stderr, "extend_integer_array: failed to create integer array\n");
+      return (NULL);
+    }
+    ia->length = 0;
+    ia->array = NULL;
+  }
+  new_array = (int *) realloc(ia->array, (ia->length + 1) * sizeof(int));
+  if (new_array == NULL)
+  {
+    fprintf(stderr, "extend_integer_array: failed to extend integer array\n");
+    return (ia);
+  }
+  ia->array = new_array;
+  ia->array[ia->length] = v;
+  ia->length++;
+  return (ia);
+}
+
+
+void free_expression_tree(EXPRESSION_NODE *node)
+{
+  switch(node->type)
+  {
+  case NT_VALUE:
+  case NT_IDENTIFIER:
+    break;
+  case NT_RAW_IDENTIFIER:
+    if (node->content.raw_identifier.factor_name)
+      free(node->content.raw_identifier.factor_name);
+    if (node->content.raw_identifier.transsys_label)
+      free(node->content.raw_identifier.transsys_label);
+    break;
+  case NT_NOT:
+    free_expression_tree(node->content.argument[0]);
+    free(node->content.argument);
+    break;
+  case NT_LOGICAL_OR:
+  case NT_LOGICAL_AND:
+  case NT_LOWER:
+  case NT_LOWER_EQUAL:
+  case NT_GREATER:
+  case NT_GREATER_EQUAL:
+  case NT_EQUAL:
+  case NT_UNEQUAL:
+  case NT_ADD:
+  case NT_SUBTRACT:
+  case NT_MULT:
+  case NT_DIV:
+  case NT_RANDOM:
+  case NT_GAUSS:
+    free_expression_tree(node->content.argument[0]);
+    free_expression_tree(node->content.argument[1]);
+    free(node->content.argument);
+    break;
+  default:
+    fprintf(stderr, "free_expression_tree: unknown expression type %d\n", (int) node->type);
+    break;
+  }
+  free(node);
+}
+
+
+EXPRESSION_NODE *new_expression_node(EXPR_NODE_TYPE type, ...)
+{
+  char *identifier_name;
+  EXPRESSION_NODE *node;
+  va_list arglist;
+
+  node = (EXPRESSION_NODE *) malloc(sizeof(EXPRESSION_NODE));
+  if (node == NULL)
+    return (NULL);
+  node->type = type;
+  node->content.argument = NULL;
+  va_start(arglist, type);
+  switch(type)
+  {
+  case NT_VALUE:
+    node->content.value = va_arg(arglist, double);
+    break;
+  case NT_IDENTIFIER:
+    node->content.identifier.lhs_symbol_index = -1; /*preliminary */
+    node->content.identifier.factor_index = va_arg(arglist, int);
+    break;
+  case NT_RAW_IDENTIFIER:
+    identifier_name = va_arg(arglist, char *);
+    if (identifier_name)
+    {
+      node->content.raw_identifier.transsys_label = (char *) malloc((strlen(identifier_name) + 1) * sizeof(char));
+      if (node->content.raw_identifier.transsys_label == NULL)
+      {
+	free(node);
+	return (NULL);
+      }
+      strcpy(node->content.raw_identifier.transsys_label, identifier_name);
+    }
+    else
+      node->content.raw_identifier.transsys_label = NULL;
+    identifier_name = va_arg(arglist, char *);
+    node->content.raw_identifier.factor_name = (char *) malloc((strlen(identifier_name) + 1) * sizeof(char));
+    if (node->content.raw_identifier.factor_name == NULL)
+    {
+      free(node->content.raw_identifier.transsys_label);
+      free(node);
+      return (NULL);
+    }
+    strcpy(node->content.raw_identifier.factor_name, identifier_name);
+    break;
+  case NT_NOT:
+    node->content.argument = (EXPRESSION_NODE **) malloc(sizeof(EXPRESSION_NODE *));
+    if (node->content.argument == NULL)
+    {
+      free(node);
+      return (NULL);
+    }
+    node->content.argument[0] = va_arg(arglist, EXPRESSION_NODE *);
+    break;
+  case NT_LOGICAL_OR:
+  case NT_LOGICAL_AND:
+  case NT_LOWER:
+  case NT_LOWER_EQUAL:
+  case NT_GREATER:
+  case NT_GREATER_EQUAL:
+  case NT_EQUAL:
+  case NT_UNEQUAL:
+  case NT_ADD:
+  case NT_SUBTRACT:
+  case NT_MULT:
+  case NT_DIV:
+  case NT_RANDOM:
+  case NT_GAUSS:
+    node->content.argument = (EXPRESSION_NODE **) malloc(2 * sizeof(EXPRESSION_NODE *));
+    if (node->content.argument == NULL)
+    {
+      free(node);
+      return (NULL);
+    }
+    node->content.argument[0] = va_arg(arglist, EXPRESSION_NODE *);
+    node->content.argument[1] = va_arg(arglist, EXPRESSION_NODE *);
+    break;
+  default:
+    fprintf(stderr, "new_expression_node: unknown expression type %d\n", (int) type);
+    break;
+  }
+  va_end(arglist);
+  return (node);
+}
+
+
+void free_expression_context_entry_components(EXPRESSION_CONTEXT_ENTRY *e)
+{
+}
+
+
+void free_expression_context_entry_list(EXPRESSION_CONTEXT_ENTRY *e)
+{
+  EXPRESSION_CONTEXT_ENTRY *e1;
+
+  while (e)
+  {
+    e1 = e;
+    e = e->next;
+    free_expression_context_entry_components(e);
+    free(e1);
+  }
+}
+
+
+EXPRESSION_CONTEXT_ENTRY *new_expression_context_entry(const TRANSSYS *transsys, const char *label)
+{
+  EXPRESSION_CONTEXT_ENTRY *e;
+
+  e = (EXPRESSION_CONTEXT_ENTRY *) malloc(sizeof(EXPRESSION_CONTEXT_ENTRY));
+  if (e == NULL)
+    return (NULL);
+  e->next = NULL;
+  e->transsys = transsys;
+  strncpy(e->label, label, IDENTIFIER_MAX);
+  e->label[IDENTIFIER_MAX - 1] = '\0';
+  return (e);
+}
+
+
+static void free_promoter_components(PROMOTER_ELEMENT *a)
+{
+  if (a->num_binding_factors)
+    free(a->factor_index);
+  if (a->type == ACT_CONSTITUTIVE)
+    free_expression_tree(a->expr1);
+  else
+  {
+    free_expression_tree(a->expr1);
+    free_expression_tree(a->expr2);
+  }
+}
+
+
+static void free_promoter_list(PROMOTER_ELEMENT *alist)
+{
+  PROMOTER_ELEMENT *a;
+
+  while (alist)
+  {
+    a = alist;
+    alist = alist->next;
+    free_promoter_components(a);
+    free(a);
+  }
+}
+
+
+PROMOTER_ELEMENT *new_promoter_element(ACTIVATION_TYPE type, int num_binding_factors, int *factors, EXPRESSION_NODE *expr1, EXPRESSION_NODE *expr2)
+{
+  PROMOTER_ELEMENT *a;
+
+  a = (PROMOTER_ELEMENT *) malloc(sizeof(PROMOTER_ELEMENT));
+  if (a == NULL)
+    return (NULL);
+  a->next = NULL;
+  a->type = type;
+  a->num_binding_factors = num_binding_factors;
+  if (num_binding_factors)
+    a->factor_index = factors;
+  else
+    a->factor_index = NULL;
+  if (type == ACT_CONSTITUTIVE)
+    a->expr1 = expr1;
+  else
+  {
+    a->expr1 = expr1;
+    a->expr2 = expr2;
+  }
+  return (a);
+}
+
+
+static void free_factor_components(FACTOR_ELEMENT *fe)
+{
+  if (fe->diffusibility_expression)
+    free_expression_tree(fe->diffusibility_expression);
+  if (fe->decay_expression)
+    free_expression_tree(fe->decay_expression);
+  if (fe->num_producing_genes)
+    free(fe->gene_index);
+}
+
+
+static void free_factor_list(FACTOR_ELEMENT *flist)
+{
+  FACTOR_ELEMENT *fe;
+
+  while (flist)
+  {
+    fe = flist;
+    flist = flist->next;
+    free_factor_components(fe);
+    free(fe);
+  }
+}
+
+
+FACTOR_ELEMENT *new_factor_element(const char *name, EXPRESSION_NODE *decay_expression, EXPRESSION_NODE *diffusibility_expression)
+{
+  FACTOR_ELEMENT *fe;
+
+  fe = (FACTOR_ELEMENT *) malloc(sizeof(FACTOR_ELEMENT));
+  if (fe == NULL)
+    return (NULL);
+  fe->next = NULL;
+  fe->index = NO_INDEX;
+  fe->num_producing_genes = 0;
+  fe->gene_index = NULL;
+  fe->diffusibility_expression = diffusibility_expression;
+  strncpy(fe->name, name, IDENTIFIER_MAX);
+  fe->name[IDENTIFIER_MAX - 1] = '\0';
+  fe->decay_expression = decay_expression;
+  return (fe);
+}
+
+
+static void free_gene_components(GENE_ELEMENT *ge)
+{
+  free_promoter_list(ge->promoter_list);
+}
+
+
+static void free_gene_list(GENE_ELEMENT *glist)
+{
+  GENE_ELEMENT *ge;
+
+  while (glist)
+  {
+    ge = glist;
+    glist = glist->next;
+    free_gene_components(ge);
+    free(ge);
+  }
+}
+
+
+GENE_ELEMENT *new_gene_element(const char *name, PROMOTER_ELEMENT *promoter_list, int product_index)
+{
+  GENE_ELEMENT *ge;
+
+  ge = (GENE_ELEMENT *) malloc(sizeof(GENE_ELEMENT));
+  if (ge == NULL)
+    return (NULL);
+  ge->next = NULL;
+  ge->index = NO_INDEX;
+  strncpy(ge->name, name, IDENTIFIER_MAX);
+  ge->name[IDENTIFIER_MAX - 1] = '\0';
+  ge->promoter_list = promoter_list;
+  ge->product_index = product_index;
+  return (ge);
+}
+
+
+void free_transsys_components(TRANSSYS *tr)
+{
+  int i;
+
+  if (tr->arrayed)
+  {
+    for (i = 0; i < tr->num_factors; i++)
+      free_factor_components(tr->factor_list + i);
+    if (tr->factor_list)
+      free(tr->factor_list);
+    for (i = 0; i < tr->num_genes; i++)
+      free_gene_components(tr->gene_list + i);
+    if (tr->gene_list)
+      free(tr->gene_list);
+  }
+  else
+  {
+    free_factor_list(tr->factor_list);
+    free_gene_list(tr->gene_list);
+  }
+}
+
+
+void free_transsys_list(TRANSSYS *tr)
+{
+  TRANSSYS *tr1;
+
+  while (tr)
+  {
+    free_transsys_components(tr);
+    tr1 = tr;
+    tr = tr->next;
+    free(tr1);
+  }
+}
+
+
+TRANSSYS *new_transsys(const char *name)
+{
+  TRANSSYS *tr;
+
+  tr = (TRANSSYS *) malloc(sizeof(TRANSSYS));
+  if (tr == NULL)
+    return (NULL);
+  tr->next = NULL;
+  tr->arrayed = 0;
+  tr->num_factors = 0;
+  tr->num_genes = 0;
+  tr->factor_list = NULL;
+  tr->gene_list = NULL;
+  strncpy(tr->name, name, IDENTIFIER_MAX);
+  tr->name[IDENTIFIER_MAX - 1] = '\0';
+  return (tr);
+}
+
+
+static int cmp_index_factor(const void *p1, const void *p2)
+{
+  FACTOR_ELEMENT *f1 = (FACTOR_ELEMENT *) p1,  *f2 = (FACTOR_ELEMENT *) p2;
+
+  if (f1->index < f2->index)
+    return (-1);
+  else if (f1->index > f2->index)
+    return (1);
+  else
+    return (0);
+}
+
+
+static int cmp_index_gene(const void *p1, const void *p2)
+{
+  GENE_ELEMENT *g1 = (GENE_ELEMENT *) p1,  *g2 = (GENE_ELEMENT *) p2;
+
+  if (g1->index < g2->index)
+    return (-1);
+  else if (g1->index > g2->index)
+    return (1);
+  else
+    return (0);
+}
+
+
+int arrange_transsys_arrays(TRANSSYS *transsys)
+{
+  int num_factors, num_genes, i, j;
+  GENE_ELEMENT *ge, *ge1, *ge_arr;
+  FACTOR_ELEMENT *fe, *fe1, *fe_arr;
+  INTEGER_ARRAY *ia;
+
+  if (transsys->arrayed)
+  {
+    fprintf(stderr, "arrange_transsys_arrays: attempt to multiply arrange transsys \"%s\"\n", transsys->name);
+    return (-1);
+  }
+  num_genes = 0;
+  for (ge = transsys->gene_list; ge; ge = ge->next)
+    num_genes++;
+  num_factors = 0;
+  for (fe = transsys->factor_list; fe; fe = fe->next)
+    num_factors++;
+  /* fprintf(stderr, "arrange_transsys_arrays: %d factors, %d genes\n", num_factors, num_genes); */
+  if (num_genes > 0)
+  {
+    ge_arr = (GENE_ELEMENT *) malloc(num_genes * sizeof(GENE_ELEMENT));
+    if (ge_arr == NULL)
+      return (-1);
+    ge = transsys->gene_list;
+    for (i = 0; i < num_genes; i++)
+    {
+      ge_arr[i] = *ge;
+      ge1 = ge;
+      ge = ge->next;
+      free(ge1);
+    }
+    qsort(ge_arr, num_genes, sizeof(GENE_ELEMENT), cmp_index_gene);
+    for (i = 0; i < num_genes - 1; i++)
+      ge_arr[i].next = ge_arr + i + 1;
+    ge_arr[i].next = NULL;
+    transsys->gene_list = ge_arr;
+  }
+  if (num_factors > 0)
+  {
+    fe_arr = (FACTOR_ELEMENT *) malloc(num_factors * sizeof(FACTOR_ELEMENT));
+    if (fe_arr == NULL)
+    {
+      if (num_genes > 0)
+        free(ge_arr);
+      return (-1);
+    }
+    fe = transsys->factor_list;
+    for (i = 0; i < num_factors; i++)
+    {
+      fe_arr[i] = *fe;
+      fe1 = fe;
+      fe = fe->next;
+      free(fe1);
+    }
+    qsort(fe_arr, num_factors, sizeof(FACTOR_ELEMENT), cmp_index_factor);
+    for (i = 0; i < num_factors - 1; i++)
+      fe_arr[i].next = fe_arr + i + 1;
+    fe_arr[i].next = NULL;
+    transsys->factor_list = fe_arr;
+    for (i = 0; i < transsys->num_factors; i++)
+    {
+      ia = NULL;
+      for (j = 0; j < transsys->num_genes; j++)
+      {
+	if (transsys->gene_list[j].product_index == i)
+	  ia = extend_integer_array(ia, j);
+      }
+      if (ia)
+      {
+	transsys->factor_list[i].num_producing_genes = ia->length;
+	transsys->factor_list[i].gene_index = ia->array;
+	free(ia);
+      }
+      else
+	fprintf(stderr, "warning: factor \"%s\" is not produced by any gene\n", transsys->factor_list[i].name);
+    }
+  }
+  transsys->arrayed = 1;
+  return (0);
+}
+
+
+void free_graphics_primitive_components(GRAPHICS_PRIMITIVE *gp)
+{
+  int i;
+
+  for (i = 0; i < gp->num_arguments; i++)
+    free_expression_tree(gp->argument[i]);
+  if (gp->argument)
+    free(gp->argument);
+}
+
+
+void free_graphics_primitive_list(GRAPHICS_PRIMITIVE *glist)
+{
+  GRAPHICS_PRIMITIVE *gp;
+
+  fprintf(stderr, "free_graphics_primitive_list: start\n");
+  while (glist)
+  {
+    gp = glist;
+    glist = glist->next;
+    free_graphics_primitive_components(gp);
+    free(gp);
+  }
+}
+
+
+GRAPHICS_PRIMITIVE *new_graphics_primitive(GRAPHICS_PRIMITIVE_TYPE type, ...)
+{
+  GRAPHICS_PRIMITIVE *gp;
+  va_list arglist;
+
+  gp = (GRAPHICS_PRIMITIVE *) malloc(sizeof(GRAPHICS_PRIMITIVE));
+  if (gp == NULL)
+    return (NULL);
+  gp->next = NULL;
+  gp->type = type;
+  gp->argument = NULL;
+  va_start(arglist, type);
+  switch(type)
+  {
+  case GRAPHICS_PUSH:
+  case GRAPHICS_POP:
+    gp->num_arguments = 0;
+    break;
+  case GRAPHICS_MOVE:
+  case GRAPHICS_TURN:
+  case GRAPHICS_ROLL:
+  case GRAPHICS_BANK:
+  case GRAPHICS_SPHERE:
+    gp->argument = (EXPRESSION_NODE **) malloc(sizeof(EXPRESSION_NODE *));
+    if (gp->argument == NULL)
+    {
+      free(gp);
+      return (NULL);
+    }
+    gp->num_arguments = 1;
+    gp->argument[0] = va_arg(arglist, EXPRESSION_NODE *);
+    break;
+  case GRAPHICS_CYLINDER:
+    gp->argument = (EXPRESSION_NODE **) malloc(2 * sizeof(EXPRESSION_NODE *));
+    if (gp->argument == NULL)
+    {
+      free(gp);
+      return (NULL);
+    }
+    gp->num_arguments = 2;
+    gp->argument[0] = va_arg(arglist, EXPRESSION_NODE *);
+    gp->argument[1] = va_arg(arglist, EXPRESSION_NODE *);
+    break;
+  case GRAPHICS_BOX:
+  case GRAPHICS_COLOR:
+    gp->argument = (EXPRESSION_NODE **) malloc(3 * sizeof(EXPRESSION_NODE *));
+    if (gp->argument == NULL)
+    {
+      free(gp);
+      return (NULL);
+    }
+    gp->num_arguments = 3;
+    gp->argument[0] = va_arg(arglist, EXPRESSION_NODE *);
+    gp->argument[1] = va_arg(arglist, EXPRESSION_NODE *);
+    gp->argument[2] = va_arg(arglist, EXPRESSION_NODE *);
+    break;
+  default:
+    fprintf(stderr, "new_graphics_primitive: unknown type %d\n", (int) type);
+    break;
+  }
+  return (gp);
+}
+
+
+void free_symbol_element_components(SYMBOL_ELEMENT *sym)
+{
+  int i;
+
+  if (sym->arrayed)
+  {
+    if (sym->graphics_primitive_list)
+    {
+      for (i = 0; i < sym->num_graphics_primitives; i++)
+	free_graphics_primitive_components(sym->graphics_primitive_list + i);
+      free(sym->graphics_primitive_list);
+    }
+  }
+  else
+  {
+    if (sym->graphics_primitive_list)
+      free_graphics_primitive_list(sym->graphics_primitive_list);
+  }
+}
+
+
+void free_symbol_element_list(SYMBOL_ELEMENT *sym)
+{
+  SYMBOL_ELEMENT *s;
+
+  while (sym)
+  {
+    s = sym;
+    sym = sym->next;
+    free_symbol_element_components(s);
+    free(s);
+  }
+}
+
+
+SYMBOL_ELEMENT *new_symbol_element(const char *name, const TRANSSYS *transsys)
+{
+  SYMBOL_ELEMENT *s;
+
+  s = (SYMBOL_ELEMENT *) malloc(sizeof(SYMBOL_ELEMENT));
+  if (s == NULL)
+    return (NULL);
+  s->next = NULL;
+  s->index = 0;
+  s->arrayed = 0;
+  s->transsys = transsys;
+  s->num_graphics_primitives = 0;
+  s->graphics_primitive_list = NULL;
+  strncpy(s->name, name, IDENTIFIER_MAX);
+  s->name[IDENTIFIER_MAX - 1] = '\0';
+  return (s);
+}
+
+
+int arrange_symbol_element_arrays(SYMBOL_ELEMENT *se)
+{
+  GRAPHICS_PRIMITIVE *gp_arr = NULL, *gp, *gp1;
+  int num_graphics_primitives, i;
+
+  if (se->arrayed)
+    return (0);
+  for (num_graphics_primitives = 0, gp = se->graphics_primitive_list; gp; gp = gp->next)
+    num_graphics_primitives++;
+  if (num_graphics_primitives > 0)
+  {
+    gp_arr = (GRAPHICS_PRIMITIVE *) malloc(num_graphics_primitives * sizeof(GRAPHICS_PRIMITIVE));
+    if (gp_arr == NULL)
+      return (-1);
+    i = num_graphics_primitives;
+    gp = se->graphics_primitive_list;
+    while (gp)
+    {
+      gp_arr[--i] = *gp;
+      gp1 = gp;
+      gp = gp->next;
+      free(gp1);
+    }
+    se->num_graphics_primitives = num_graphics_primitives;
+    se->graphics_primitive_list = gp_arr;
+    for (i = 1; i < num_graphics_primitives; i++)
+      se->graphics_primitive_list[i - 1].next = se->graphics_primitive_list + i;
+    se->graphics_primitive_list[i - 1].next = NULL;
+  }
+  se->arrayed = 1;
+  return (0);
+}
+
+
+void free_lhs_symbol_components(LHS_SYMBOL *ls)
+{
+}
+
+
+void free_lhs_symbol_list(LHS_SYMBOL *ls_list)
+{
+  LHS_SYMBOL *l;
+
+  while (ls_list)
+  {
+    l = ls_list;
+    ls_list = ls_list->next;
+    free_lhs_symbol_components(l);
+    free(l);
+  }
+}
+
+
+LHS_SYMBOL *new_lhs_symbol(const char *transsys_label, const TRANSSYS *transsys, int symbol_index)
+{
+  LHS_SYMBOL *l;
+
+  l = (LHS_SYMBOL *) malloc(sizeof(LHS_SYMBOL));
+  if (l == NULL)
+    return (NULL);
+  l->next = NULL;
+  l->index = NO_INDEX;
+  l->symbol_index = symbol_index;
+  if (transsys_label)
+  {
+    strncpy(l->transsys_label, transsys_label, IDENTIFIER_MAX);
+    l->transsys_label[IDENTIFIER_MAX - 1] = '\0';
+  }
+  else
+    l->transsys_label[0] = '\0';
+  l->transsys = transsys;
+  return (l);
+}
+
+
+void free_assignment_components(ASSIGNMENT *a)
+{
+  free_expression_tree(a->value);
+}
+
+
+void free_assignment_list(ASSIGNMENT *alist)
+{
+  ASSIGNMENT *a;
+
+  while (alist)
+  {
+    a = alist;
+    alist = alist->next;
+    free_assignment_components(a);
+    free(a);
+  }
+}
+
+
+void free_lhs_descriptor_components(LHS_DESCRIPTOR *l)
+{
+  int i;
+
+  if (l->arrayed)
+  {
+    for (i = 0; i < l->num_symbols; i++)
+      free_lhs_symbol_components(l->symbol_list + i);
+    free(l->symbol_list);
+  }
+  else
+    free_lhs_symbol_list(l->symbol_list);
+}
+
+
+LHS_DESCRIPTOR *new_lhs_descriptor(LHS_SYMBOL *symbol_list)
+{
+  LHS_DESCRIPTOR *l;
+
+  l = (LHS_DESCRIPTOR *) malloc(sizeof(LHS_DESCRIPTOR));
+  if (l == NULL)
+    return (NULL);
+  l->arrayed = 0;
+  l->num_symbols = 0;
+  l->symbol_list = symbol_list;
+  return (l);
+}
+
+
+int arrange_lhs_descriptor_arrays(LHS_DESCRIPTOR *l)
+{
+  int num_symbols, i;
+  LHS_SYMBOL *s_arr, *s, *s1;
+
+  if (l->arrayed)
+    return (0);
+  for (num_symbols = 0, s = l->symbol_list; s; s = s->next)
+    num_symbols++;
+  if (num_symbols > 0)
+  {
+    s_arr = (LHS_SYMBOL *) malloc(num_symbols * sizeof(LHS_SYMBOL));
+    if (s_arr == NULL)
+      return (-1);
+    i = num_symbols;
+    s = l->symbol_list;
+    while (s)
+    {
+      s_arr[--i] = *s;
+      s1 = s;
+      s = s->next;
+      free(s1);
+    }
+    l->symbol_list = s_arr;
+  }
+  l->num_symbols = num_symbols;
+  if (num_symbols > 0)
+  {
+    for (i = 1; i < num_symbols; i++)
+      l->symbol_list[i - 1].next = l->symbol_list + i;
+    l->symbol_list[i - 1].next = NULL;
+  }
+  l->arrayed = 1;
+  return (0);
+}
+
+
+ASSIGNMENT *new_assignment(const TRANSSYS *target_transsys, int factor_index, EXPRESSION_NODE *value)
+{
+  ASSIGNMENT *a;
+
+  a = (ASSIGNMENT *) malloc(sizeof(ASSIGNMENT));
+  if (a == NULL)
+    return (NULL);
+  a->next = NULL;
+  a->target_transsys = target_transsys;
+  a->factor_index = factor_index;
+  a->value = value;
+  return (a);
+}
+
+
+void free_production_element_components(PRODUCTION_ELEMENT *sp)
+{
+  int i;
+
+  if (sp->arrayed)
+  {
+    for (i = 0; i < sp->num_assignments; i++)
+      free_assignment_components(sp->assignment_list + i);
+    free(sp->assignment_list);
+  }
+  else
+    free_assignment_list(sp->assignment_list);
+}
+
+
+void free_production_element_list(PRODUCTION_ELEMENT *slist)
+{
+  PRODUCTION_ELEMENT *sp;
+
+  while (slist)
+  {
+    sp = slist;
+    slist = slist->next;
+    free_production_element_components(sp);
+    free(sp);
+  }
+}
+
+
+PRODUCTION_ELEMENT *new_production_element(int symbol_index, int template_lhs_symbol_index, ASSIGNMENT *assignment_list)
+{
+  PRODUCTION_ELEMENT *sp;
+
+  sp = (PRODUCTION_ELEMENT *) malloc(sizeof(PRODUCTION_ELEMENT));
+  if (sp == NULL)
+    return (NULL);
+  sp->next = NULL;
+  sp->arrayed = 0;
+  sp->symbol_index = symbol_index;
+  sp->template_lhs_symbol_index = template_lhs_symbol_index;
+  sp->assignment_list = assignment_list;
+  return (sp);
+}
+
+
+int arrange_production_element_arrays(PRODUCTION_ELEMENT *sp)
+{
+  ASSIGNMENT *a_arr, *a, *a1;
+  int num_assignments, i;
+
+  if (sp->arrayed)
+    return (0);
+  for (num_assignments = 0, a = sp->assignment_list; a; a = a->next)
+    num_assignments++;
+  if (num_assignments > 0)
+  {
+    a_arr = (ASSIGNMENT *) malloc(num_assignments * sizeof(ASSIGNMENT));
+    if (a_arr == NULL)
+      return (-1);
+    i = num_assignments;
+    a = sp->assignment_list;
+    while (a)
+    {
+      a_arr[--i] = *a;
+      a1 = a;
+      a = a->next;
+      free(a1);
+    }
+    sp->assignment_list = a_arr;
+  }
+  sp->num_assignments = num_assignments;
+  if (num_assignments > 0)
+  {
+    for (i = 1; i < num_assignments; i++)
+      sp->assignment_list[i - 1].next = sp->assignment_list + i;
+    sp->assignment_list[i - 1].next = NULL;
+  }
+  sp->arrayed = 1;
+  return (0);
+}
+
+
+void free_symbol_production_components(SYMBOL_PRODUCTION *sp)
+{
+  int i;
+
+  if (sp->arrayed)
+  {
+    for (i = 0; i < sp->num_production_elements; i++)
+      free_production_element_components(sp->production_list + i);
+    free(sp->production_list);
+  }
+  else
+    free_production_element_list(sp->production_list);
+}
+
+
+SYMBOL_PRODUCTION *new_symbol_production(const TRANSSYS *transsys, PRODUCTION_ELEMENT *production_list)
+{
+  SYMBOL_PRODUCTION *sp;
+
+  sp = (SYMBOL_PRODUCTION *) malloc(sizeof(SYMBOL_PRODUCTION));
+  if (sp == NULL)
+    return (NULL);
+  sp->arrayed = 0;
+  sp->transsys = transsys;
+  sp->num_production_elements = 0;
+  sp->production_list = production_list;
+  return (sp);
+}
+
+
+int arrange_symbol_production_arrays(SYMBOL_PRODUCTION *sp)
+{
+  PRODUCTION_ELEMENT *pe_arr, *pe, *pe1;
+  int num_production_elements, i;
+
+  for (num_production_elements = 0, pe = sp->production_list; pe; pe = pe->next)
+    num_production_elements++;
+  sp->num_production_elements = num_production_elements;
+  if (num_production_elements > 0)
+  {
+    pe_arr = (PRODUCTION_ELEMENT *) malloc(num_production_elements * sizeof(PRODUCTION_ELEMENT));
+    if (pe_arr == NULL)
+      return (-1);
+    pe = sp->production_list;
+    i = num_production_elements;
+    while (pe)
+    {
+      pe_arr[--i] = *pe;
+      pe1 = pe;
+      pe = pe->next;
+      free(pe1);
+    }
+    sp->production_list = pe_arr;
+  }
+  sp->num_production_elements = num_production_elements;
+  if (num_production_elements > 0)
+  {
+    for (i = 1; i < num_production_elements; i++)
+      sp->production_list[i - 1].next = sp->production_list + i;
+    sp->production_list[i - 1].next = NULL;
+  }
+  sp->arrayed = 1;
+  return (0);
+}
+
+
+void free_rule_element_components(RULE_ELEMENT *r)
+{
+  if (r->condition)
+    free_expression_tree(r->condition);
+  free_lhs_descriptor_components(r->lhs);
+  free(r->lhs);
+  free_symbol_production_components(r->rhs);
+  free(r->rhs);
+}
+
+
+void free_rule_element_list(RULE_ELEMENT *rlist)
+{
+  RULE_ELEMENT *r;
+
+  while (rlist)
+  {
+    r = rlist;
+    rlist = rlist->next;
+    free_rule_element_components(r);
+    free(r);
+  }
+}
+
+
+RULE_ELEMENT *new_rule_element(const char *name, LHS_DESCRIPTOR *lhs, EXPRESSION_NODE *condition, SYMBOL_PRODUCTION *rhs)
+{
+  RULE_ELEMENT *r;
+
+  r = (RULE_ELEMENT *) malloc(sizeof(RULE_ELEMENT));
+  if (r == NULL)
+    return (NULL);
+  r->next = NULL;
+  if (name)
+  {
+    strncpy(r->name, name, IDENTIFIER_MAX);
+    r->name[IDENTIFIER_MAX - 1] = '\0';
+  }
+  else
+    r->name[0] = '\0';
+  r->lhs = lhs;
+  r->condition = condition;
+  r->rhs = rhs;
+  return (r);
+}
+
+
+void free_lsys_components(LSYS *lsys)
+{
+  int i;
+
+  if (lsys->arrayed)
+  {
+    for (i = 0; i < lsys->num_rules; i++)
+      free_rule_element_components(lsys->rule_list + i);
+    free(lsys->rule_list);
+    for (i = 0; i < lsys->num_symbols; i++)
+      free_symbol_element_components(lsys->symbol_list + i);
+    free(lsys->symbol_list);
+  }
+  else
+  {
+    free_rule_element_list(lsys->rule_list);
+    free_symbol_element_list(lsys->symbol_list);
+  }
+  if (lsys->axiom)
+  {
+    free_symbol_production_components(lsys->axiom);
+    free(lsys->axiom);
+  }
+}
+
+
+void free_lsys_list(LSYS *ls)
+{
+  LSYS *ls1;
+
+  while (ls)
+  {
+    free_lsys_components(ls);
+    ls1 = ls;
+    ls = ls->next;
+    free(ls1);
+  }
+}
+
+
+LSYS *new_lsys(const char *name)
+{
+  LSYS *lsys;
+
+  lsys = (LSYS *) malloc(sizeof(LSYS));
+  if (lsys == NULL)
+    return (NULL);
+  lsys->next = NULL;
+  lsys->arrayed = 0;
+  lsys->num_symbols = 0;
+  lsys->symbol_list = NULL;
+  lsys->axiom = NULL;
+  lsys->num_rules = 0;
+  lsys->rule_list = NULL;
+  strncpy(lsys->name, name, IDENTIFIER_MAX);
+  lsys->name[IDENTIFIER_MAX - 1] = '\0';
+  return (lsys);
+}
+
+
+int arrange_lsys_arrays(LSYS *lsys)
+{
+  SYMBOL_ELEMENT *se_arr = NULL, *se, *se1;
+  RULE_ELEMENT *re_arr = NULL, *re, *re1;
+  int num_symbols, num_rules, i;
+
+  if (lsys->arrayed)
+    return (0);
+  for (num_symbols = 0, se = lsys->symbol_list; se; se = se->next)
+    num_symbols++;
+  for (num_rules = 0, re = lsys->rule_list; re; re = re->next)
+    num_rules++;
+  if (num_symbols > 0)
+  {
+    se_arr = (SYMBOL_ELEMENT *) malloc(num_symbols * sizeof(SYMBOL_ELEMENT));
+    if (se_arr == NULL)
+      return (-1);
+  }
+  if (num_rules > 0)
+  {
+    re_arr = (RULE_ELEMENT *) malloc(num_rules * sizeof(RULE_ELEMENT));
+    if (re_arr == NULL)
+    {
+      if (se_arr)
+	free(se_arr);
+      return (-1);
+    }
+  }
+  lsys->num_symbols = num_symbols;
+  if (num_symbols > 0)
+  {
+    i = num_symbols;
+    se = lsys->symbol_list;
+    while (se)
+    {
+      se_arr[--i] = *se;
+      se1 = se;
+      se = se->next;
+      free(se1);
+    }
+    lsys->symbol_list = se_arr;
+    for (i = 1; i < num_symbols; i++)
+      lsys->symbol_list[i - 1].next = lsys->symbol_list + i;
+    lsys->symbol_list[i - 1].next = NULL;
+  }
+  lsys->num_rules = num_rules;
+  if (num_rules > 0)
+  {
+    i = num_rules;
+    re = lsys->rule_list;
+    while (re)
+    {
+      re_arr[--i] = *re;
+      re1 = re;
+      re = re->next;
+      free(re1);
+    }
+    lsys->rule_list = re_arr;
+    for (i = 1; i < num_rules; i++)
+      lsys->rule_list[i - 1].next = lsys->rule_list + i;
+    lsys->rule_list[i - 1].next = NULL;
+  }
+  lsys->arrayed = 1;
+  return (0);
+}
+
+
+void init_transsys_instance_components(TRANSSYS_INSTANCE *ti)
+{
+  ti->factor_concentration = NULL;
+  ti->new_concentration = NULL;
+  ti->transsys = NULL;
+}
+
+
+void free_transsys_instance_components(TRANSSYS_INSTANCE *ti)
+{
+  if (ti->factor_concentration)
+    free(ti->factor_concentration);
+  if (ti->new_concentration)
+    free(ti->new_concentration);
+  init_transsys_instance_components(ti);
+}
+
+
+int alloc_transsys_instance_components(TRANSSYS_INSTANCE *ti, const TRANSSYS *transsys)
+{
+  int i;
+
+  free_transsys_instance_components(ti);
+  if (transsys == NULL)
+    return (0);
+  if (transsys->num_factors > 0)
+  {
+    ti->factor_concentration = (double *) malloc(transsys->num_factors * sizeof(double));
+    if (ti->factor_concentration == NULL)
+      return (-1);
+    ti->new_concentration = (double *) malloc(transsys->num_factors * sizeof(double));
+    if (ti->new_concentration == NULL)
+    {
+      free(ti->factor_concentration);
+      ti->factor_concentration = NULL;
+      return (-1);
+    }
+    for (i = 0; i < transsys->num_factors; i++)
+      ti->factor_concentration[i] = 0.0;
+  }
+  else
+  {
+    ti->factor_concentration = NULL;
+    ti->new_concentration = NULL;
+  }
+  ti->transsys = transsys;
+  return (0);
+}
+
+
+int clone_transsys_instance(TRANSSYS_INSTANCE *ti, const TRANSSYS_INSTANCE *source)
+{
+  int i, return_value;
+
+  return_value = alloc_transsys_instance_components(ti, source->transsys);
+  if (return_value != 0)
+    return (return_value);
+  for (i = 0; i < ti->transsys->num_factors; i++)
+    ti->factor_concentration[i] = source->factor_concentration[i];
+  return (0);
+}
+
+
+void free_cell_components(CELL *cell)
+{
+  free_transsys_instance_components(&(cell->transsys_instance));
+  if (cell->neighbor)
+    free(cell->neighbor);
+  if (cell->contact_weight)
+    free(cell->contact_weight);
+}
+
+
+void free_cells(int num_cells, CELL *cell)
+{
+  int i;
+
+  for (i = 0; i < num_cells; i++)
+    free_cell_components(cell + i);
+  free(cell);
+}
+
+
+int alloc_cell_components(CELL *c, const TRANSSYS *transsys)
+{
+  int return_value;
+
+  return_value = alloc_transsys_instance_components(&(c->transsys_instance), transsys);
+  if (return_value != 0)
+    return (return_value);
+  c->alive = 0;
+  c->num_neighbors = 0;
+  c->neighbor = NULL;
+  c->contact_weight = NULL;
+  return (0);
+}
+
+
+CELL *new_cells(int num_cells, const TRANSSYS *transsys)
+{
+  CELL *c;
+  int i;
+
+  c = (CELL *) malloc(num_cells * sizeof(CELL));
+  if (c == NULL)
+    return (NULL);
+  for (i = 0; i < num_cells; i++)
+  {
+    init_transsys_instance_components(&(c[i].transsys_instance));
+    c[i].existing = 0;
+    c[i].alive = 0;
+    c[i].num_neighbors = 0;
+    c[i].neighbor = NULL;
+    c[i].contact_weight = NULL;
+  }
+  for (i = 0; i < num_cells; i++)
+  {
+    if (alloc_cell_components(c + i, transsys))
+      break;
+  }
+  if (i < num_cells)
+  {
+    free_cells(num_cells, c);
+    return (NULL);
+  }
+  return (c);
+}
+
+
+void free_symbol_instance_components(SYMBOL_INSTANCE *si)
+{
+  free_transsys_instance_components(&(si->transsys_instance));
+}
+
+
+void free_symbol_instance_list(SYMBOL_INSTANCE *slist)
+{
+  SYMBOL_INSTANCE *si;
+
+  while (slist)
+  {
+    free_symbol_instance_components(slist);
+    si = slist;
+    slist = slist->next;
+    free(si);
+  }
+}
+
+
+SYMBOL_INSTANCE *new_symbol_instance(const LSYS *lsys, int symbol_index)
+{
+  SYMBOL_INSTANCE *si;
+
+  si = (SYMBOL_INSTANCE *) malloc(sizeof(SYMBOL_INSTANCE));
+  if (si == NULL)
+    return (NULL);
+  si->next = NULL;
+  si->lsys = lsys;
+  si->symbol_index = symbol_index;
+  init_transsys_instance_components(&(si->transsys_instance));
+  if (alloc_transsys_instance_components(&(si->transsys_instance), lsys->symbol_list[symbol_index].transsys) != 0)
+  {
+    free(si);
+    return (NULL);
+  }
+  return (si);
+}
+
+
+SYMBOL_INSTANCE *clone_symbol_instance(const SYMBOL_INSTANCE *source)
+{
+  SYMBOL_INSTANCE *si;
+  int i;
+
+  si = (SYMBOL_INSTANCE *) malloc(sizeof(SYMBOL_INSTANCE));
+  if (si == NULL)
+    return (NULL);
+  si->next = NULL;
+  si->lsys = source->lsys;
+  si->symbol_index = source->symbol_index;
+  init_transsys_instance_components(&(si->transsys_instance));
+  if (alloc_transsys_instance_components(&(si->transsys_instance), source->transsys_instance.transsys) != 0)
+  {
+    free(si);
+    return (NULL);
+  }
+  si->transsys_instance.transsys = source->transsys_instance.transsys;
+  if (source->transsys_instance.transsys)
+  {
+    for (i = 0; i < source->transsys_instance.transsys->num_factors; i++)
+      si->transsys_instance.factor_concentration[i] = source->transsys_instance.factor_concentration[i];
+  }
+  return (si);
+}
+

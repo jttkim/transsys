@@ -1,0 +1,7 @@
+  rule grow
+  {
+    meristem(t) : t.A > 0.91 -->
+	[ left meristem(transsys t: ) ]
+	[ right meristem(transsys t: ) ]
+	shoot_piece meristem(transsys t: )
+  }

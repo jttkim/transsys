@@ -1,0 +1,74 @@
+transsys cycler
+{
+  factor A { decay: 0.1; }
+  factor R { decay: 0.1; }
+
+  gene agene
+  {
+    promoter
+    {
+      constitutive: 0.01;
+      A: activate(0.01, 1.0);
+      R: repress(0.1, 1.0);
+    }
+    product
+    {
+      default: A;
+    }
+  }
+
+  gene rgene
+  {
+    promoter
+    {
+      A: activate(1.0, 10.0);
+      R: repress(1.0, 1.0);
+    }
+    product
+    {
+      default: R;
+    }
+  }
+}
+
+lsys example
+{
+  symbol meristem(cycler);
+  symbol shoot_piece;
+  symbol left;
+  symbol right;
+  symbol [;
+  symbol ];
+
+  axiom meristem();
+
+  rule grow
+  {
+    meristem(t) : t.A > 0.91 -->
+	[ left meristem(transsys t: ) ]
+	[ right meristem(transsys t: ) ]
+	shoot_piece meristem(transsys t: )
+  }
+
+  graphics
+  {
+    meristem
+    {
+      move(0.2);
+      color(0.0, 1.0, 0.0);
+      sphere(0.2);
+      move(0.2);
+    }
+    shoot_piece
+    {
+      move(0.5);
+      color(0.7, 0.7, 0.7);
+      cylinder(0.1, 1.0);
+      move(0.5);
+    }
+    left { turn(20); }
+    right { turn(-20); }
+    [ { push(); }
+    ] { pop(); }
+  }
+}
