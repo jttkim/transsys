@@ -33,25 +33,15 @@ class ErrorLogger :
       self.errfile.flush()
 
 
-
-
-
 def uniform_cmp(element1, element2) :
-  if isinstance(element1, int) :
-    if isinstance(element2, int) :
-      if element1 == element2 :
-        if element1 == 1 :
-          return 1
-        else :
-          return 0
-    else :
-      raise StandardError, 'uniform_cmp:: type of element2 is not INT'
-  else :
+  if not isinstance(element1, int) :
     raise StandardError, 'uniform_cmp:: type of element1 is not INT'
-    
-
-
-
+  if not isinstance(element2, int) :
+    raise StandardError, 'uniform_cmp:: type of element2 is not INT'
+  if element1 == element2 :
+    if element1 == 1 :
+      return 1
+  return 0
 
 
 class ExpressionSimilarityMatrix :
@@ -66,10 +56,9 @@ class ExpressionSimilarityMatrix :
     self.gf_dict = gf_dict
     self.factor_list = []
     for fn in self.gf_dict.values() :
-      if fn not in self.factor_list :
-        self.factor_list.append(fn)
-    if len(self.factor_list) != len(self.gf_dict) :
-      raise StandardError, 'multiple genes encode same factor'
+      if fn in self.factor_list :
+        raise StandardError, 'multiple genes encode same factor'
+      self.factor_list.append(fn)
     self.factor_list.sort()
     self.fill_all(default_element)
 
@@ -89,9 +78,13 @@ class ExpressionSimilarityMatrix :
       s = s + '\n'
     return s
 
+
   def gnu_comparison(self, other, cmp_function) :
+    """this function seems to be half-implemented -- it does not do anything
+reasonable or useful"""
+    raise StandardError, 'ExpressionSimilarityMatrix::gnu_comparison: unimplemented'
     if self.factor_list != other.factor_list :
-      raise StandardError, 'ExpressionSimilarityMatrix.transform:: matrices have not got the same factor_list'
+      raise StandardError, 'ExpressionSimilarityMatrix.gnu_comparison:: matrices have not got the same factor_list'
     for factor1 in self.factor_list :
       for factor2 in self.factor_list :
         element1 = self.get_element(factor1, factor2)
@@ -99,19 +92,6 @@ class ExpressionSimilarityMatrix :
         if cmp_function(element1, element2) == 1 :
           pass
           
-
-  def uniform_cmp(element1, element2) :
-    if isinstance(element1, int) :
-      if isinstance(element2, int) :
-        if element1.__abs__() == element2.__abs__() :
-          if element1.__abs__() == 1:
-            return 1
-          else :
-            return 0
-      else :
-        raise StandardError, 'uniform_cmp:: type of element2 is not INT'
-    else :
-      raise StandardError, 'uniform_cmp:: type of element1 is not INT'
 
   def gene_factor_dictionary(self):
     """Returns the gene-factor dictionary.
@@ -126,6 +106,7 @@ class ExpressionSimilarityMatrix :
       if v in fg_dict.keys() :
         raise StandardError, 'ExpressionSimilarityMatrix.factor_gene_dictionary: multiple genes encode factor "%s"' % v
       fg_dict[v] = k
+    return fg_dict
 
 
   def return_as_list(self) :
@@ -199,15 +180,11 @@ class ExpressionSimilarityMatrix :
           self.matrix[i][j] = element
 
 
-
-
-  
-
 class KnockoutTranssysProgram(transsys.TranssysProgram) :
   """KnockoutTranssysProgram
   """
 
-  def __init__(self, tp, none_func_name = "none_func") :
+  def __init__(self, tp, nonfunc_name = "nonfunc") :
     """docu missing
     """
     self.basename = tp.name
@@ -215,15 +192,18 @@ class KnockoutTranssysProgram(transsys.TranssysProgram) :
     self.factor_list = tp.factor_list[:]
     self.gene_list = tp.gene_list[:]
     self.comments = tp.comments
-    self.none_func_name = none_func_name
+    self.nonfunc_name = nonfunc_name
     self.add_nonfunctional_factor()
+    self.functional_factor = None
     self.knockout_index = None
+
 
   def add_nonfunctional_factor(self) :
     """docu missing
     """
-    self.none_func = transsys.Factor(self.none_func_name, 0.0)
-    self.factor_list.append(self.none_func)
+    # FIXME: should check for existence of nonfunc factor somewhere
+    self.nonfunc = transsys.Factor(self.nonfunc_name, 0.0)
+    self.factor_list.append(self.nonfunc)
 
 
   def do_knockout(self, knockout_index) :
@@ -234,7 +214,7 @@ class KnockoutTranssysProgram(transsys.TranssysProgram) :
     self.name = '%s_ko_%d' % (self.basename, knockout_index)
     self.knockout_index = knockout_index
     self.functional_factor = self.gene_list[knockout_index].product
-    self.gene_list[knockout_index].product = self.none_func
+    self.gene_list[knockout_index].product = self.nonfunc
 
 
   def undo_knockout(self) :
@@ -245,14 +225,22 @@ class KnockoutTranssysProgram(transsys.TranssysProgram) :
     self.name = self.basename
     self.gene_list[self.knockout_index].product = self.functional_factor
     self.knockout_index = None
+    self.functional_factor = None
 
 
-
-
+def link_scorefunc(promoter) :
+  if isinstance(promoter, transsys.PromoterElementLink) :
+    return 1
+  else :
+    # scoreMatrix uses NONE to identify set matrix elements.
+    # Errors 
+    return None
 
 
 def score_matrix(network, promoter_element_scorefunc) :
-  """docu missing
+  """compute a distance adjacency matrix in which entries connecting
+a regulator to a cognate regulatee contain a score value computed by
+the scorefunc on the promoter element. All other entries are None.
   """
   gf_dict = gene_factor_dictionary(network)
   adj_matrix = ExpressionSimilarityMatrix('adj_matrix', gf_dict)
@@ -266,7 +254,7 @@ def score_matrix(network, promoter_element_scorefunc) :
         for f in p.factor_list :
           fj = f.name
           #
-          #FIXME
+          # FIXME ??? what's wrong here?
           if adj_matrix.get_element(fj, fi) is not None :
             errlogger.message('score_matrix_error: multiple links %s --> %s' % (fj, fi), 0)
             raise StandardError, 'score_matrix: multiple links %s --> %s' % (fj, fi)
@@ -276,44 +264,21 @@ def score_matrix(network, promoter_element_scorefunc) :
   return adj_matrix
 
 
-
-
-
-
-
-def link_scorefunc(promoter) :
-  if isinstance(promoter, transsys.PromoterElementLink) :
-    return 1
-  else :
-    # scoreMatrix uses NONE to identify set matrix elements.
-    # Errors 
-    return None
-
-
-
-
-
-
 def pathscore_matrix(tp, scorefunc, no_connection_default_value) :
   """get cost matrix of a transsys network. Calculation rules are implemented in a generic score_function().
   """
   gf_dict = gene_factor_dictionary(tp)
-
   scoreMatrix = score_matrix(tp, scorefunc)
-  
   scoreMatrix.name = 'scoreMatrix'
   # obviously distance from gene i to itself is zero
   for i in gf_dict.keys() :
     scoreMatrix.set_element(gf_dict[i], gf_dict[i], 0)
-
-
   for n in gf_dict.keys() :
     for i in gf_dict.keys() :
       for j in gf_dict.keys() :
         s1 = scoreMatrix.get_element(gf_dict[i], gf_dict[j])
         s2 = scoreMatrix.get_element(gf_dict[i], gf_dict[n])
         s3 = scoreMatrix.get_element(gf_dict[n], gf_dict[j])
-        
         if s1 is not None :
           if s2 is not None :
             if s3 is not None :
@@ -327,14 +292,8 @@ def pathscore_matrix(tp, scorefunc, no_connection_default_value) :
           if s2 is not None :
             if s3 is not None :
               scoreMatrix.set_element(gf_dict[i], gf_dict[j], s2 + s3)
-
   scoreMatrix.replace_none(no_connection_default_value)
-  
   return scoreMatrix
-
-
-
-
 
 
 # -1 := activating
@@ -354,20 +313,10 @@ def adjacency_matrix_scorefunc(promoter) :
     raise StandardError, 'adjacency_matrix_scorefunc: unknown PromoterElement class "%s"' % promoter.__class__.__name__
 
 
-
-
-
-
-
 def adjacency_matrix (network) :
   adj_matrix = score_matrix(network, adjacency_matrix_scorefunc)
   adj_matrix.replace_none(0)
   return adj_matrix
-
-
-
-
-
 
 
 def gene_factor_dictionary(tp) :
@@ -379,18 +328,10 @@ def gene_factor_dictionary(tp) :
   return d
 
 
-
-
 def identity_perturber(c, fn) :
   """docu missing
   """
   return c
-
-
-
-
-
-
 
 
 #FIXME: a_spec, a_max is both used for activation and repression
@@ -399,39 +340,24 @@ def create_disruption_network(name, matrix_D, gene_order, decay_rate, a_spec, a_
   """
   factor_list = []
   gene_list = []
-  
   for gname in gene_order :
     fname = matrix_D.get_fname(gname)
     factor_list.append(transsys.Factor(fname, transsys.ExpressionNodeValue(decay_rate)))
-
   for gname in gene_order :
     fname = matrix_D.get_fname(gname)
     temp_promoter_list = []
-
     for reg_gname in gene_order :
-
       reg_fname = matrix_D.get_fname(reg_gname)
       if matrix_D.get_element(reg_fname, fname) == -1 :
         temp_promoter_list.append(transsys.PromoterElementActivate(transsys.ExpressionNodeValue(a_spec), transsys.ExpressionNodeValue(a_max), [reg_fname]))
-
       if matrix_D.get_element(reg_fname, fname) ==  1 :
         temp_promoter_list.append(transsys.PromoterElementRepress(transsys.ExpressionNodeValue(a_spec), transsys.ExpressionNodeValue(a_max), [reg_fname]))
-
     temp_promoter_list.append(transsys.PromoterElementConstitutive(transsys.ExpressionNodeValue(constit)))
     gene_list.append(transsys.Gene(gname, fname, temp_promoter_list))
-
   disruption_network = transsys.TranssysProgram(name, factor_list, gene_list)
-
   return disruption_network
 
 
-
-
-
-
-
-
- 
 # matrix_D:
 # ---------
 # dim(matrix_D) = n x n
@@ -451,43 +377,30 @@ def reconstructed_adjacency_matrix(matrix_E, gamma, sigma) :
     sigma = {}
     for fname in matrix_E.get_fnamelist() :
       sigma[fname] = 1.0
-
   if len(sigma) != len(matrix_E.get_fnamelist()) :
     errlogger.message('reconstructed_adjacency_matrix: sigma_error: invalid size ',errorlogger_verbositylevel)
     raise StandardError, 'matrix_D: invalid size of vector sigma'
-
   matrix_D = copy.deepcopy(matrix_E)
   matrix_D.name = 'matrix_D'
-
   # build matrix D from matrix E
   for fname in matrix_D.get_fnamelist() :
     for reg_fname in matrix_D.get_fnamelist() :
       # "normalize"
       x = matrix_E.get_element(fname, reg_fname) / sigma[fname]
-
       # d_ij = ...
       # ignore selfregulation, meaning edges with in/out gene is the same
       if fname == reg_fname :
         matrix_D.set_element(fname, reg_fname, 0)
-
       # gene is activating
       elif x <= -gamma :
         matrix_D.set_element(fname, reg_fname, -1)
-
       # gene is repressing
       elif x >= gamma :
         matrix_D.set_element(fname, reg_fname, 1)
       # gene is not regulating
-
       else :
         matrix_D.set_element(fname, reg_fname, 0)
-
   return matrix_D    
-
-
-
-
-
 
 
 #FIXME: i want to be an array not a matrix anymore...!
@@ -495,22 +408,15 @@ def reconstructed_adjacency_matrix(matrix_E, gamma, sigma) :
 def referencestate_concentration_matrix(network, timesteps) :
   """docu missing
   """
-
   gfd = gene_factor_dictionary(network)  
   ti = transsys.TranssysInstance(network)
   tseries = ti.time_series(timesteps, 1)
   reference_state = tseries[max(tseries.keys())]
-
   ref_conc_matrix = ExpressionSimilarityMatrix('ref_conc_matrix', gfd )
   for fi in network.factor_names() :
     for fj in network.factor_names() :
       ref_conc_matrix.set_element(fj, fi, reference_state.factor_concentration[network.find_factor_index(fi)])
-
   return ref_conc_matrix
-
-
-
-
 
 
 ####
@@ -518,68 +424,47 @@ def referencestate_concentration_matrix(network, timesteps) :
 def knockout_concentration_matrix(knockout_network, ref_conc_matrix, timesteps) :
   """docu missing
   """
-
   gfd_wildtype = gene_factor_dictionary(knockout_network)
   conc_matrix = ExpressionSimilarityMatrix('conc_matrix', gfd_wildtype)
-
   ref_state = transsys.TranssysInstance(knockout_network)
-
   wildtype_factor_names = knockout_network.factor_names()[:]
-  wildtype_factor_names.remove(knockout_network.none_func_name)
-  
+  wildtype_factor_names.remove(knockout_network.nonfunc_name)
   for factor in wildtype_factor_names :
-    
     ref_state.factor_concentration[knockout_network.find_factor_index(factor)] = ref_conc_matrix.get_element(factor, factor)
-
   # make 'experiments'  
   for gi in knockout_network.gene_names() :
-
     # mutate gene i
     knockout_network.do_knockout(knockout_network.find_gene_index(gi))
     initial_state = ref_state.perturbed_copy(identity_perturber)
     initial_state.transsys_program = knockout_network
     m_tseries = initial_state.time_series(timesteps, 1)
     this_mutant = m_tseries[max(m_tseries.keys())]
-
     for fi in wildtype_factor_names :
       # expression of fi is affected by knockout of gi as quantified by concentration of fi
       conc_matrix.set_element(gfd_wildtype[gi], fi, this_mutant.factor_concentration[knockout_network.find_factor_index(fi)])
-
     # demutate gene i
     knockout_network.undo_knockout()
-
-
   return conc_matrix
 
 
-
-
-
-
 ####
 ####
-def logratio_matrix(ref_conc_matrix, conc_matrix, sigma) :
+def logratio_matrix(ref_conc_matrix, conc_matrix) :
   """docu missing
   """
-
   overflows = 0
   log2 = math.log(2)
-
   # initializing logratio matrix (matrix E in paper)
   matrix_E = ExpressionSimilarityMatrix('matrix_E', conc_matrix.gene_factor_dictionary())
-
   for fi in conc_matrix.get_fnamelist() :
     for fj in conc_matrix.get_fnamelist() :
       # FIXME: no selfregulation yet
       if fi == fj :
         matrix_E.set_element(fi, fj, 0.0)
-
       elif ((ref_conc_matrix.get_element(fi, fj) == 0.0) and (conc_matrix.get_element(fi, fj) == 0.0)) :
         matrix_E.set_element(fi, fj, 0.0)
-      
       elif (ref_conc_matrix.get_element(fi, fj) == 0.0) :
         matrix_E.set_element(fi, fj, float(sys.maxint))
-
       elif conc_matrix.get_element(fi, fj) == (0.0) :
         matrix_E.set_element(fi, fj, float(-sys.maxint))
       # calculate logratio (basis 2)
@@ -591,20 +476,13 @@ def logratio_matrix(ref_conc_matrix, conc_matrix, sigma) :
           # to bypass this problem we chose to set matrix_E[i][j] to some arbitrary floating point number,
           # that makes sure that the according edge is going to be activating.
           # underflow seems to be caught by python internally.
-           
           matrix_E.set_element(fi, fj, (math.log(conc_matrix.get_element(fi, fj) / ref_conc_matrix.get_element(fi, fj)))/log2 )
         except OverflowError :
           overflows = overflows + 1
           matrix_E.set_element(fi, fj, float(-sys.maxint))
-
   if overflows > 0 :
     errlogger.message('number of overflows, when calculating the logarithm: '+str(overflows), errorlogger_verbositylevel)
-
   return matrix_E
-
-
-
-
 
 
 def overlaps (net_a, net_b) :
@@ -613,10 +491,8 @@ def overlaps (net_a, net_b) :
   promoter_only_net_a = []
   promoter_only_net_b = []
   promoter_net_a_and_net_b = []
-  
   #collect equivalent (correct) edges, count original edges and reconstructed edges
   genelist = net_a.gene_names()
-  
   for gene in genelist :
     gene_a = net_a.find_gene(gene)
     gene_b = net_b.find_gene(gene)
@@ -626,7 +502,6 @@ def overlaps (net_a, net_b) :
     for promoter_element_net_b in gene_b.promoter :
       if not isinstance(promoter_element_net_b, transsys.PromoterElementConstitutive):
         promoter_only_net_b.append(promoter_element_net_b)
-
     for promoter_element_net_a in gene_a.promoter :
       if isinstance(promoter_element_net_a, transsys.PromoterElementLink) :
         factor_list_net_a = []
@@ -655,5 +530,3 @@ def overlaps (net_a, net_b) :
                 promoter_only_net_b.remove(promoter_element_net_b)
   return [ promoter_net_a_and_net_b, promoter_only_net_a, promoter_only_net_b ]
 
-
-### END OF TRANSDISRUPT ###
