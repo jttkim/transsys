@@ -3,6 +3,9 @@
 # $Id$
 
 # $Log$
+# Revision 1.5  2005/04/06 09:54:38  jtk
+# debugged transdisrupt.py
+#
 # Revision 1.4  2005/04/05 20:27:37  jtk
 # allowed snippets in CyclicSequence, adapted time_series, lsys kludge
 #
@@ -849,7 +852,7 @@ class TranssysInstance :
       cmd = cmd + ' -l'
     if lsys_symbol is not None :
       cmd = cmd + ' -y \'%s\'' % lsys_symbol
-    sys.stderr.write('%s\n' % cmd)
+    # sys.stderr.write('%s\n' % cmd)
     p = popen2.Popen3(cmd, 1)
     sys.stdout.flush()
     sys.stderr.flush()
@@ -876,7 +879,6 @@ class TranssysInstance :
           for i in xrange(len(self.transsys_program.factor_list)) :
             ti.factor_concentration[i] = float(l[2 * i + 2])
             ti.factor_concentration_stddev[i] = float(l[2 * i + 3])
-            sys.stderr.write('converted: %s +- %s  ->  %f +- %f\n' % (l[2 * i + 2], l[2 * i + 3], ti.factor_concentration[i], ti.factor_concentration_stddev[i]))
           tseries_dict[t] = ti
       line = p.fromchild.readline()
     p.fromchild.close()
