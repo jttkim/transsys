@@ -4,6 +4,10 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.4  2005/03/30 18:30:27  jtk
+ * progressed transition to arrayred lsys strings
+ * introduced lsys string distance matrices
+ *
  * Revision 1.3  2005/03/30 09:51:56  jtk
  * added include for dmalloc (contitional upon DMALLOC macro)
  *
@@ -115,8 +119,8 @@ extern int alloc_cell_components(CELL *c, const TRANSSYS *transsys);
 extern CELL *new_cells(int num_cells, const TRANSSYS *transsys);
 extern void free_symbol_instance_components(SYMBOL_INSTANCE *si);
 extern void free_symbol_instance_list(SYMBOL_INSTANCE *slist);
-extern SYMBOL_INSTANCE *new_symbol_instance(const LSYS_STRING *lsys_string, int symbol_index);
-extern SYMBOL_INSTANCE *clone_symbol_instance(const SYMBOL_INSTANCE *source);
+extern SYMBOL_INSTANCE *new_symbol_instance(const LSYS_STRING *lsys_string, int symbol_index, int num_predecessors, int predecessor_index, int predecessor_distance);
+extern SYMBOL_INSTANCE *clone_symbol_instance(const SYMBOL_INSTANCE *source, const LSYS_STRING *lsys_string, int predecessor_index);
 extern void free_lsys_string_distance(LSYS_STRING *lstr);
 extern void free_lsys_string(LSYS_STRING *lstr);
 extern int alloc_lsys_string_distance(LSYS_STRING *lstr);

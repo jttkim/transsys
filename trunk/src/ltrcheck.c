@@ -4,6 +4,10 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.3  2005/03/30 18:30:27  jtk
+ * progressed transition to arrayred lsys strings
+ * introduced lsys string distance matrices
+ *
  * Revision 1.2  2005/03/29 17:33:02  jtk
  * introduced arrayed lsys string, with symbol distance matrix.
  *
@@ -111,8 +115,10 @@ int main(int argc, char **argv)
     {
       for (i = 0; i < num_derivations; i++)
       {
+	/* print_MemdebugStatistics(); */
+	/* verify_Watchdogs(); */
 	fprintf(outfile, "***** step %d *****\n", i);
-	fprint_symbol_instance_list(outfile, lstr->symbol, "\n"); /* FIXME: ... */
+	fprint_lsys_string(outfile, lstr, "\n");
 	fprintf(outfile, "\n");
 	if (process_transsys)
 	  lsys_string_expression(lstr);
@@ -127,8 +133,9 @@ int main(int argc, char **argv)
       }
       if (lstr)
       {
+	/* verify_Watchdogs(); */
 	fprintf(outfile, "***** step %d *****\n", i);
-	fprint_symbol_instance_list(outfile, lstr->symbol, "\n");
+	fprint_lsys_string(outfile, lstr, "\n");
 	fprintf(outfile, "\n");
 	free_lsys_string(lstr);
       }

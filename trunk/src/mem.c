@@ -4,6 +4,10 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.4  2005/03/30 18:30:27  jtk
+ * progressed transition to arrayred lsys strings
+ * introduced lsys string distance matrices
+ *
  * Revision 1.3  2005/03/30 09:51:02  jtk
  * fixed free_lsys_string to actually free the string itself
  *
@@ -1383,7 +1387,7 @@ void free_symbol_instance_list(SYMBOL_INSTANCE *slist)
 }
 
 
-SYMBOL_INSTANCE *new_symbol_instance(const LSYS_STRING *lsys_string, int symbol_index)
+SYMBOL_INSTANCE *new_symbol_instance(const LSYS_STRING *lsys_string, int symbol_index, int num_predecessors, int predecessor_index, int predecessor_distance)
 {
   SYMBOL_INSTANCE *si;
 
@@ -1393,6 +1397,9 @@ SYMBOL_INSTANCE *new_symbol_instance(const LSYS_STRING *lsys_string, int symbol_
   si->next = NULL;
   si->lsys_string = lsys_string;
   si->symbol_index = symbol_index;
+  si->num_predecessors = num_predecessors;
+  si->predecessor_index = predecessor_index;
+  si->predecessor_distance = predecessor_distance;
   init_transsys_instance_components(&(si->transsys_instance));
   if (alloc_transsys_instance_components(&(si->transsys_instance), lsys_string->lsys->symbol_list[symbol_index].transsys) != 0)
   {
@@ -1403,7 +1410,7 @@ SYMBOL_INSTANCE *new_symbol_instance(const LSYS_STRING *lsys_string, int symbol_
 }
 
 
-SYMBOL_INSTANCE *clone_symbol_instance(const SYMBOL_INSTANCE *source)
+SYMBOL_INSTANCE *clone_symbol_instance(const SYMBOL_INSTANCE *source, const LSYS_STRING *lsys_string, int predecessor_index)
 {
   SYMBOL_INSTANCE *si;
   int i;
@@ -1412,8 +1419,11 @@ SYMBOL_INSTANCE *clone_symbol_instance(const SYMBOL_INSTANCE *source)
   if (si == NULL)
     return (NULL);
   si->next = NULL;
-  si->lsys_string = source->lsys_string;
+  si->lsys_string = lsys_string;
   si->symbol_index = source->symbol_index;
+  si->num_predecessors = 1;     /* cloned symbol is always "derived" from one symbol */
+  si->predecessor_index = predecessor_index;
+  si->predecessor_distance = 0; /* cloned symbol is always "same" as source symbol */
   init_transsys_instance_components(&(si->transsys_instance));
   if (alloc_transsys_instance_components(&(si->transsys_instance), source->transsys_instance.transsys) != 0)
   {
@@ -1494,7 +1504,7 @@ int alloc_lsys_string_distance(LSYS_STRING *lstr)
   }
   for (i = 1; i < lstr->num_symbols; i++)
   {
-    lstr->distance[i] = lstr->distance[0] + lstr->num_symbols;
+    lstr->distance[i] = lstr->distance[0] + lstr->num_symbols * i;
     for (j = 0; j < lstr->num_symbols; j++)
     {
       lstr->distance[i][j] = 0;
@@ -1509,6 +1519,11 @@ int arrange_lsys_string_arrays(LSYS_STRING *lstr)
   SYMBOL_INSTANCE *si_arr, *si, *si1;
   size_t i;
 
+  /*
+  fprintf(stderr, "arrange_lsys_string_arrays: start\n");
+  verify_Watchdogs();
+  fprintf(stderr, "arrange_lsys_string_arrays: start\n");
+  */
   if (lstr->arrayed)
   {
     fprintf(stderr, "multiple array arrangement for LSYS_STRING of \"%s\"\n", lstr->lsys->name);
@@ -1533,8 +1548,17 @@ int arrange_lsys_string_arrays(LSYS_STRING *lstr)
     si = si->next;
     free(si1);
   }
+  for (i = 1; i < lstr->num_symbols; i++)
+  {
+    si_arr[i - 1].next = si_arr + i;
+  }
   lstr->symbol = si_arr;
   lstr->arrayed = 1;
+  /*
+  fprintf(stderr, "arrange_lsys_string_arrays: end\n");
+  verify_Watchdogs();
+  fprintf(stderr, "arrange_lsys_string_arrays: end\n");
+  */
   return (0);
 }
 

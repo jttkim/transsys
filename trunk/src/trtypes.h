@@ -4,6 +4,10 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.3  2005/03/30 18:30:27  jtk
+ * progressed transition to arrayred lsys strings
+ * introduced lsys string distance matrices
+ *
  * Revision 1.2  2005/03/29 17:33:02  jtk
  * introduced arrayed lsys string, with symbol distance matrix.
  *
@@ -292,6 +296,8 @@ typedef struct tag_symbol_instance
   struct tag_symbol_instance *next;
   const LSYS_STRING *lsys_string;
   int symbol_index;
+  int num_predecessors, predecessor_index;
+  int predecessor_distance;
   TRANSSYS_INSTANCE transsys_instance;
 } SYMBOL_INSTANCE;
 

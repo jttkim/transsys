@@ -4,6 +4,10 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.3  2005/03/30 18:30:27  jtk
+ * progressed transition to arrayred lsys strings
+ * introduced lsys string distance matrices
+ *
  * Revision 1.2  2005/03/29 17:33:02  jtk
  * introduced arrayed lsys string, with symbol distance matrix.
  *
@@ -558,6 +562,14 @@ void fprint_symbol_instance(FILE *f, const SYMBOL_INSTANCE *si)
     }
     fprintf(f, ")");
   }
+  if (si->num_predecessors == 0)
+  {
+    fprintf(f, " [no predecessors]");
+  }
+  else
+  {
+    fprintf(f, " [predecessors:%d:%d, pdist:%d]", si->predecessor_index, si->predecessor_index + si->num_predecessors - 1, si->predecessor_distance);
+  }
 }
 
 
@@ -573,8 +585,22 @@ void fprint_symbol_instance_list(FILE *f, const SYMBOL_INSTANCE *si, const char 
 
 void fprint_lsys_string(FILE *f, const LSYS_STRING *lstr, const char *sep)
 {
+  int i, j;
+
   fprintf(f, "symbol string of lsys %s\n", lstr->lsys->name);
   fprint_symbol_instance_list(f, lstr->symbol, sep);
+  if (lstr->arrayed && lstr->lsys->arrayed && lstr->distance)
+  {
+    for (i = 0; i < lstr->num_symbols; i++)
+    {
+      fprintf(f, "%20s: ", lstr->lsys->symbol_list[lstr->symbol[i].symbol_index].name);
+      for (j = 0; j < lstr->num_symbols; j++)
+      {
+	fprintf(f, " %3d", lstr->distance[i][j]);
+      }
+      fprintf(f, "\n");
+    }
+  }
 }
 
 
