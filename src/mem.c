@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.5  2005/03/31 10:14:05  jtk
+ * partial implementation of diffusion
+ *
  * Revision 1.4  2005/03/30 18:30:27  jtk
  * progressed transition to arrayred lsys strings
  * introduced lsys string distance matrices
@@ -1252,13 +1255,21 @@ void free_transsys_instance_components(TRANSSYS_INSTANCE *ti)
 }
 
 
+/*
+ * attempt to allocate components for transsys = NULL is legal
+ * and results in returning 0 (success) without any action taking
+ * place. This behaviour is used in symbol instance construction.
+ */
+
 int alloc_transsys_instance_components(TRANSSYS_INSTANCE *ti, const TRANSSYS *transsys)
 {
   int i;
 
   free_transsys_instance_components(ti);
   if (transsys == NULL)
+  {
     return (0);
+  }
   if (transsys->num_factors > 0)
   {
     ti->factor_concentration = (double *) malloc(transsys->num_factors * sizeof(double));

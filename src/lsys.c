@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.4  2005/03/31 10:14:05  jtk
+ * partial implementation of diffusion
+ *
  * Revision 1.3  2005/03/30 18:30:27  jtk
  * progressed transition to arrayred lsys strings
  * introduced lsys string distance matrices
@@ -226,8 +229,77 @@ int lsys_string_expression(LSYS_STRING *lstr)
 }
 
 
+/*
+ * for all symbol instances, initialise all elements in new_concentration
+ * to 0.0.
+ * The new_concentration arrays are (mis)used to accumulate the delta
+ * concentrations during simulation of diffusion
+ */
+
+static void diffusion_init_new_concentration(LSYS_STRING *lstr)
+{
+  int i, j;
+  SYMBOL_INSTANCE *si;
+
+  for (i = 0; i < lstr->num_symbols; i++)
+  {
+    si = lstr->symbol + i;
+    if (si->transsys_instance.transsys)
+    {
+      for (j = 0; j < si->transsys_instance.transsys->num_factors; j++)
+      {
+	si->transsys_instance.new_concentration[j] = 0.0;
+      }
+    }
+  }
+}
+
+
 int lsys_string_diffusion(LSYS_STRING *lstr)
 {
+  int n, i, f;
+  double *dx, *w;
+  const TRANSSYS *transsys;
+
+  if (!lstr->arrayed)
+  {
+    fprintf(stderr, "lsys_string_diffusion: cannot process non-arrayed lsys string\n");
+    return (-1);
+  }
+  dx = (double *) malloc(lstr->num_symbols * sizeof(double));
+  if (dx == NULL)
+  {
+    fprintf(stderr, "lsys_string_diffusion: malloc failed\n");
+    return (-1);
+  }
+  w = (double *) malloc(lstr->num_symbols * sizeof(double));
+  if (w == NULL)
+  {
+    free(dx);
+    fprintf(stderr, "lsys_string_diffusion: malloc failed\n");
+    return (-1);
+  }
+  diffusion_init_new_concentration(lstr);
+  for (n = 0; n < lstr->num_symbols; n++)
+  {
+    if (lstr->symbol[n].transsys_instance.transsys)
+    {
+      for (i = 0; i < lstr->num_symbols; i++)
+      {
+	dx[i] = 0.0;
+	w[i] = 0.0;
+	if (lstr->symbol[n].transsys_instance.transsys == lstr->symbol[i].transsys_instance.transsys)
+	{
+	  transsys = lstr->symbol[n].transsys_instance.transsys;
+	  for (f = 0; f < transsys->num_factors; f++)
+	  {
+	  }
+	}
+      }
+    }
+  }
+  free(dx);
+  free(w);
   return (0);
 }
 
