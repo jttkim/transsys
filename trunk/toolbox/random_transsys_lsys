@@ -3,6 +3,9 @@
 # $Id$
 
 # $Log$
+# Revision 1.2  2005/04/05 10:13:19  jtk
+# fixed unresolved_copy for promoter element
+#
 # Revision 1.1  2005/04/04 21:29:09  jtk
 # random_transsys_lsys -- assemble lsys with randomly generated transsys part
 #
@@ -41,6 +44,8 @@ factor is encoded by multiple genes correctly."""
 def usage() :
   print '-R <filename>: specify rtp file'
   print '-F <factors>: specify factor names (mainly for interconnecting to lsys)'
+  print '-L <filename>: specify file containing lsys (appended verbatim)'
+  print '-T <filename>: specify file with additional transsys (merged with generated)'
   print '-r <integer>: specify random seed'
   print '-h: print this help and exit'
 
@@ -70,7 +75,7 @@ for opt in options :
   else :
     raise StandardError, 'unimplemented option "%s"' % opt[0]
 if rtp is None :
-  sys.stderr.write('no RTP for regulatory network (use -r option)\n')
+  sys.stderr.write('no RTP for regulatory network (use -R option)\n')
   sys.exit(1)
 if len(args) > 0 :
   basename = args[0]
@@ -90,6 +95,7 @@ outfile = open(out_fname, 'w')
 # tp.factor_list[0].name = 'bleh'
 outfile.write(str(tp))
 if lsys_fname is not None :
+  lsys_lines = read_lsys_code(open(lsys_fname, 'r'))
   outfile.write('\n')
   for l in lsys_lines :
     outfile.write('%s\n' % l)

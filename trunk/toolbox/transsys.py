@@ -3,6 +3,9 @@
 # $Id$
 
 # $Log$
+# Revision 1.3  2005/04/05 10:13:19  jtk
+# fixed unresolved_copy for promoter element
+#
 # Revision 1.2  2005/04/04 21:26:50  jtk
 # added merging and unresolved_copy functions to TranssysProgram
 #
@@ -426,7 +429,7 @@ class PromoterElementLink(PromoterElement) :
         flist.append(f)
       else :
         flist.append(f.name)
-    u = self.__class__(self.expression1.unresolved_copy(), self.expression2.unresolved_copy(), flist, self.dot_attributes)
+    return self.__class__(self.expression1.unresolved_copy(), self.expression2.unresolved_copy(), flist, self.dot_attributes)
 
 
   def write_dot_edge(self, f, target_name, display_factors, arrowhead, transsys) :
