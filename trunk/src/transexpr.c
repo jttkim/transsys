@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.5  2005/04/05 10:12:39  jtk
+ * made diffusion consistent (no oscillation due to overshooting), small fixes
+ *
  * Revision 1.4  2005/04/04 09:39:54  jtk
  * added lsys capabilities to transexpr, various small changes
  *
@@ -148,6 +151,20 @@ static int factor_concentrations_from_string(TRANSSYS_INSTANCE *ti, const char *
 }
 
 
+static int fprint_null_expression_line(FILE *outfile, const TRANSSYS *transsys, unsigned long t)
+{
+  int i;
+
+  fprintf(outfile, "%lu 0", t);
+  for (i = 0; i < transsys->num_factors; i++)
+  {
+    fprintf(outfile, "  0.0 0.0");
+  }
+  fprintf(outfile, "\n");
+  return (0);
+}
+
+
 int fprint_average_expression_line(FILE *outfile, TRANSSYS_INSTANCE **ti, size_t n, unsigned long t)
 {
   /*
@@ -283,6 +300,11 @@ static int transexpr(FILE *outfile, const TRANSSYS *transsys, unsigned int rndse
   unsigned long t;
   int r;
 
+  if (num_repeats == 0)
+  {
+    fprintf(stderr, "transexpr: pointless to run with 0 repeats\n");
+    return (-1);
+  }
   ulong_srandom(rndseed);
   ti = alloc_ti_array(transsys, num_repeats);
   if (ti == NULL)
@@ -335,6 +357,10 @@ static int transexpr_lsys(FILE *outfile, const LSYS *lsys, const TRANSSYS *trans
       return (-1);
     }
   }
+  if (plotcmdfile)
+  {
+    fprint_plotcommands(plotcmdfile, transsys, outfile_name, plot_extensiveness);
+  }
   ulong_srandom(rndseed);
   lstr = axiom_string(lsys);
   for (t = 0; t < num_timesteps; t++)
@@ -363,7 +389,14 @@ static int transexpr_lsys(FILE *outfile, const LSYS *lsys, const TRANSSYS *trans
 
 	}
       }
-      fprint_average_expression_line(outfile, ti, n, t);
+      if (n > 0)
+      {
+	fprint_average_expression_line(outfile, ti, n, t);
+      }
+      else
+      {
+	fprint_null_expression_line(outfile, transsys, t);
+      }
       free(ti);
     }
     return_value = lsys_string_expression(lstr);

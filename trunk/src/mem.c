@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.6  2005/04/05 10:12:39  jtk
+ * made diffusion consistent (no oscillation due to overshooting), small fixes
+ *
  * Revision 1.5  2005/03/31 10:14:05  jtk
  * partial implementation of diffusion
  *
@@ -1545,25 +1548,28 @@ int arrange_lsys_string_arrays(LSYS_STRING *lstr)
   {
     lstr->num_symbols++;
   }
-  si_arr = (SYMBOL_INSTANCE *) malloc(lstr->num_symbols * sizeof(SYMBOL_INSTANCE));
-  if (si_arr == NULL)
+  if (lstr->num_symbols > 0)
   {
-    return (-1);
+    si_arr = (SYMBOL_INSTANCE *) malloc(lstr->num_symbols * sizeof(SYMBOL_INSTANCE));
+    if (si_arr == NULL)
+    {
+      return (-1);
+    }
+    si = lstr->symbol;
+    for (i = 0; i < lstr->num_symbols; i++)
+    {
+      si_arr[i] = *si;
+      si_arr[i].next = NULL;
+      si1 = si;
+      si = si->next;
+      free(si1);
+    }
+    for (i = 1; i < lstr->num_symbols; i++)
+    {
+      si_arr[i - 1].next = si_arr + i;
+    }
+    lstr->symbol = si_arr;
   }
-  si = lstr->symbol;
-  for (i = 0; i < lstr->num_symbols; i++)
-  {
-    si_arr[i] = *si;
-    si_arr[i].next = NULL;
-    si1 = si;
-    si = si->next;
-    free(si1);
-  }
-  for (i = 1; i < lstr->num_symbols; i++)
-  {
-    si_arr[i - 1].next = si_arr + i;
-  }
-  lstr->symbol = si_arr;
   lstr->arrayed = 1;
   /*
   fprintf(stderr, "arrange_lsys_string_arrays: end\n");

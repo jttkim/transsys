@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.7  2005/04/05 10:12:39  jtk
+ * made diffusion consistent (no oscillation due to overshooting), small fixes
+ *
  * Revision 1.6  2005/04/04 21:30:45  jtk
  * fixed diffusion bug (index error)
  *
@@ -261,6 +264,10 @@ int lsys_string_expression(LSYS_STRING *lstr)
 
 static int within_diffusion_range(const LSYS_STRING *lstr, int i, int j)
 {
+  if (lstr->symbol[i].transsys_instance.transsys != lstr->symbol[j].transsys_instance.transsys)
+  {
+    return (0);
+  }
   return (lstr->distance[i][j] <= lstr->lsys->diffusion_range);
 }
 
@@ -297,8 +304,7 @@ static void diffusion_weights(const LSYS_STRING *lstr, int i, double *w)
 
   for (j = 0; j < lstr->num_symbols; j++)
   {
-    if ((i != j) && (lstr->symbol[i].transsys_instance.transsys == lstr->symbol[j].transsys_instance.transsys)
-	&& within_diffusion_range(lstr, i, j))
+    if (within_diffusion_range(lstr, i, j))
     {
       w[j] = 1.0;
       wsum += 1.0;
@@ -314,6 +320,20 @@ static void diffusion_weights(const LSYS_STRING *lstr, int i, double *w)
   }
 }
 
+
+/*
+ * FIXME: the diffusion algorithm has complexity square of
+ * num_symbols in string, could be optimised by initially computing
+ * contact graph (num_symbols^2 would remain to be worst case, but
+ * one can reasonably assume that contact graph is normally rather
+ * sparse)
+ */
+
+
+/*
+ * diffusion concept: diffusibility = 1 means that total equilibration
+ * *within local neighbourhood* takes place in one time step.
+ */
 
 int lsys_string_diffusion(LSYS_STRING *lstr)
 {
@@ -347,9 +367,7 @@ int lsys_string_diffusion(LSYS_STRING *lstr)
 	dcsum = 0.0;
 	for (j = 0; j < lstr->num_symbols; j++)
 	{
-	  if ((i != j)
-	      && (transsys == lstr->symbol[j].transsys_instance.transsys)
-	      && within_diffusion_range(lstr, i, j))
+	  if (within_diffusion_range(lstr, i, j))
 	  {
 	    dc = (ti->factor_concentration[f] - lstr->symbol[j].transsys_instance.factor_concentration[f]) * diffusibility * w[j];
 	    if (dc > 0)

@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.5  2005/04/05 10:12:39  jtk
+ * made diffusion consistent (no oscillation due to overshooting), small fixes
+ *
  * Revision 1.4  2005/04/04 21:30:54  jtk
  * minor changes / comments
  *
@@ -35,6 +38,7 @@
 #include "trtypes.h"
 #include "transsys.h"
 
+/* FIXME: should grow dynamically */
 #define LSTR_BLOCK_STRING_MAX 5000
 
 
@@ -1053,6 +1057,16 @@ int main(int argc, char **argv)
       fclose(outfile);
     exit(EXIT_FAILURE);
   }
+  if (parsed_lsys == NULL)
+  {
+    fprintf(stderr, "No lsys found in \"%s\" -- exit\n", yyin_name);
+    if (yyin != stdin)
+      fclose(yyin);
+    if (outfile != stdout)
+      fclose(outfile);
+    free_transsys_list(parsed_transsys);
+    exit(EXIT_FAILURE);
+  }    
   ulong_srandom(rndseed);
   init_lstr_block(&lstr_block, parsed_lsys);
   lstr_block.string_index = num_initial_derivations;
