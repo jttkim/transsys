@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.5  2005/04/04 09:39:54  jtk
+ * added lsys capabilities to transexpr, various small changes
+ *
  * Revision 1.4  2005/03/30 18:30:27  jtk
  * progressed transition to arrayred lsys strings
  * introduced lsys string distance matrices
@@ -146,8 +149,6 @@ extern void fprint_transsys(FILE *f, int indent_depth, const TRANSSYS *transsys)
 void fprint_transsys_as_discretenet(FILE *f, const TRANSSYS *transsys);
 
 extern void fprint_lsys(FILE *f, int indent_depth, const LSYS *lsys);
-extern void fprint_factorconc_commentline(FILE *f, const TRANSSYS_INSTANCE *ti);
-extern void fprint_factorconc_line(FILE *f, const TRANSSYS_INSTANCE *ti, unsigned long time_step);
 extern void fprint_transsys_instance(FILE *f, const TRANSSYS_INSTANCE *ti);
 extern void fprint_cell(FILE *f, const CELL *cell);
 extern void fprint_symbol_instance(FILE *f, const SYMBOL_INSTANCE *si);

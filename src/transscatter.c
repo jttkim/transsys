@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.3  2005/04/04 09:39:54  jtk
+ * added lsys capabilities to transexpr, various small changes
+ *
  * Revision 1.2  2005/03/29 17:33:02  jtk
  * introduced arrayed lsys string, with symbol distance matrix.
  *
@@ -75,6 +78,20 @@ double printable_random_value(double maxval)
 }
 
 
+static int fprint_factorconc_line(FILE *outfile, TRANSSYS_INSTANCE *ti, unsigned long t)
+{
+  int i;
+
+  fprintf(outfile, "%lu", t);
+  for (i = 0; i < ti->transsys->num_factors; i++)
+  {
+    fprintf(outfile, " %1.12g", ti->factor_concentration[i]);
+  }
+  fprintf(outfile, "\n");
+  return (0);
+}
+
+
 int main(int argc, char **argv)
 {
   int oc;
@@ -90,8 +107,9 @@ int main(int argc, char **argv)
   unsigned long t;
   double max_concentration = 1.0;
   int plot_extensiveness = 0;
+  unsigned int rndseed = 1;
 
-  while ((oc = getopt(argc, argv, "c:m:n:r:t:h")) != -1)
+  while ((oc = getopt(argc, argv, "c:m:n:r:t:s:h")) != -1)
   {
     switch(oc)
     {
@@ -106,6 +124,9 @@ int main(int argc, char **argv)
       break;
     case 'r':
       num_restarts = strtol(optarg, NULL, 10);
+      break;
+    case 's':
+      rndseed = strtoul(optarg, NULL, 10);
       break;
     case 't':
       transsys_name = optarg;
@@ -181,6 +202,7 @@ int main(int argc, char **argv)
   {
     if (transsys_name && strcmp(tr->name, transsys_name))
       continue;
+    ulong_srandom(rndseed);
     fprintf(outfile, "# transsys \"%s\"\n", tr->name);
     if (plotcmdfile)
       fprint_plotcommands(plotcmdfile, tr, outfile_name, plot_extensiveness);

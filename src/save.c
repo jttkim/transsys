@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.5  2005/04/04 09:39:54  jtk
+ * added lsys capabilities to transexpr, various small changes
+ *
  * Revision 1.4  2005/03/31 16:07:36  jtk
  * finished (initial) implementation of lsys diffusion
  *
@@ -605,28 +608,6 @@ void fprint_lsys_string(FILE *f, const LSYS_STRING *lstr, const char *sep)
       fprintf(f, "\n");
     }
   }
-}
-
-
-void fprint_factorconc_commentline(FILE *f, const TRANSSYS_INSTANCE *ti)
-{
-  int i;
-
-  fprintf(f, "# time");
-  for (i = 0; i < ti->transsys->num_factors; i++)
-    fprintf(f, " %s", ti->transsys->factor_list[i].name);
-  fprintf(f, "\n");
-}
-
-
-void fprint_factorconc_line(FILE *f, const TRANSSYS_INSTANCE *ti, unsigned long time_step)
-{
-  int i;
-
-  fprintf(f, "%lu", time_step);
-  for (i = 0; i < ti->transsys->num_factors; i++)
-    fprintf(f, " %g", ti->factor_concentration[i]);
-  fprintf(f, "\n");
 }
 
 

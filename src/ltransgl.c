@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.3  2005/04/04 09:39:54  jtk
+ * added lsys capabilities to transexpr, various small changes
+ *
  * Revision 1.2  2005/03/29 17:33:02  jtk
  * introduced arrayed lsys string, with symbol distance matrix.
  *
@@ -943,6 +946,7 @@ int main(int argc, char **argv)
   int yyreturn;
   double triple[3];
   int num_initial_derivations = 0;
+  unsigned int rndseed = 1;
 
   glutInit(&argc, argv);
   /* printf("%s\n", gluGetString(GLU_VERSION)); */
@@ -959,6 +963,9 @@ int main(int argc, char **argv)
       break;
     case 'i':
       render_parameters.ppm_filename = optarg;
+      break;
+    case 's':
+      rndseed = strtoul(optarg, NULL, 10);
       break;
     case 'r':
       if (get_triple(triple, optarg) == 0)
@@ -1034,6 +1041,7 @@ int main(int argc, char **argv)
       fclose(outfile);
     exit(EXIT_FAILURE);
   }
+  ulong_srandom(rndseed);
   init_lstr_block(&lstr_block, parsed_lsys);
   lstr_block.string_index = num_initial_derivations;
   ltgl_init();

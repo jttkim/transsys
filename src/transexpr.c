@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.4  2005/04/04 09:39:54  jtk
+ * added lsys capabilities to transexpr, various small changes
+ *
  * Revision 1.3  2005/04/01 18:16:34  jtk
  * proper exit codes for transexpr
  *
@@ -39,6 +42,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 
 #include "trconfig.h"
 #include "trtypes.h"
@@ -60,6 +64,21 @@ static const TRANSSYS *find_transsys_by_name(const TRANSSYS *trlist, const char 
 }
 
 
+static int find_symbol_index_by_name(const LSYS *lsys, const char *symname)
+{
+  int s;
+
+  for (s = 0; s < lsys->num_symbols; s++)
+  {
+    if (!strcmp(lsys->symbol_list[s].name, symname))
+    {
+      return (s);
+    }
+  }
+  return (-1);
+}
+
+
 int fprint_plotcommands(FILE *f, const TRANSSYS *tr, const char *outfile_name, int extensiveness)
 {
   int i, j;
@@ -67,8 +86,8 @@ int fprint_plotcommands(FILE *f, const TRANSSYS *tr, const char *outfile_name, i
   fprintf(f, "# transsys \"%s\"\n", tr->name);
   for (i = 0; i < tr->num_factors; i++)
   {
-    fprintf(f, "plot \'%s\' using 1:%d title \'%s:%s\' with lines\n",
-	    outfile_name, i + 2, tr->name, tr->factor_list[i].name);
+    fprintf(f, "plot \'%s\' using 1:%d:%d title \'%s:%s\' with errorbars\n",
+	    outfile_name, i * 2 + 3, i * 2 + 4, tr->name, tr->factor_list[i].name);
     fprintf(f, "pause -1 \'Hit return\'\n");
   }
   if (extensiveness == 0)
@@ -78,7 +97,7 @@ int fprint_plotcommands(FILE *f, const TRANSSYS *tr, const char *outfile_name, i
     for (j = i + 1; j < tr->num_factors; j++)
     {
       fprintf(f, "plot \'%s\' using %d:%d title \'%s:%s/%s\'\n",
-	      outfile_name, i + 2, j + 2, tr->name, tr->factor_list[i].name, tr->factor_list[j].name);
+	      outfile_name, i * 2 + 3, j * 2 + 3, tr->name, tr->factor_list[i].name, tr->factor_list[j].name);
       fprintf(f, "pause -1 \'Hit return\'\n");
     }
   }
@@ -86,7 +105,30 @@ int fprint_plotcommands(FILE *f, const TRANSSYS *tr, const char *outfile_name, i
 }
 
 
-int factor_concentrations_from_string(TRANSSYS_INSTANCE *ti, const char *str)
+int fprint_lsys_plotcommands(FILE *f, const LSYS *lsys, const char *outfile_name, int extensiveness)
+{
+  return (0);
+}
+
+
+static void fprint_factorconc_commentline(FILE *f, const TRANSSYS *transsys)
+{
+  int i;
+  time_t t;
+
+  fprintf(f, "# time n.instances");
+  for (i = 0; i < transsys->num_factors; i++)
+  {
+    fprintf(f, "  %s.avg %s.stddev", transsys->factor_list[i].name, transsys->factor_list[i].name);
+  }
+  fprintf(f, "\n");
+  t = time(NULL);
+  fprintf(f, "# transsys %s\n", transsys->name);
+  fprintf(f, "# run on %s\n", ctime(&t));
+}
+
+
+static int factor_concentrations_from_string(TRANSSYS_INSTANCE *ti, const char *str)
 {
   char *s;
   int i;
@@ -106,109 +148,223 @@ int factor_concentrations_from_string(TRANSSYS_INSTANCE *ti, const char *str)
 }
 
 
-static int transexpr(FILE *outfile, const TRANSSYS *transsys, unsigned long num_timesteps, unsigned long output_period, double factorconc_init, const char *factorconc_init_string, FILE *plotcmdfile, const char *outfile_name, int plot_extensiveness)
+int fprint_average_expression_line(FILE *outfile, TRANSSYS_INSTANCE **ti, size_t n, unsigned long t)
 {
-  TRANSSYS_INSTANCE ti;
-  unsigned long t;
-  int i;
+  /*
+   * thetranssys instance  ti_stats is (ab-) used to accumulate the averages
+   * in factor_concentration and standard deviations in new_concentration
+   */
+  TRANSSYS_INSTANCE ti_stats;
+  size_t i, f;
+  double d;
+  const TRANSSYS *transsys = ti[0]->transsys;
+  
+  init_transsys_instance_components(&ti_stats);
+  if (alloc_transsys_instance_components(&ti_stats, transsys) != 0)
+  {
+    fprintf(stderr, "fprint_average_expression_line: failed to alloc transsys instance components\n");
+    return (-1);
+  }
+  for (i = 0; i < n; i++)
+  {
+    for (f = 0; f < transsys->num_factors; f++)
+    {
+      ti_stats.factor_concentration[f] += ti[i]->factor_concentration[f];
+    }
+  }
+  for (f = 0; f < transsys->num_factors; f++)
+  {
+    ti_stats.factor_concentration[f] /= n;
+  }
+  if (n > 1)
+  {
+    for (i = 0; i < n; i++)
+    {
+      for (f = 0; f < transsys->num_factors; f++)
+      {
+	d = ti[i]->factor_concentration[f] - ti_stats.factor_concentration[f];
+	ti_stats.new_concentration[f] += d * d;
+      }
+    }
+    for (f = 0; f < transsys->num_factors; f++)
+    {
+      ti_stats.new_concentration[f] = sqrt(ti_stats.new_concentration[f]) / (n - 1);
+    }
+  }
+  fprintf(outfile, "%lu %lu", t, (unsigned long) n);
+  for (f = 0; f < transsys->num_factors; f++)
+  {
+    fprintf(outfile, "  %g %g", ti_stats.factor_concentration[f], ti_stats.new_concentration[f]);
+  }
+  fprintf(outfile, "\n");
+  free_transsys_instance_components(&ti_stats);
+  return (0);
+}
 
-  init_transsys_instance_components(&ti);
-  alloc_transsys_instance_components(&ti, transsys);
+
+void free_ti_array(TRANSSYS_INSTANCE **ti, size_t n)
+{
+  size_t i;
+
+  for (i = 0; i < n; i++)
+  {
+    free_transsys_instance_components(ti[i]);
+  }
+  free(ti[0]);
+  free(ti);
+}
+
+
+TRANSSYS_INSTANCE **alloc_ti_array(const TRANSSYS *transsys, size_t n)
+{
+  TRANSSYS_INSTANCE **ti;
+  size_t i, j;
+
+  ti = (TRANSSYS_INSTANCE **) malloc(n * sizeof(TRANSSYS_INSTANCE *));
+  if (ti == NULL)
+  {
+    return (NULL);
+  }
+  ti[0] = (TRANSSYS_INSTANCE *) malloc(n * sizeof(TRANSSYS_INSTANCE));
+  if (ti[0] == NULL)
+  {
+    free(ti);
+    return (NULL);
+  }
+  for (i = 0; i < n; i++)
+  {
+    ti[i] = ti[0] + i;
+    init_transsys_instance_components(ti[i]);
+    if (alloc_transsys_instance_components(ti[i], transsys) != 0)
+    {
+      for (j = 0; j < i; j++)
+      {
+	free_transsys_instance_components(ti[j]);
+	free(ti[0]);
+	free(ti);
+	return (NULL);
+      }
+    }
+  }
+  return (ti);
+}
+
+
+int init_ti_array(TRANSSYS_INSTANCE **ti, size_t n, double factorconc_init, const char *factorconc_init_string)
+{
+  size_t r, f;
+
+  for (r = 0; r < n; r++)
+  {
+    for (f = 0; f < ti[r]->transsys->num_factors; f++)
+    {
+      ti[r]->factor_concentration[f] = factorconc_init;
+    }
+  }
+  if (factorconc_init_string)
+  {
+    for (r = 0; r < n; r++)
+    {
+      if (factor_concentrations_from_string(ti[r], factorconc_init_string))
+      {
+	fprintf(stderr, "factor_concentrations_from_string: error\n");
+	fprintf(stderr, "    \"%s\"\n", factorconc_init_string);
+	return (-1);
+      }
+    }
+  }
+  return (0);
+}
+
+
+static int transexpr(FILE *outfile, const TRANSSYS *transsys, unsigned int rndseed, int num_repeats, unsigned long num_timesteps, unsigned long output_period, double factorconc_init, const char *factorconc_init_string, FILE *plotcmdfile, const char *outfile_name, int plot_extensiveness)
+{
+  TRANSSYS_INSTANCE **ti;
+  unsigned long t;
+  int r;
+
+  ulong_srandom(rndseed);
+  ti = alloc_ti_array(transsys, num_repeats);
+  if (ti == NULL)
+  {
+    fprintf(stderr, "transexpr: alloc_ti_array failed\n");
+    return (-1);
+  }
+  if (init_ti_array(ti, num_repeats, factorconc_init, factorconc_init_string) != 0)
+  {
+    free_ti_array(ti, num_repeats);
+    return (-1);
+  }
   if (plotcmdfile)
   {
     fprint_plotcommands(plotcmdfile, transsys, outfile_name, plot_extensiveness);
   }
-  for (i = 0; i < ti.transsys->num_factors; i++)
-  {
-    ti.factor_concentration[i] = factorconc_init;
-  }
-  if (factorconc_init_string)
-  {
-    if (factor_concentrations_from_string(&ti, factorconc_init_string))
-    {
-      fprintf(stderr, "factor_concentrations_from_string: error\n");
-      fprintf(stderr, "    \"%s\"\n", factorconc_init_string);
-    }
-  }
-  fprint_factorconc_commentline(outfile, &ti);
+  fprint_factorconc_commentline(outfile, transsys);
   for (t = 0; t < num_timesteps; t++)
   {
     if ((t % output_period) == 0)
-      fprint_factorconc_line(outfile, &ti, t);
-    process_expression(&ti);
+    {
+      fprint_average_expression_line(outfile, ti, num_repeats, t);
+    }
+    for (r = 0; r < num_repeats; r++)
+    {
+      process_expression(ti[r]);
+    }
   }
   /* fprint_transsys_instance(stderr, &ti); */
-  free_transsys_instance_components(&ti);
+  free_ti_array(ti, num_repeats);
   return (0);
 }
 
 
-int fprint_lsys_average_expression_line(FILE *outfile, const LSYS_STRING *lstr, const TRANSSYS *transsys, unsigned long t)
-{
-  /*
-   * this transsys instance is (ab-) used to accumulate the averages
-   * in factor_concentration and standard deviations in new_concentration
-   */
-  TRANSSYS_INSTANCE ti;
-  int i, f, n;
-  double d;
-  
-  init_transsys_instance_components(&ti);
-  alloc_transsys_instance_components(&ti, transsys);
-  n = 0;
-  for (i = 0; i < lstr->num_symbols; i++)
-  {
-    if (lstr->symbol[i].transsys_instance.transsys == transsys)
-    {
-      n++;
-      for (f = 0; f < transsys->num_factors; f++)
-      {
-	ti.factor_concentration[f] += lstr->symbol[i].transsys_instance.factor_concentration[f];
-      }
-    }
-  }
-  for (f = 0; f < transsys->num_factors; f++)
-  {
-    ti.factor_concentration[f] /= n;
-  }
-  for (i = 0; i < lstr->num_symbols; i++)
-  {
-    if (lstr->symbol[i].transsys_instance.transsys == transsys)
-    {
-      for (f = 0; f < transsys->num_factors; f++)
-      {
-	d = lstr->symbol[i].transsys_instance.factor_concentration[f] - ti.factor_concentration[f];
-	ti.new_concentration[f] += d * d;
-      }
-    }
-  }
-  for (f = 0; f < transsys->num_factors; f++)
-  {
-    ti.new_concentration[f] = sqrt(ti.new_concentration[f]) / (n - 1);
-  }
-  fprintf(outfile, "%lu", t);
-  for (f = 0; f < transsys->num_factors; f++)
-  {
-    fprintf(outfile, "  %g %g", ti.factor_concentration[f], ti.new_concentration[f]);
-  }
-  fprintf(outfile, "\n");
-  free_transsys_instance_components(&ti);
-  return (0);
-}
-
-
-static int transexpr_lsys(FILE *outfile, const LSYS *lsys, const TRANSSYS *transsys, unsigned long num_timesteps, unsigned long output_period, FILE *plotcmdfile, const char *outfile_name, int plot_extensiveness)
+static int transexpr_lsys(FILE *outfile, const LSYS *lsys, const TRANSSYS *transsys, const char *symbol_name, unsigned int rndseed, unsigned long num_timesteps, unsigned long output_period, FILE *plotcmdfile, const char *outfile_name, int plot_extensiveness)
 {
   LSYS_STRING *lstr, *dstr;
+  TRANSSYS_INSTANCE **ti;
   unsigned long t;
+  size_t n, i;
+  int symbol_index = -2;  /* initialiser pacifies -Wall */
   int return_value;
 
+  if (symbol_name)
+  {
+    symbol_index = find_symbol_index_by_name(lsys, symbol_name);
+    if (symbol_index == -1)
+    {
+      fprintf(stderr, "no symbol \"%s\" in lsys \"%s\"\n", symbol_name, lsys->name);
+      return (-1);
+    }
+  }
+  ulong_srandom(rndseed);
   lstr = axiom_string(lsys);
   for (t = 0; t < num_timesteps; t++)
   {
     if ((t % output_period) == 0)
     {
-      fprint_lsys_average_expression_line(outfile, lstr, transsys, t);
+      /* FIXME: allocating this large an array may be inefficient*/
+      /* ... but with the perspective to require all symbols to have the same
+         transsys instance, it's not that bad after all... */
+      ti = (TRANSSYS_INSTANCE **) malloc(lstr->num_symbols * sizeof(TRANSSYS_INSTANCE *));
+      if (ti == NULL)
+      {
+	fprintf(stderr, "transexpr_lsys: malloc failed\n");
+	free_lsys_string(lstr);
+	return (-1);
+      }
+      n = 0;
+      for (i = 0; i < lstr->num_symbols; i++)
+      {
+	if (lstr->symbol[i].transsys_instance.transsys == transsys)
+	{
+	  if ((symbol_name == NULL) || (lstr->symbol[i].symbol_index == symbol_index))
+	  {
+	    ti[n++] = &(lstr->symbol[i].transsys_instance);
+	  }
+
+	}
+      }
+      fprint_average_expression_line(outfile, ti, n, t);
+      free(ti);
     }
     return_value = lsys_string_expression(lstr);
     if (return_value != 0)
@@ -246,8 +402,11 @@ int main(int argc, char **argv)
   int plot_extensiveness = 0;
   int lsys_mode = 0;
   int return_value = 0;
+  unsigned int rndseed = 1;
+  int num_repeats = 1;
+  const char *symbol_name = NULL;
 
-  while ((oc = getopt(argc, argv, "c:d:F:f:n:t:lh")) != -1)
+  while ((oc = getopt(argc, argv, "c:d:F:f:n:t:s:r:y:lh")) != -1)
   {
     switch(oc)
     {
@@ -272,6 +431,15 @@ int main(int argc, char **argv)
     case 'n':
       num_timesteps = strtoul(optarg, NULL, 10);
       break;
+    case 's':
+      rndseed = strtoul(optarg, NULL, 10);
+      break;
+    case 'r':
+      num_repeats = strtol(optarg, NULL, 10);
+      break;
+    case 'y':
+      symbol_name = optarg;
+      break;
     case 'h':
       printf("-l: run in lsys mode\n");
       printf("-c <filename>: specify gnuplot command file\n");
@@ -280,6 +448,7 @@ int main(int argc, char **argv)
       printf("-F <string>: specify initial factor concentrations (ws separated)\n");
       printf("-n <num>: specify number of time steps\n");
       printf("-t <name>: specify name of transsys to process\n");
+      printf("-y <name>: specify name of symbol to be monitored (lsys mode)\n");
       printf("-h: print this help and exit\n");
       exit(EXIT_SUCCESS);
     }
@@ -349,7 +518,7 @@ int main(int argc, char **argv)
       {
 	for (lsys = parsed_lsys; lsys; lsys = lsys->next)
 	{
-	  return_value = transexpr_lsys(outfile, lsys, tr, num_timesteps, output_period, plotcmdfile, outfile_name, plot_extensiveness);
+	  return_value = transexpr_lsys(outfile, lsys, tr, symbol_name, rndseed, num_timesteps, output_period, plotcmdfile, outfile_name, plot_extensiveness);
 	  if (return_value != 0)
 	  {
 	    break;
@@ -375,7 +544,7 @@ int main(int argc, char **argv)
       tr = find_transsys_by_name(parsed_transsys, transsys_name);
       if (tr)
       {
-	transexpr(outfile, tr, num_timesteps, output_period, factorconc_init, factorconc_init_string, plotcmdfile, outfile_name, plot_extensiveness);
+	transexpr(outfile, tr, rndseed, num_repeats, num_timesteps, output_period, factorconc_init, factorconc_init_string, plotcmdfile, outfile_name, plot_extensiveness);
       }
       else
       {
@@ -387,7 +556,7 @@ int main(int argc, char **argv)
     {
       for (tr = parsed_transsys; tr; tr = tr->next)
       {
-	return_value = transexpr(outfile, tr, num_timesteps, output_period, factorconc_init, factorconc_init_string, plotcmdfile, outfile_name, plot_extensiveness);
+	return_value = transexpr(outfile, tr, rndseed, num_repeats, num_timesteps, output_period, factorconc_init, factorconc_init_string, plotcmdfile, outfile_name, plot_extensiveness);
 	if (return_value != 0)
 	{
 	  break;
