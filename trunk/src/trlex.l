@@ -6,6 +6,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.3  2005/04/05 20:26:35  jtk
+ * fixed realvalue regexp
+ *
  * Revision 1.2  2005/03/31 16:07:36  jtk
  * finished (initial) implementation of lsys diffusion
  *
@@ -78,11 +81,11 @@ pop			{ return (POP); }
 			  }
 			  return (IDENTIFIER);
 			}
--?[0-9]+(\.[0-9]*([Ee]-?[0-9]+)?)?	{
+[+-]?[0-9]+(\.[0-9]*)?([Ee][+-]?[0-9]+)?	{
 			  yylval.real = strtod(yytext, NULL);
 			  return (REALVALUE);
 			}
--?\.[0-9]+([Ee]-?[0-9]+)?	{
+[+-]?\.[0-9]+([Ee][+-]?[0-9]+)?	{
 			  yylval.real = strtod(yytext, NULL);
 			  return (REALVALUE);
 			}
