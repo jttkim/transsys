@@ -63,18 +63,21 @@ class ExpressionSimilarityMatrix :
     self.fill_all(default_element)
 
 
-  def __str__(self, factor_fmt = '%10s', element_fmt = ' %7.3f', none_symbol = '-') :
+  def __str__(self, factor_fmt = '%10s', element_fmt = ' %7.3f', none_symbol = ' None  ') :
     """Prints the matrix.
     """
     s = ''
     flist = self.get_fnamelist()
     for i in xrange(len(flist)) :
-      s = s + (factor_fmt % flist[i]) + ': '
+      s = s + (factor_fmt % flist[i])
+      glue = ': '
       for j in xrange(len(flist)) :
+        s = s + glue
         if self.matrix[i][j] is None:
           s = s + none_symbol
         else :
           s = s + (element_fmt % float(self.matrix[i][j]))
+        glue = ' '
       s = s + '\n'
     return s
 
@@ -202,7 +205,7 @@ class KnockoutTranssysProgram(transsys.TranssysProgram) :
     """docu missing
     """
     # FIXME: should check for existence of nonfunc factor somewhere
-    self.nonfunc = transsys.Factor(self.nonfunc_name, 0.0)
+    self.nonfunc = transsys.Factor(self.nonfunc_name)
     self.factor_list.append(self.nonfunc)
 
 
@@ -422,7 +425,12 @@ def referencestate_concentration_matrix(network, timesteps) :
 ####
 #### FIXME: see referencestate_concentration_matrix
 def knockout_concentration_matrix(knockout_network, ref_conc_matrix, timesteps) :
-  """docu missing
+  """compute a matrix of expression values obtained from single gene
+knockout networks. The matrix element m[i][j] contains the expression
+level of factor j observed in a network in which factor i is knocked out
+(by replacement with a nonfunc product in the encoding gene). Expression
+starts with the reference state, taken from ref_conc_matrix, and is
+carried out for timesteps timesteps.
   """
   gfd_wildtype = gene_factor_dictionary(knockout_network)
   conc_matrix = ExpressionSimilarityMatrix('conc_matrix', gfd_wildtype)
@@ -442,6 +450,42 @@ def knockout_concentration_matrix(knockout_network, ref_conc_matrix, timesteps) 
     for fi in wildtype_factor_names :
       # expression of fi is affected by knockout of gi as quantified by concentration of fi
       conc_matrix.set_element(gfd_wildtype[gi], fi, this_mutant.factor_concentration[knockout_network.find_factor_index(fi)])
+    # demutate gene i
+    knockout_network.undo_knockout()
+  return conc_matrix
+
+
+def knockout_concentration_matrix_lsys(knockout_network, aux_network, lsys_lines, timesteps) :
+  """docu missing
+  """
+  # gfd_wildtype contains only the wildtype genes because
+  # KnockoutTranssysProgram has only one factor added, genes are
+  # unchanged (unless in knockout state, which we don't expect at the start).
+  gfd_wildtype = gene_factor_dictionary(knockout_network)
+  conc_matrix = ExpressionSimilarityMatrix('conc_matrix', gfd_wildtype)
+  wildtype_factor_names = knockout_network.factor_names()[:]
+  wildtype_factor_names.remove(knockout_network.nonfunc_name)
+  # make 'experiments'  
+  for gi in knockout_network.gene_names() :
+    # mutate gene i
+    # sys.stderr.write('knocking out gene "%s"\n' % gi)
+    knockout_network.do_knockout(knockout_network.find_gene_index(gi))
+    if aux_network is None :
+      merged_network = knockout_network
+    else :
+      merged_network = copy.deepcopy(aux_network)
+      merged_network.merge(knockout_network)
+    # print merged_network
+    initial_state = transsys.TranssysInstance(merged_network)
+    m_tseries = initial_state.time_series(timesteps, 1, lsys_lines)
+    # FIXME: all the intervening entries in the time series are not needed...
+    this_mutant = m_tseries[max(m_tseries.keys())]
+    for fi in wildtype_factor_names :
+      # expression of fi is affected by knockout of gi as quantified by concentration of fi
+      i = merged_network.find_factor_index(fi)
+      c = this_mutant.factor_concentration[i]
+      # sys.stderr.write('  [%s] (index %d) is now %g\n' % (fi, i, c))
+      conc_matrix.set_element(gfd_wildtype[gi], fi, c)
     # demutate gene i
     knockout_network.undo_knockout()
   return conc_matrix
@@ -518,6 +562,8 @@ def overlaps (net_a, net_b) :
             if isinstance(promoter_element_net_a, transsys.PromoterElementActivate) and isinstance(promoter_element_net_b, transsys.PromoterElementActivate) :
               if factor_list_net_a == factor_list_net_b :
                 promoter_net_a_and_net_b.append((promoter_element_net_a, promoter_element_net_b))
+                promoter_element_net_b.dot_attributes["color"]="green"
+                promoter_element_net_a.dot_attributes["color"]="green"                
                 promoter_only_net_a.remove(promoter_element_net_a)
                 promoter_only_net_b.remove(promoter_element_net_b)
             # Repress
