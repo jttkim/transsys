@@ -3,8 +3,11 @@
 # $Id$
 
 # $Log$
-# Revision 1.1  2005/03/08 17:12:02  jtk
-# Initial revision
+# Revision 1.2  2005/04/04 21:26:50  jtk
+# added merging and unresolved_copy functions to TranssysProgram
+#
+# Revision 1.1.1.1  2005/03/08 17:12:02  jtk
+# new cvs after loss at INB
 #
 # Revision 1.16  2003/04/03 13:31:30  kim
 # removed superfluous print statement in PromoterElementLink.__init__
@@ -94,6 +97,10 @@ class ExpressionNode :
     pass
 
 
+  def unresolved_copy(self) :
+    return copy.deepcopy(self)
+
+
 class ExpressionNodeValue(ExpressionNode) :
 
   def __init__(self, v) :
@@ -133,6 +140,10 @@ class ExpressionNodeIdentifier(ExpressionNode) :
     self.factor = tp.find_factor(self.factor)
 
 
+  def unresolved_copy(self) :
+    return self.__class__(self.factor_name(), self.transsys_label)
+    
+
   def evaluate(self, transsys_instance) :
     """transsys_instance may either be a single instance or a list of
 instances (in a L-transsys context)"""
@@ -157,6 +168,12 @@ class BinaryExpressionNode(ExpressionNode) :
   def resolve(self, tp) :
     self.operand1.resolve(tp)
     self.operand2.resolve(tp)
+
+
+  def unresolved_copy(self) :
+    op1 = self.operand1.unresolved_copy()
+    op2 = self.operand1.unresolved_copy()
+    return self.__class__(op1, op2, self.operator_sym)
 
 
 class ExpressionNodeAdd(BinaryExpressionNode) :
@@ -277,6 +294,11 @@ class ExpressionNodeNot(ExpressionNode) :
     self.operand.resolve(tp)
 
 
+  def unresolved_copy(self) :
+    op = self.op.unresolved.copy()
+    return self.__class__(op)
+
+
 class ExpressionNodeAnd(BinaryExpressionNode) :
 
   def __init__(self, op1, op2) :
@@ -352,6 +374,10 @@ class PromoterElementConstitutive(PromoterElement) :
     self.expression.resolve(tp)
 
 
+  def unresolved_copy(self) :
+    return self.__class__(self.expression.unresolved_copy())
+    
+
   def write_dot_edge(self, f, target_name, dot_parameters, transsys) :
     pass # constitutive expression of genes should probably be indicated
          # by node shape / border or the like...
@@ -359,13 +385,16 @@ class PromoterElementConstitutive(PromoterElement) :
 
 class PromoterElementLink(PromoterElement) :
 
-  def __init__(self, factor_list, dot_attrs = None) :
+# expr1, expr2, ... should perhaps become a list at some stage...
+  def __init__(self, expr1, expr2, factor_list, dot_attrs = None) :
     # print factor_list
     self.factor_list = factor_list[:]
     if dot_attrs is None :
       self.dot_attributes = {}
     else :
       self.dot_attributes = copy.deepcopy(dot_attrs)
+    self.expression1 = expr1
+    self.expression2 = expr2
 
 
   def __str__(self) :
@@ -388,6 +417,16 @@ class PromoterElementLink(PromoterElement) :
     self.factor_list = fi_list
     self.expression1.resolve(tp)
     self.expression2.resolve(tp)
+
+
+  def unresolved_copy(self) :
+    flist = []
+    for f in self.factor_list :
+      if type(f) is types.StringType :
+        flist.append(f)
+      else :
+        flist.append(f.name)
+    u = self.__class__(self.expression1.unresolved_copy(), self.expression2.unresolved_copy(), flist, self.dot_attributes)
 
 
   def write_dot_edge(self, f, target_name, display_factors, arrowhead, transsys) :
@@ -415,9 +454,7 @@ class PromoterElementLink(PromoterElement) :
 class PromoterElementActivate(PromoterElementLink) :
 
   def __init__(self, expr1, expr2, factor_list, dot_attrs = None) :
-    PromoterElementLink.__init__(self, factor_list, dot_attrs)
-    self.expression1 = expr1
-    self.expression2 = expr2
+    PromoterElementLink.__init__(self, expr1, expr2, factor_list, dot_attrs)
 
 
   def __str__(self) :
@@ -431,9 +468,7 @@ class PromoterElementActivate(PromoterElementLink) :
 class PromoterElementRepress(PromoterElementLink) :
 
   def __init__(self, expr1, expr2, factor_list, dot_attrs = None) :
-    PromoterElementLink.__init__(self, factor_list, dot_attrs)
-    self.expression1 = expr1
-    self.expression2 = expr2
+    PromoterElementLink.__init__(self, expr1, expr2, factor_list, dot_attrs)
 
 
   def __str__(self) :
@@ -470,6 +505,10 @@ class Factor :
   def resolve(self, tp) :
     self.decay_expression.resolve(tp)
     self.diffusibility_expression.resolve(tp)
+
+
+  def unresolved_copy(self) :
+    return self.__class__(self.name, self.decay_expression.unresolved_copy(), self.diffusibility_expression.unresolved_copy(), self.dot_attributes)
 
 
   def write_dot_node(self, f, dot_parameters, transsys) :
@@ -523,6 +562,13 @@ class Gene :
     self.product = tp.find_factor(self.product)
 
 
+  def unresolved_copy(self) :
+    unresolved_promoter = []
+    for pe in self.promoter :
+      unresolved_promoter.append(pe.unresolved_copy())
+    return self.__class__(self.name, self.product_name(), unresolved_promoter, self.dot_attributes)
+
+
   def write_dot_node(self, f, dot_parameters, transsys) :
     f.write('  %s' % self.name)
     if len(self.dot_attributes) > 0 :
@@ -549,7 +595,7 @@ class Gene :
 
 class TranssysProgram :
 
-  def __init__(self, name, factor_list = None, gene_list = None) :
+  def __init__(self, name, factor_list = None, gene_list = None, resolve = True) :
     self.name = name
     if factor_list is None :
       self.factor_list = []
@@ -560,7 +606,8 @@ class TranssysProgram :
     else :
       self.gene_list = copy.deepcopy(gene_list)
     self.comments = []
-    self.resolve()
+    if resolve :
+      self.resolve()
 
 
   def __str__(self) :
@@ -646,6 +693,16 @@ gene names and factor names can be altered without changing the network."""
       gene.resolve(self)
 
 
+  def unresolved_copy(self) :
+    factor_list = []
+    for f in self.factor_list :
+      factor_list.append(f.unresolved_copy())
+    gene_list = []
+    for g in self.gene_list :
+      gene_list.append(g.unresolved_copy())
+    return self.__class__(self.name, factor_list, gene_list, False)
+
+
   def encoding_gene_list(self, factor_name) :
     """return a list of all genes which encode factor named factor_name"""
     # print 'encoding_gene_list("%s")' % factor_name
@@ -690,6 +747,21 @@ gene names and factor names can be altered without changing the network."""
       if factor in gene.regulating_factors() :
         rgenes.append(gene)
     return rgenes
+
+
+  def merge(self, other) :
+    other_unresolved = other.unresolved_copy()
+    for f in other_unresolved.factor_list :
+      if self.find_factor_index(f.name) == -1 :
+        self.factor_list.append(f)
+      else :
+        print 'factor %s already present -- skipping' % f.name
+    for g in other_unresolved.gene_list :
+      if self.find_gene_index(g.name) == -1 :
+        self.gene_list.append(g)
+      else :
+        print 'gene %s already present -- skipping' % g.name
+    self.comments.append('merged with transsys %s' % other.name)
 
 
 class TranssysInstance :
