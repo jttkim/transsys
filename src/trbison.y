@@ -6,6 +6,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.3  2005/04/01 13:37:05  jtk
+ * Made parser somewhat more strict
+ *
  * Revision 1.2  2005/03/31 16:07:36  jtk
  * finished (initial) implementation of lsys diffusion
  *
@@ -333,9 +336,13 @@ static int resolve_simple_identifier(EXPRESSION_NODE *node, const TRANSSYS *tran
   if (factor_index < 0)
   {
     if (transsys)
+    {
       fprintf(stderr, "resolve_simple_identifier: no factor \"%s\" in transsys \"%s\"\n", node->content.raw_identifier.factor_name, transsys->name);
+    }
     else
+    {
       fprintf(stderr, "resolve_simple_identifier: no transsys, no factor \"%s\"\n", node->content.raw_identifier.factor_name);
+    }
     free(node->content.raw_identifier.factor_name);
     node->content.identifier.factor_index = factor_index;
     return (-1);
@@ -912,17 +919,25 @@ static void add_diffusionrange_definition(LSYS *ls, double diffusionrange)
 }
 
 
-static void resolve_rule_identifiers(RULE_ELEMENT *re)
+static int resolve_rule_identifiers(RULE_ELEMENT *re)
 {
   PRODUCTION_ELEMENT *pe;
   ASSIGNMENT *a;
+  int return_value;
 
   for (pe = re->rhs->production_list; pe; pe = pe->next)
   {
     for (a = pe->assignment_list; a; a = a-> next)
+    {
       /* obsolescent call: resolve_identifiers(a->value, re->rhs->transsys); */
-      resolve_identifiers(a->value, NULL, re);
+      return_value = resolve_identifiers(a->value, NULL, re);
+      if (return_value != 0)
+      {
+	return (return_value);
+      }
+    }
   }
+  return (0);
 }
 
 
@@ -941,7 +956,7 @@ static RULE_ELEMENT *complete_rule(const char *name, RULE_ELEMENT *re)
  * transsys for rhs -- this concept needs to be replaced anyway...
  */ 
 
-static void add_rule_definition(LSYS *ls, RULE_ELEMENT *re)
+static int add_rule_definition(LSYS *ls, RULE_ELEMENT *re)
 {
   SYMBOL_ELEMENT *se;
   int return_value;
@@ -951,12 +966,20 @@ static void add_rule_definition(LSYS *ls, RULE_ELEMENT *re)
     if (se->index == re->lhs->symbol_list->symbol_index)
     {
       re->rhs->transsys = se->transsys;
-      resolve_rule_identifiers(re);
+      return_value = resolve_rule_identifiers(re);
+      if (return_value != 0)
+      {
+	yyerror("add_rule_definition: resolve_rule_identifiers returned %d", return_value);
+	return (return_value);
+      }
       if (re->condition)
       {
 	return_value = resolve_identifiers(re->condition, NULL, re);
 	if (return_value != 0)
+	{
 	  yyerror("add_rule_definition: resolve_identifiers() returned %d", return_value);
+	  return (return_value);
+	}
       }
       break;
     }
@@ -964,6 +987,7 @@ static void add_rule_definition(LSYS *ls, RULE_ELEMENT *re)
   re->next = ls->rule_list;
   ls->rule_list = re;
   ls->num_rules++;
+  return (0);
 }
 
 
@@ -1058,7 +1082,7 @@ lsys_element
 	: symbol_definition { add_symbol_definition(current_lsys, $1); }
 	| axiom_definition { add_axiom_definition(current_lsys, $1); }
 	| diffusionrange_definition { add_diffusionrange_definition(current_lsys, $1); }
-	| rule_definition { add_rule_definition(current_lsys, $1); }
+	| rule_definition { if (add_rule_definition(current_lsys, $1) != 0) YYABORT; }
 	| graphics_definition {}
 	;
 
@@ -1117,10 +1141,10 @@ production_element_string
  */
 
 production_element
-	: IDENTIFIER { $$ = create_production_element($1, NULL); }
-	| IDENTIFIER '(' transsys_initializer ')' { $$ = create_production_element($1, $3); }
-	| '[' { $$ = create_production_element("[", NULL); }
-	| ']' { $$ = create_production_element("]", NULL); }
+	: IDENTIFIER { $$ = create_production_element($1, NULL); if ($$ == NULL) YYABORT; }
+	| IDENTIFIER '(' transsys_initializer ')' { $$ = create_production_element($1, $3); if ($$ == NULL) YYABORT; }
+	| '[' { $$ = create_production_element("[", NULL); if ($$ == NULL) YYABORT; }
+	| ']' { $$ = create_production_element("]", NULL); if ($$ == NULL) YYABORT; }
 	;
 
 transsys_initializer

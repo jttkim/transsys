@@ -17,8 +17,7 @@ etc):
       "no transsys, no factor xxx" error message is printed, but
       parsing continues, returning a faulty structure that normally
       triggers a core dump somewhere down the line.
-
-    * unknown symbols in rules don't result in a parse error either.
+      (partly? fixed)
 
 
 Features / properties that are missing
