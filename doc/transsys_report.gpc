@@ -1,0 +1,31 @@
+# gnuplot command file for generating EPS files for transsys_report
+# This file requires that functional transsys programs are installed. This
+#     constraint may violate the idea of ``make distcheck'' to some extent,
+#     but it's too much of a hassle to propagate $(srcdir) or somesuch
+#     into this script. It shouldn't be too bad, anyway, as the EPS files
+#     are included in the distribution anyway.
+# $Id$
+# $Log$
+# Revision 1.1  2005/03/08 17:12:01  jtk
+# Initial revision
+#
+# Revision 1.2  2002/01/25 03:36:20  kim
+# Wrote some paragraphs in transsys_report, hopefully removed necessity
+#     of generating GL graphics after unpacking from archive
+#
+
+set terminal postscript eps monochrome 24
+set xlabel 'time'
+set ylabel '[F1]'
+set nokey
+set output 'tr_ex02.eps'
+plot [][0:3] '< transexpr tr_ex02full.tra' using 1:2 with lines
+set output 'tr_ex04.eps'
+plot [][0:3] '< transexpr tr_ex04full.tra' using 1:2 with lines
+set xlabel 'time'
+set ylabel 'concentration'
+set key
+set output 'tr_ex05.eps'
+plot [][0:3] '< transexpr tr_ex05full.tra' using 1:2 title '[F1]' with lines, '< transexpr tr_ex05full.tra' using 1:3 title '[F2]' with lines
+set output 'tr_ex06.eps'
+plot '< transexpr -n 500 tr_ex06full.tra' using 1:2 title '[F1]' with lines, '< transexpr -n 500 tr_ex06full.tra' using 1:3 title '[F2]' with lines

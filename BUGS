@@ -1,0 +1,33 @@
+This file holds a list of bugs, missing features, and generally
+desirable future developments. Please report all bugs / problems /
+troubles that you come across, as well as all suggestions, to Jan T. Kim
+(kim@inb.mu-luebeck.de). This list is primarily intended as a reminder /
+todo list for the transsys developer(s). However, if you're bitten by
+a bug or if you run into a problem, this list may help you to find out
+whether the problem is already known.
+
+Bugs in a strict sense (i.e. core dumps, incorrect expression evaluation
+etc):
+
+    * the parser does not accept empty promoters
+
+    * the fontheight setting is not honoured in EPS mode
+
+
+Features / properties that are missing
+
+    * Error messages from parser need much improvement
+
+    * No support for long options
+
+    * no ``diff'' like tool for comparing transsys programs
+
+
+Fundamental design / implementation issues
+
+    * The plain C implementation uses a rather curious and probably
+      error-prone memory allocation concept. The only proper way out
+      of this is migration to C++ or Java. The allocation strategy
+      should perhaps be documented, considering that such preliminary
+      solutions often have an unexpectedly long lifetime...
+      

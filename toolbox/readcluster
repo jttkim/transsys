@@ -1,0 +1,26 @@
+#!/usr/bin/env python
+
+import sys
+import re
+import copy
+
+import regstruct
+
+
+if len(sys.argv) > 1 :
+  infile = open(sys.argv[1], 'r')
+else :
+  infile = sys.stdin
+if len(sys.argv) > 2 :
+  outfile = open(sys.argv[2], 'w')
+else :
+  outfile = sys.stdout
+if infile.readline().strip() != 'results pearson:' :
+  raise StandardError, 'no pearson result header found'
+c = regstruct.parse_cluster(infile)
+outfile.write('%s;\n' % str(c))
+if infile.readline().strip() != 'results euklid:' :
+  raise StandardError, 'no euclidean result header found'
+c = parse_cluster(infile)
+outfile.write('%s;\n' % str(c))
+
