@@ -1,0 +1,8 @@
+Package: transarr
+Version: 0.1
+Title: transsys microarray series utilities
+Author: Jan T. Kim
+Maintainer: Jan T. Kim <kim@inb.uni-luebeck.de>
+Description: Utilities for the analysis of microarray data series generated with transsys
+License: same as the transsys software package, see http://www.inb.uni-luebeck.de/transsys/
+

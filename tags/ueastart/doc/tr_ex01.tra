@@ -1,0 +1,6 @@
+transsys example
+{
+  factor F1
+  {
+  }
+}
