@@ -4,8 +4,11 @@
  * $Id$
  *
  * $Log$
- * Revision 1.1  2005/03/08 17:12:02  jtk
- * Initial revision
+ * Revision 1.2  2005/03/29 17:33:02  jtk
+ * introduced arrayed lsys string, with symbol distance matrix.
+ *
+ * Revision 1.1.1.1  2005/03/08 17:12:02  jtk
+ * new cvs after loss at INB
  *
  * Revision 1.1  2001/04/04 11:12:00  kim
  * Initial addition of files previously not CVS managed
@@ -14,6 +17,8 @@
 
 #ifndef TRTYPES_H
 #define TRTYPES_H
+
+#include <stddef.h>  /* for size_t */
 
 #include "trconfig.h"
 
@@ -278,13 +283,26 @@ typedef struct tag_lsys
   RULE_ELEMENT *rule_list;
 } LSYS;
 
+
+struct tag_lsys_string;
+typedef struct tag_lsys_string LSYS_STRING;
+
 typedef struct tag_symbol_instance
 {
   struct tag_symbol_instance *next;
-  const LSYS *lsys;
+  const LSYS_STRING *lsys_string;
   int symbol_index;
   TRANSSYS_INSTANCE transsys_instance;
 } SYMBOL_INSTANCE;
+
+struct tag_lsys_string
+{
+  const LSYS *lsys;
+  int arrayed;
+  size_t num_symbols;
+  SYMBOL_INSTANCE *symbol;
+  int **distance;
+};
 
 #endif /* TRTYPES_H */
 

@@ -4,8 +4,11 @@
  * $Id$
  *
  * $Log$
- * Revision 1.1  2005/03/08 17:12:02  jtk
- * Initial revision
+ * Revision 1.2  2005/03/29 17:33:02  jtk
+ * introduced arrayed lsys string, with symbol distance matrix.
+ *
+ * Revision 1.1.1.1  2005/03/08 17:12:02  jtk
+ * new cvs after loss at INB
  *
  * Revision 1.2  2003/02/26 17:50:04  kim
  * fixed bug of returning success when parse errors occurred
@@ -26,7 +29,7 @@
 #include "trtypes.h"
 #include "transsys.h"
 
-#define LSYS_BLOCK_STRING_MAX 5000
+#define LSTR_BLOCK_STRING_MAX 5000
 
 
 typedef struct
@@ -45,8 +48,8 @@ typedef struct
   const LSYS *lsys;
   int num_strings;
   int string_index;
-  SYMBOL_INSTANCE *symbol_string[LSYS_BLOCK_STRING_MAX];
-} LSYS_BLOCK;
+  LSYS_STRING *lstr[LSTR_BLOCK_STRING_MAX];
+} LSTR_BLOCK;
 
 
 typedef struct tag_turtle_state
@@ -93,7 +96,7 @@ static RENDER_PARAMETERS render_parameters =
   { 1.0, 0.0, 0.0, 0.0 },
   NULL
 };
-static LSYS_BLOCK lsys_block;
+static LSTR_BLOCK lstr_block;
 static GLUquadricObj *glu_quadric_object = NULL;
 
 
@@ -210,53 +213,55 @@ VECTOR3D vector3d_rotation(VECTOR3D v, const QUATERNION *q)
 }
 
 
-static void init_lsys_block(LSYS_BLOCK *lsys_block, const LSYS *lsys)
+static void init_lstr_block(LSTR_BLOCK *lstr_block, const LSYS *lsys)
 {
   int i;
 
-  lsys_block->lsys = lsys;
-  lsys_block->num_strings = 0;
-  lsys_block->string_index = 0;
-  for (i = 0; i < LSYS_BLOCK_STRING_MAX; i++)
-    lsys_block->symbol_string[i] = NULL;
+  lstr_block->lsys = lsys;
+  lstr_block->num_strings = 0;
+  lstr_block->string_index = 0;
+  for (i = 0; i < LSTR_BLOCK_STRING_MAX; i++)
+    lstr_block->lstr[i] = NULL;
 }
 
 
-static void free_lsys_block(LSYS_BLOCK *lsys_block)
+static void free_lstr_block(LSTR_BLOCK *lstr_block)
 {
   int i;
 
-  for (i = 0; i < lsys_block->num_strings; i++)
-    free_symbol_instance_list(lsys_block->symbol_string[i]);
+  for (i = 0; i < lstr_block->num_strings; i++)
+    free_lsys_string(lstr_block->lstr[i]);
 }
 
 
-static int compute_derived_strings(LSYS_BLOCK *lsys_block)
+static int compute_derived_strings(LSTR_BLOCK *lstr_block)
 {
-  if (lsys_block->string_index >= LSYS_BLOCK_STRING_MAX)
+  if (lstr_block->string_index >= LSTR_BLOCK_STRING_MAX)
   {
-    fprintf(stderr, "compute_derived_strings: clipping %d to %d\n", lsys_block->string_index, LSYS_BLOCK_STRING_MAX - 1);
-    lsys_block->string_index = LSYS_BLOCK_STRING_MAX - 1;
+    fprintf(stderr, "compute_derived_strings: clipping %d to %d\n", lstr_block->string_index, LSTR_BLOCK_STRING_MAX - 1);
+    lstr_block->string_index = LSTR_BLOCK_STRING_MAX - 1;
   }
-  if (lsys_block->string_index < 0)
-    lsys_block->string_index = 0;
-  if (lsys_block->string_index < lsys_block->num_strings)
+  if (lstr_block->string_index < 0)
+    lstr_block->string_index = 0;
+  if (lstr_block->string_index < lstr_block->num_strings)
     return (0);
-  if (lsys_block->num_strings == 0)
+  if (lstr_block->num_strings == 0)
   {
-    lsys_block->symbol_string[0] = axiom_string(lsys_block->lsys);
-    if (lsys_block->symbol_string[0] == NULL)
+    lstr_block->lstr[0] = axiom_string(lstr_block->lsys);
+    if (lstr_block->lstr[0] == NULL)
     {
-      fprintf(stderr, "compute_derived_string: axiom_string() returned NULL\n");
+      fprintf(stderr, "compute_derived_strings: axiom_string() returned NULL\n");
       return (-1);
     }
-    lsys_block->num_strings++;
+    lstr_block->num_strings++;
   }
-  for ( ; lsys_block->num_strings <= lsys_block->string_index; lsys_block->num_strings++)
+  for ( ; lstr_block->num_strings <= lstr_block->string_index; lstr_block->num_strings++)
   {
-    string_transsys_expression(lsys_block->symbol_string[lsys_block->num_strings - 1]);
-    lsys_block->symbol_string[lsys_block->num_strings] = derived_string(lsys_block->lsys, lsys_block->symbol_string[lsys_block->num_strings - 1]);
-    if (lsys_block->symbol_string[lsys_block->num_strings] == NULL)
+    /* fprintf(stderr, "compute_derived_strings: string #%d\n", lstr_block->num_strings); */
+    lsys_string_expression(lstr_block->lstr[lstr_block->num_strings - 1]);
+    lsys_string_diffusion(lstr_block->lstr[lstr_block->num_strings - 1]);
+    lstr_block->lstr[lstr_block->num_strings] = derived_string(lstr_block->lstr[lstr_block->num_strings - 1]);
+    if (lstr_block->lstr[lstr_block->num_strings] == NULL)
     {
       fprintf(stderr, "compute_derived_strings: derived_string() returned NULL\n");
       return (-1);
@@ -275,33 +280,33 @@ static void print_render_parameters(FILE *f, const RENDER_PARAMETERS *rp)
 }
 
 
-static void print_lsys_block(FILE *f, const LSYS_BLOCK *lsys_block)
+static void print_lstr_block(FILE *f, const LSTR_BLOCK *lstr_block)
 {
   int i, lastlen_pos = 0;
   size_t len, lastlen = 0;
 
-  fprintf(f, "lsys \"%s\", %d strings derived\n", lsys_block->lsys->name, lsys_block->num_strings);
-  for (i = 0; i < lsys_block->num_strings; i++)
+  fprintf(f, "lsys \"%s\", %d strings derived\n", lstr_block->lsys->name, lstr_block->num_strings);
+  for (i = 0; i < lstr_block->num_strings; i++)
   {
-    len = symbol_strlen(lsys_block->symbol_string[i]);
+    len = lsys_string_length(lstr_block->lstr[i]);
     if (len != lastlen)
     {
-      fprintf(f, "#%4d - %4d: %lu symbols\n", lastlen_pos, i, (unsigned long) symbol_strlen(lsys_block->symbol_string[i]));
+      fprintf(f, "#%4d - %4d: %lu symbols\n", lastlen_pos, i, (unsigned long) lsys_string_length(lstr_block->lstr[i]));
       lastlen = len;
       lastlen_pos = i + 1;
     }
   }
-  if (lsys_block->string_index < lsys_block->num_strings)
+  if (lstr_block->string_index < lstr_block->num_strings)
   {
-    fprintf(f, "current string is #%d:\n", lsys_block->string_index);
-    fprint_symbol_instance_list(f, lsys_block->symbol_string[lsys_block->string_index], "\n");
+    fprintf(f, "current string is #%d:\n", lstr_block->string_index);
+    fprint_lsys_string(f, lstr_block->lstr[lstr_block->string_index], "\n");
   }
 }
 
 
 static void print_globals(FILE *f)
 {
-  print_lsys_block(f, &lsys_block);
+  print_lstr_block(f, &lstr_block);
   print_render_parameters(f, &render_parameters);
 }
 
@@ -542,17 +547,17 @@ static int ltgl_graphics_primitive(const GRAPHICS_PRIMITIVE *gp, const TRANSSYS_
 }
 
 
-static void draw_model(LSYS_BLOCK *lsys_block, const RENDER_PARAMETERS *rp)
+static void draw_model(LSTR_BLOCK *lstr_block, const RENDER_PARAMETERS *rp)
 {
   const SYMBOL_INSTANCE *symbol;
   const GRAPHICS_PRIMITIVE *gp;
   TURTLE_STATE *turtle_state_list;
 
-  compute_derived_strings(lsys_block);
+  compute_derived_strings(lstr_block);
   turtle_state_list = push_turtle_state(NULL);
-  for (symbol = lsys_block->symbol_string[lsys_block->string_index]; symbol; symbol = symbol->next)
+  for (symbol = lstr_block->lstr[lstr_block->string_index]->symbol; symbol; symbol = symbol->next) /* migrate to arrayed string */
   {
-    for (gp = symbol->lsys->symbol_list[symbol->symbol_index].graphics_primitive_list; gp; gp = gp->next)
+    for (gp = symbol->lsys_string->lsys->symbol_list[symbol->symbol_index].graphics_primitive_list; gp; gp = gp->next) /* migrate */
     {
       ltgl_graphics_primitive(gp, &(symbol->transsys_instance), &turtle_state_list, rp);
       if (turtle_state_list == NULL)
@@ -632,9 +637,9 @@ static void ltgl_animate_func(int dt)
   /* fprintf(stderr, "ltgl_animate_func(%d)\n", dt); */
   if (!render_parameters.animate_mode)
     return;
-  if (((dt > 0) && (lsys_block.string_index == lsys_block.num_strings - 1)) || ((dt < 0) && (lsys_block.string_index == 0)))
+  if (((dt > 0) && (lstr_block.string_index == lstr_block.num_strings - 1)) || ((dt < 0) && (lstr_block.string_index == 0)))
     return;
-  lsys_block.string_index += dt;
+  lstr_block.string_index += dt;
   glutTimerFunc(40, ltgl_animate_func, dt);
   glutPostRedisplay();
 }
@@ -644,7 +649,7 @@ static void ltgl_key(unsigned char key, int x, int y)
 {
   if (key==27)
   {
-    free_lsys_block(&lsys_block);
+    free_lstr_block(&lstr_block);
     free_lsys_list(parsed_lsys);
     free_transsys_list(parsed_transsys);
     exit(0);
@@ -658,9 +663,9 @@ static void ltgl_key(unsigned char key, int x, int y)
     glPolygonMode(GL_FRONT_AND_BACK, render_parameters.polygon_mode);
   }
   else if (key == 'n')
-    lsys_block.string_index++;
+    lstr_block.string_index++;
   else if (key == 'N')
-    lsys_block.string_index += 50;
+    lstr_block.string_index += 50;
   else if (key == '<')
   {
     render_parameters.animate_mode = 1;
@@ -676,7 +681,7 @@ static void ltgl_key(unsigned char key, int x, int y)
   else if (key == 'l')
     render_parameters.lighting_mode = !render_parameters.lighting_mode;
   else if (key == 'p')
-    lsys_block.string_index--;
+    lstr_block.string_index--;
   else if (key == 'X')
     render_parameters.view_position.x += 0.2;
   else if (key == 'x')
@@ -761,10 +766,10 @@ static void ltgl_special_key(int key, int x, int y)
     rotate_model(&render_parameters, 3, 5.0);
     break;
   case GLUT_KEY_HOME:
-    lsys_block.string_index = 0;
+    lstr_block.string_index = 0;
     break;
   case GLUT_KEY_END:
-    lsys_block.string_index = lsys_block.num_strings - 1;
+    lstr_block.string_index = lstr_block.num_strings - 1;
     break;
   default:
     fprintf(stderr, "ltgl_special_key: unknown special key %d\n", key);
@@ -862,7 +867,7 @@ static void ltgl_display(void)
   glTranslatef(render_parameters.model_position.x, render_parameters.model_position.y, render_parameters.model_position.z);
   ltgl_rotate_q(&(render_parameters.model_orientation));
   /* draw the plant */
-  draw_model(&lsys_block, &render_parameters);
+  draw_model(&lstr_block, &render_parameters);
   glutSwapBuffers();
 }
 
@@ -1029,8 +1034,8 @@ int main(int argc, char **argv)
       fclose(outfile);
     exit(EXIT_FAILURE);
   }
-  init_lsys_block(&lsys_block, parsed_lsys);
-  lsys_block.string_index = num_initial_derivations;
+  init_lstr_block(&lstr_block, parsed_lsys);
+  lstr_block.string_index = num_initial_derivations;
   ltgl_init();
   glGetIntegerv(GL_MAX_MODELVIEW_STACK_DEPTH, &mdepth);
   printf("max matrix depth is %d\n", (int) mdepth);

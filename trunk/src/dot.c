@@ -4,8 +4,11 @@
  * $Id$
  *
  * $Log$
- * Revision 1.1  2005/03/08 17:12:02  jtk
- * Initial revision
+ * Revision 1.2  2005/03/29 17:33:02  jtk
+ * introduced arrayed lsys string, with symbol distance matrix.
+ *
+ * Revision 1.1.1.1  2005/03/08 17:12:02  jtk
+ * new cvs after loss at INB
  *
  * Revision 1.1  2003/01/22 11:39:24  kim
  * added dot.c
@@ -26,14 +29,14 @@
 
 static char *dot_expression_identifier(const EXPRESSION_NODE *expression, char buf[DOT_ID_MAX])
 {
-  sprintf(buf, "expr%p", expression);
+  sprintf(buf, "expr%p", (void *) expression);
   return (buf);
 }
 
 
 static char *dot_constitutive_identifier(const PROMOTER_ELEMENT *a, char buf[DOT_ID_MAX])
 {
-  sprintf(buf, "const%p", a);
+  sprintf(buf, "const%p", (void *) a);
   return (buf);
 }
 
@@ -136,6 +139,7 @@ static int dot_expression_node(FILE *f, const TRANSSYS *transsys, const EXPRESSI
     dot_expression_node(f, transsys, expression->content.argument[1]);
     break;
   }
+  return (0);
 }
 
 
@@ -177,6 +181,7 @@ static int dot_expression_links(FILE *f, const TRANSSYS *transsys, const EXPRESS
     dot_expression_links(f, transsys, expression->content.argument[1]);
     break;
   }
+  return (0);
 }
 
 
@@ -202,6 +207,13 @@ static int dot_gene_node(FILE *f, const TRANSSYS *transsys, const GENE_ELEMENT *
       dot_expression_links(f, transsys, a->expr1);
       fprintf(f, "      }\n");
       fprintf(f, "      %s -> %s [arrowhead=dot,arrowtail=dot];\n", ge->name, dot_expression_identifier(a->expr1, s));
+      break;
+    case ACT_NONE:
+    case ACT_ACTIVATE:
+    case ACT_REPRESS:
+      break;
+    default:
+      fprintf(stderr, "dot_gene_node: don't know how to handle promoter element type %d\n", (int) a->type);
       break;
     }
   }
@@ -287,4 +299,5 @@ int dot_transsys(FILE *f, const TRANSSYS *transsys)
     dot_factor(f, transsys, transsys->factor_list + i);
   }
   fprintf(f, "}\n");
+  return (0);
 }

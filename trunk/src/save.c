@@ -4,8 +4,11 @@
  * $Id$
  *
  * $Log$
- * Revision 1.1  2005/03/08 17:12:02  jtk
- * Initial revision
+ * Revision 1.2  2005/03/29 17:33:02  jtk
+ * introduced arrayed lsys string, with symbol distance matrix.
+ *
+ * Revision 1.1.1.1  2005/03/08 17:12:02  jtk
+ * new cvs after loss at INB
  *
  * Revision 1.3  2003/02/04 23:48:12  kim
  * hack-fixed bug regarding ! by parentheses, no real fix!!
@@ -281,6 +284,9 @@ static void fprint_gene_as_discretenet_node(FILE *f, const TRANSSYS *transsys, i
 	}
       }
       break;
+    default:
+      fprintf(stderr, "fprint_gene_as_discretenet_node: unhandled promoter element %d\n", (int) a->type);
+      break;
     }
   }
   fprintf(f, ") {}\n");
@@ -540,7 +546,7 @@ void fprint_symbol_instance(FILE *f, const SYMBOL_INSTANCE *si)
 {
   int i;
 
-  fprintf(f, "%s", si->lsys->symbol_list[si->symbol_index].name);
+  fprintf(f, "%s", si->lsys_string->lsys->symbol_list[si->symbol_index].name);
   if (si->transsys_instance.transsys)
   {
     fprintf(f, "(");
@@ -562,6 +568,13 @@ void fprint_symbol_instance_list(FILE *f, const SYMBOL_INSTANCE *si, const char 
     fprint_symbol_instance(f, si);
     fprintf(f, "%s", sep);
   }
+}
+
+
+void fprint_lsys_string(FILE *f, const LSYS_STRING *lstr, const char *sep)
+{
+  fprintf(f, "symbol string of lsys %s\n", lstr->lsys->name);
+  fprint_symbol_instance_list(f, lstr->symbol, sep);
 }
 
 

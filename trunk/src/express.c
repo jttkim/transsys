@@ -4,8 +4,11 @@
  * $Id$
  *
  * $Log$
- * Revision 1.1  2005/03/08 17:12:02  jtk
- * Initial revision
+ * Revision 1.2  2005/03/29 17:33:02  jtk
+ * introduced arrayed lsys string, with symbol distance matrix.
+ *
+ * Revision 1.1.1.1  2005/03/08 17:12:02  jtk
+ * new cvs after loss at INB
  *
  * Revision 1.1  2001/04/04 11:12:00  kim
  * Initial addition of files previously not CVS managed
@@ -52,8 +55,13 @@ int process_expression(TRANSSYS_INSTANCE *ti)
 #endif
   for (i = 0; i < ti->transsys->num_factors; i++)
   {
+    /* fprintf(stderr, "process_espression/decay: i = %d, new_concentration = %p\n", i, (void *) ti->new_concentration); */
     d = evaluate_expression(ti->transsys->factor_list[i].decay_expression, &const_ti);
+    /* fprintf(stderr, "process_expression: decay is %f\n", d); */
+    /* fprintf(stderr, "factor_concentration[%d] is currently %e\n", i, ti->factor_concentration[i]); */
+    /* fprintf(stderr, "new_concentration[%d] is currently %e\n", i, ti->new_concentration[i]); */
     ti->new_concentration[i] = ti->factor_concentration[i] * (1.0 - d);
+    /* fprintf(stderr, "new_concentration[%d] is now %e\n", i, ti->new_concentration[i]); */
     /* fprintf(stderr, "before decay: [%s] = %g, after decay: [%s] = %g\n", ti->transsys->factor_list[i].name, ti->factor_concentration[i], ti->transsys->factor_list[i].name, ti->new_concentration[i]); */
   }
   for (i = 0; i < ti->transsys->num_genes; i++)

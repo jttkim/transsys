@@ -4,8 +4,11 @@
  * $Id$
  *
  * $Log$
- * Revision 1.1  2005/03/08 17:12:02  jtk
- * Initial revision
+ * Revision 1.2  2005/03/29 17:33:02  jtk
+ * introduced arrayed lsys string, with symbol distance matrix.
+ *
+ * Revision 1.1.1.1  2005/03/08 17:12:02  jtk
+ * new cvs after loss at INB
  *
  * Revision 1.3  2002/01/25 03:35:03  kim
  * Added gnuplot link functionality to transexpr, transscatter, improved
@@ -24,20 +27,56 @@
 #include "trconfig.h"
 #include "transsys.h"
 
+/* #define FREE_DEADBEEF */
 
 void free_deadbeef(void *p)
 {
-  int *ip = p;
+  int *ip = p, i;
 
+  i = *ip;
   *ip = 0xdeadbeef;
 #ifdef FREE_DEADBEEF
 #  undef free
 #endif
+  fprintf(stderr, "free(%p): %08x\n", p, i);
   free(p);
 #ifdef FREE_DEADBEEF
 #  define free(x) free_deadbeef(x)
 #endif
 
+}
+
+
+/*
+ * this is just for flushing out problems in the malloc
+ * arena...
+ */
+
+void malloc_testloop(size_t n, const char *fname, int lineno)
+{
+  size_t i;
+  void *p;
+
+  fprintf(stderr, "malloc_testloop: %s, %d\n", fname, lineno);
+  for (i = 1; i <= n; i++)
+  {
+    p = malloc(i);
+    free(p);
+  }
+}
+
+
+void dump_memory(void *p, size_t n, const char *fname, int lineno)
+{
+  size_t i;
+  unsigned char *cp = p;
+
+  fprintf(stderr, "dump_memory: %s, %d:", fname, lineno);
+  for (i = 0; i < n; i++)
+  {
+    fprintf(stderr, " %02x", *cp++);
+  }
+  fprintf(stderr, "\n");
 }
 
 
@@ -56,7 +95,14 @@ INTEGER_ARRAY *extend_integer_array(INTEGER_ARRAY *ia, int v)
     ia->length = 0;
     ia->array = NULL;
   }
-  new_array = (int *) realloc(ia->array, (ia->length + 1) * sizeof(int));
+  if (ia->length > 0)
+  {
+    new_array = (int *) realloc(ia->array, (ia->length + 1) * sizeof(int));
+  }
+  else
+  {
+    new_array = (int *) malloc((ia->length + 1) * sizeof(int));
+  }
   if (new_array == NULL)
   {
     fprintf(stderr, "extend_integer_array: failed to extend integer array\n");
@@ -451,7 +497,7 @@ static int cmp_index_gene(const void *p1, const void *p2)
 int arrange_transsys_arrays(TRANSSYS *transsys)
 {
   int num_factors, num_genes, i, j;
-  GENE_ELEMENT *ge, *ge1, *ge_arr;
+  GENE_ELEMENT *ge, *ge1, *ge_arr = NULL;
   FACTOR_ELEMENT *fe, *fe1, *fe_arr;
   INTEGER_ARRAY *ia;
 
@@ -476,6 +522,7 @@ int arrange_transsys_arrays(TRANSSYS *transsys)
     for (i = 0; i < num_genes; i++)
     {
       ge_arr[i] = *ge;
+      ge_arr[i].next = NULL;
       ge1 = ge;
       ge = ge->next;
       free(ge1);
@@ -499,6 +546,7 @@ int arrange_transsys_arrays(TRANSSYS *transsys)
     for (i = 0; i < num_factors; i++)
     {
       fe_arr[i] = *fe;
+      fe_arr[i].next = NULL;
       fe1 = fe;
       fe = fe->next;
       free(fe1);
@@ -694,6 +742,7 @@ int arrange_symbol_element_arrays(SYMBOL_ELEMENT *se)
     while (gp)
     {
       gp_arr[--i] = *gp;
+      gp_arr[i].next = NULL;
       gp1 = gp;
       gp = gp->next;
       free(gp1);
@@ -818,6 +867,7 @@ int arrange_lhs_descriptor_arrays(LHS_DESCRIPTOR *l)
     while (s)
     {
       s_arr[--i] = *s;
+      s_arr[i].next = NULL;
       s1 = s;
       s = s->next;
       free(s1);
@@ -915,6 +965,7 @@ int arrange_production_element_arrays(PRODUCTION_ELEMENT *sp)
     while (a)
     {
       a_arr[--i] = *a;
+      a_arr[i].next = NULL;
       a1 = a;
       a = a->next;
       free(a1);
@@ -981,6 +1032,7 @@ int arrange_symbol_production_arrays(SYMBOL_PRODUCTION *sp)
     while (pe)
     {
       pe_arr[--i] = *pe;
+      pe_arr[i].next = NULL;
       pe1 = pe;
       pe = pe->next;
       free(pe1);
@@ -1142,6 +1194,7 @@ int arrange_lsys_arrays(LSYS *lsys)
     while (se)
     {
       se_arr[--i] = *se;
+      se_arr[i].next = NULL;
       se1 = se;
       se = se->next;
       free(se1);
@@ -1159,6 +1212,7 @@ int arrange_lsys_arrays(LSYS *lsys)
     while (re)
     {
       re_arr[--i] = *re;
+      re_arr[i].next = NULL;
       re1 = re;
       re = re->next;
       free(re1);
@@ -1211,7 +1265,10 @@ int alloc_transsys_instance_components(TRANSSYS_INSTANCE *ti, const TRANSSYS *tr
       return (-1);
     }
     for (i = 0; i < transsys->num_factors; i++)
+    {
       ti->factor_concentration[i] = 0.0;
+      ti->new_concentration[i] = 0.0;
+    }
   }
   else
   {
@@ -1219,6 +1276,7 @@ int alloc_transsys_instance_components(TRANSSYS_INSTANCE *ti, const TRANSSYS *tr
     ti->new_concentration = NULL;
   }
   ti->transsys = transsys;
+  /* fprintf(stderr, "alloc_transsys_instance_components: transsys %s, %d factors, factor_concentration = %p, new_concentration = %p\n", transsys->name, transsys->num_factors, ti->factor_concentration, ti->new_concentration); */
   return (0);
 }
 
@@ -1322,7 +1380,7 @@ void free_symbol_instance_list(SYMBOL_INSTANCE *slist)
 }
 
 
-SYMBOL_INSTANCE *new_symbol_instance(const LSYS *lsys, int symbol_index)
+SYMBOL_INSTANCE *new_symbol_instance(const LSYS_STRING *lsys_string, int symbol_index)
 {
   SYMBOL_INSTANCE *si;
 
@@ -1330,10 +1388,10 @@ SYMBOL_INSTANCE *new_symbol_instance(const LSYS *lsys, int symbol_index)
   if (si == NULL)
     return (NULL);
   si->next = NULL;
-  si->lsys = lsys;
+  si->lsys_string = lsys_string;
   si->symbol_index = symbol_index;
   init_transsys_instance_components(&(si->transsys_instance));
-  if (alloc_transsys_instance_components(&(si->transsys_instance), lsys->symbol_list[symbol_index].transsys) != 0)
+  if (alloc_transsys_instance_components(&(si->transsys_instance), lsys_string->lsys->symbol_list[symbol_index].transsys) != 0)
   {
     free(si);
     return (NULL);
@@ -1351,7 +1409,7 @@ SYMBOL_INSTANCE *clone_symbol_instance(const SYMBOL_INSTANCE *source)
   if (si == NULL)
     return (NULL);
   si->next = NULL;
-  si->lsys = source->lsys;
+  si->lsys_string = source->lsys_string;
   si->symbol_index = source->symbol_index;
   init_transsys_instance_components(&(si->transsys_instance));
   if (alloc_transsys_instance_components(&(si->transsys_instance), source->transsys_instance.transsys) != 0)
@@ -1365,6 +1423,131 @@ SYMBOL_INSTANCE *clone_symbol_instance(const SYMBOL_INSTANCE *source)
     for (i = 0; i < source->transsys_instance.transsys->num_factors; i++)
       si->transsys_instance.factor_concentration[i] = source->transsys_instance.factor_concentration[i];
   }
+  /* fprint_symbol_instance(stderr, source); */
+  /* fprintf(stderr, "\n"); */
+  /* fprint_symbol_instance(stderr, si); */
+  /* fprintf(stderr, "\n"); */
   return (si);
 }
 
+
+void free_lsys_string_distance(LSYS_STRING *lstr)
+{
+  if (lstr->distance)
+  {
+    free(lstr->distance[0]);
+    free(lstr->distance);
+  }
+}
+
+
+void free_lsys_string(LSYS_STRING *lstr)
+{
+  size_t i;
+
+  if (lstr->arrayed)
+  {
+    for (i = 0; i < lstr->num_symbols; i++)
+    {
+      free_symbol_instance_components(lstr->symbol + i);
+    }
+    free(lstr->symbol);
+  }
+  else
+  {
+    free_symbol_instance_list(lstr->symbol);
+  }
+  free_lsys_string_distance(lstr);
+}
+
+
+int alloc_lsys_string_distance(LSYS_STRING *lstr)
+{
+  size_t i, j;
+
+  if (!lstr->arrayed)
+  {
+    fprintf(stderr, "cannot alloc distance for non-arrayed lsys string\n");
+    return (-1);
+  }
+  if (lstr->distance)
+  {
+    fprintf(stderr, "alloc_lsys_string_distance: distance matrix already present\n");
+    free_lsys_string_distance(lstr);
+  }
+  lstr->distance = (int **) malloc(lstr->num_symbols * sizeof(int *));
+  if (lstr->distance == NULL)
+  {
+    fprintf(stderr, "alloc_lsys_string_distance: malloc failed\n");
+    return (-1);
+  }
+  lstr->distance[0] = (int *) malloc(lstr->num_symbols * lstr->num_symbols * sizeof(int));
+  if (lstr->distance[0] == NULL)
+  {
+    free(lstr->distance);
+    fprintf(stderr, "alloc_lsys_string_distance: malloc failed\n");
+    return (-1);
+  }
+  for (i = 1; i < lstr->num_symbols; i++)
+  {
+    lstr->distance[i] = lstr->distance[0] + lstr->num_symbols;
+    for (j = 0; j < lstr->num_symbols; j++)
+    {
+      lstr->distance[i][j] = 0;
+    }
+  }
+  return (0);
+}
+
+
+int arrange_lsys_string_arrays(LSYS_STRING *lstr)
+{
+  SYMBOL_INSTANCE *si_arr, *si, *si1;
+  size_t i;
+
+  if (lstr->arrayed)
+  {
+    fprintf(stderr, "multiple array arrangement for LSYS_STRING of \"%s\"\n", lstr->lsys->name);
+    return (-1);
+  }
+  lstr->num_symbols = 0;
+  for (si = lstr->symbol; si; si = si->next)
+  {
+    lstr->num_symbols++;
+  }
+  si_arr = (SYMBOL_INSTANCE *) malloc(lstr->num_symbols * sizeof(SYMBOL_INSTANCE));
+  if (si_arr == NULL)
+  {
+    return (-1);
+  }
+  si = lstr->symbol;
+  for (i = 0; i < lstr->num_symbols; i++)
+  {
+    si_arr[i] = *si;
+    si_arr[i].next = NULL;
+    si1 = si;
+    si = si->next;
+    free(si1);
+  }
+  lstr->symbol = si_arr;
+  lstr->arrayed = 1;
+  return (0);
+}
+
+
+LSYS_STRING *new_lsys_string(const LSYS *lsys)
+{
+  LSYS_STRING *lstr;
+
+  lstr = (LSYS_STRING *) malloc(sizeof(LSYS_STRING));
+  if (lstr == NULL)
+  {
+    return (NULL);
+  }
+  lstr->lsys = lsys;
+  lstr->num_symbols = 0;
+  lstr->arrayed = 0;
+  lstr->symbol = NULL;
+  lstr->distance = NULL;
+  return (lstr);
+}
