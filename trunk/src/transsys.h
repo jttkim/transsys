@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.6  2005/04/04 21:30:07  jtk
+ * differentiated fprint_lsys_string and fprint_lsys_string_distances
+ *
  * Revision 1.5  2005/04/04 09:39:54  jtk
  * added lsys capabilities to transexpr, various small changes
  *
@@ -153,6 +156,7 @@ extern void fprint_transsys_instance(FILE *f, const TRANSSYS_INSTANCE *ti);
 extern void fprint_cell(FILE *f, const CELL *cell);
 extern void fprint_symbol_instance(FILE *f, const SYMBOL_INSTANCE *si);
 extern void fprint_symbol_instance_list(FILE *f, const SYMBOL_INSTANCE *si, const char *sep);
+extern void fprint_lsys_string_distances(FILE *f, const LSYS_STRING *lstr);
 extern void fprint_lsys_string(FILE *f, const LSYS_STRING *lstr, const char *sep); 
 extern double evaluate_expression(const EXPRESSION_NODE *expr, const TRANSSYS_INSTANCE **ti_list);
 
