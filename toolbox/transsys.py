@@ -3,6 +3,9 @@
 # $Id$
 
 # $Log$
+# Revision 1.4  2005/04/05 20:27:37  jtk
+# allowed snippets in CyclicSequence, adapted time_series, lsys kludge
+#
 # Revision 1.3  2005/04/05 10:13:19  jtk
 # fixed unresolved_copy for promoter element
 #
@@ -74,6 +77,7 @@ import os
 import sys
 import popen2
 import string
+import StringIO
 import math
 import re
 
@@ -322,40 +326,62 @@ class ExpressionNodeOr(BinaryExpressionNode) :
     return self.operand1.evaluate(transsys_instance) or self.operand2.evaluate(transsys_instance)
 
 
-class ExpressionNodeUniformRandom(BinaryExpressionNode) :
+class FunctionExpressionNode(ExpressionNode) :
 
-  def __init__(self, op1, op2) :
-    self.operand1 = op1
-    self.operand2 = op2
+  def __init__(self, operand, funcname = 'undefined_function') :
+    self.operand = operand
+    self.funcname = funcname
 
 
   def __str__(self) :
-    return 'random(%s, %s)' % (str(self.operand1), str(self.operand2))
+    s = self.funcname
+    glue = '('
+    for op in self.operand :
+      s = s + glue + str(op)
+      glue = ', '
+    s = s + ')'
+    return s
 
 
   def evaluate(self, transsys_instance) :
-    arg1 = self.operand1.evaluate()
-    arg2 = self.operand2.evaluate()
+    raise StandardError, 'cannot evaluate undefined function'
+
+  def resolve(self, tp) :
+    for op in self.operand :
+      op.resolve(tp)
+
+
+  def unresolved_copy(self) :
+    u = []
+    for op in self.operand :
+      u.append(op.unresolved_copy())
+    return self.__class__(u)
+
+
+class ExpressionNodeUniformRandom(FunctionExpressionNode) :
+
+  def __init__(self, operand) :
+    FunctionExpressionNode.__init__(self, operand, 'random')
+
+
+  def evaluate(self, transsys_instance) :
+    arg1 = self.operand[0].evaluate()
+    arg2 = self.operand[1].evaluate()
     if arg1 < arg2 :
       return arg1 + (arg2 - arg1) * transsys_instance[0].rng.rnd()
     else :
       return arg2 + (arg1 - arg2) * transsys_instance[0].rng.rnd()
 
 
-class ExpressionNodeGaussianRandom(BinaryExpressionNode) :
+class ExpressionNodeGaussianRandom(FunctionExpressionNode) :
 
   def __init__(self, op1, op2) :
-    self.operand1 = op1
-    self.operand2 = op2
-
-
-  def __str__(self) :
-    return 'gauss(%s, %s)' % (str(self.operand1), str(self.operand2))
+    FunctionExpressionNode.__init__(self, operand, 'gauss')
 
 
   def evaluate(self, transsys_instance) :
-    arg1 = self.operand1.evaluate()
-    arg2 = self.operand2.evaluate()
+    arg1 = self.operand[0].evaluate()
+    arg2 = self.operand[1].evaluate()
     return arg1 + arg2 * transsys_instance[0].rng.gauss()
 
 
@@ -772,6 +798,7 @@ class TranssysInstance :
   def __init__(self, tp) :
     self.transsys_program = tp
     self.factor_concentration = [0.0] * self.transsys_program.num_factors()
+    self.factor_concentration_stddev = [0.0] * self.transsys_program.num_factors()
 
 
   def __str__(self) :
@@ -808,15 +835,21 @@ class TranssysInstance :
     f.write('\n')
 
 
-  def time_series(self, num_timesteps, sampling_period) :
-    cmd = 'transexpr -n %d -d %d ' % (num_timesteps, sampling_period)
+  def time_series(self, num_timesteps, sampling_period = 1, lsys_lines = None, lsys_symbol = None) :
+    # FIXME: lsys_lines is a kludge that should be removed once lsys parsing
+    # is available.
+    cmd = 'transexpr -n %d -d %d' % (num_timesteps, sampling_period)
     glue = ''
     s = ''
     for x in self.factor_concentration :
       s = s + '%s%f' % (glue, x)
       glue = ' '
-    cmd = cmd + '-F \'%s\' ' % s
-    #print cmd
+    cmd = cmd + ' -F \'%s\'' % s
+    if lsys_lines is not None :
+      cmd = cmd + ' -l'
+    if lsys_symbol is not None :
+      cmd = cmd + ' -y \'%s\'' % lsys_symbol
+    sys.stderr.write('%s\n' % cmd)
     p = popen2.Popen3(cmd, 1)
     sys.stdout.flush()
     sys.stderr.flush()
@@ -824,6 +857,9 @@ class TranssysInstance :
     if pid == 0 :
       p.fromchild.close()
       p.tochild.write(str(self.transsys_program))
+      if lsys_lines is not None :
+        for l in lsys_lines :
+          p.tochild.write('%s\n' % l)
       #sys.stdout.write(str(self.transsys_program))
       p.tochild.close()
       sys.exit()
@@ -832,13 +868,16 @@ class TranssysInstance :
     line = p.fromchild.readline()
     while line :
       line = string.strip(line)
-      if line[0] != '#' :
-        l = string.split(line)
-        t = string.atoi(l[0])
-        ti = TranssysInstance(self.transsys_program)
-        for i in xrange(len(self.transsys_program.factor_list)) :
-          ti.factor_concentration[i] = float(l[i + 1])
-        tseries_dict[t] = ti
+      if line :
+        if line[0] != '#' :
+          l = string.split(line)
+          t = string.atoi(l[0])
+          ti = TranssysInstance(self.transsys_program)
+          for i in xrange(len(self.transsys_program.factor_list)) :
+            ti.factor_concentration[i] = float(l[2 * i + 2])
+            ti.factor_concentration_stddev[i] = float(l[2 * i + 3])
+            sys.stderr.write('converted: %s +- %s  ->  %f +- %f\n' % (l[2 * i + 2], l[2 * i + 3], ti.factor_concentration[i], ti.factor_concentration_stddev[i]))
+          tseries_dict[t] = ti
       line = p.fromchild.readline()
     p.fromchild.close()
     status = p.wait()
@@ -885,27 +924,21 @@ all methods will have to be overridden anyway."""
 
 
   def from_string(self, s) :
-    float_re = re.compile('[+-]?([0-9]+(\\.[0-9]+)?)|(([0-9]+)?\\.[0-9]+)([Ee][+-]?[0-9]+)?')
+    # fixme (?) this implementation allows a trailing comma
+    # ... but then, python does this too in several contexts...
+    quoted_string_re = re.compile(' *\'([^\']+)\'( *, *)?')
+    string_re = re.compile(' *([^,]*)(, *)?')
     s = s.strip()
-    m = float_re.match(s)
-    if m :
-      self.i = 0
-      self.l = [float(m.group())]
-      return
-    if s[0] != '[' :
-      raise StandardError, 'CyclicSequence::from_string: bad string "%s"' % s
-    float_optcomma_re = re.compile('\\s*([+-]?([0-9]+(\\.[0-9]+)?)|(([0-9]+)?\\.[0-9]+)([Ee][+-]?[0-9]+)?)(\\s*,')
-    s_rest = s[1:]
     l = []
-    m = float_optcomma_re.match(s_rest)
-    while m :
-      x = m.group(1)
-      l.append(float(x))
-      s_rest = s.rest[len(x):]
-    s_rest = s_rest.strip()
-    if s_rest != ']' :
-      raise StandardError, 'CyclicSequence::from_string: bad string "%s"' % s
-    self.i = 0
+    while s :
+      m = quoted_string_re.match(s)
+      if m is None :
+        m = string_re.match(s)
+        if m is None :
+          raise StandardError, 'CyclicSequence::from_string: malformed string "%s"' % s
+      l.append(m.group(1))
+      s = s[len(m.group(0)):]
+    self.i = len(l) - 1
     self.l = l
 
 
@@ -1265,6 +1298,10 @@ function."""
           linklist[g0].append(g1)
       return linklist
 
+    def next_expression(s) :
+      p = TranssysProgramParser(StringIO.StringIO(s.nextval()))
+      return p.parse_expr()
+
     if self.topology == 'random_nk' :
       linklist = random_nk_linklist(self.n, self.k, self.rng)
     elif self.topology == 'random_uniform' :
@@ -1276,16 +1313,14 @@ function."""
     flist = []
     glist = []
     for i in xrange(self.num_genes()) :
-      flist.append(Factor(factor_name(i), ExpressionNodeValue(self.decay.nextval()), ExpressionNodeValue(self.diffusibility.nextval())))
+      flist.append(Factor(factor_name(i), next_expression(self.decay), next_expression(self.diffusibility)))
       promoter = []
-      c = self.constitutive.nextval()
-      if c != 0.0 :
-        promoter.append(PromoterElementConstitutive(ExpressionNodeValue(c)))
+      promoter.append(PromoterElementConstitutive(next_expression(self.constitutive)))
       for t in linklist[i] :
         if t < 0 :
-          promoter.append(PromoterElementRepress(ExpressionNodeValue(self.km_repression.nextval()), ExpressionNodeValue(self.vmax_repression.nextval()), [factor_name(abs(t) - 1)]))
+          promoter.append(PromoterElementRepress(next_expression(self.km_repression), next_expression(self.vmax_repression), [factor_name(abs(t) - 1)]))
         else :
-          promoter.append(PromoterElementActivate(ExpressionNodeValue(self.km_activation.nextval()), ExpressionNodeValue(self.vmax_activation.nextval()), [factor_name(t)]))
+          promoter.append(PromoterElementActivate(next_expression(self.km_activation), next_expression(self.vmax_activation), [factor_name(t)]))
       glist.append(Gene(gene_name(i), factor_name(i), promoter))
     tp = TranssysProgram(name, flist, glist)
     self.serial = self.serial + 1
@@ -1302,7 +1337,7 @@ class TranssysProgramScanner :
     self.lineno = 0
     self.keywords = ['factor', 'gene', 'promoter', 'product', 'constitutive', 'activate', 'repress', 'default', 'gauss', 'random', 'transsys', 'decay', 'diffusibility', 'lsys', 'symbol', 'axiom', 'rule', '-->', 'graphics', 'move', 'sphere', 'cylinder', 'box', 'turn', 'roll', 'bank', 'color', 'push', 'pop', '<=', '>=', '==', '!=', '&&', '||']
     self.identifier_re = re.compile('[A-Za-z_][A-Za-z0-9_]*')
-    self.realvalue_re = re.compile('-?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))([Ee][+-]?[0-9]+)?')
+    self.realvalue_re = re.compile('[+-]?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))([Ee][+-]?[0-9]+)?')
     self.next_token = self.get_token()
 
 
@@ -1348,6 +1383,26 @@ class TranssysProgramScanner :
     self.buffer = string.strip(self.buffer[1:])
     return c, None
     raise StandardError, 'line %d: scanner stalled at "%s"' % (self.lineno, self.buffer)
+
+
+  def get_lines(self) :
+    if self.next_token[0] == 'identifier' :
+      l = self.next_token[1]
+    elif self.next_token[0] == 'realvalue' :
+      l = str(self.next_token[1])
+    elif self.next_token[0] is None :
+      l = ''
+    else :
+      l = self.next_token[0] + ' '
+    l = l + self.buffer
+    lines = []
+    if l :
+      lines.append(l)
+    l = self.infile.readline()
+    while l :
+      lines.append(l[:-1])
+      l = self.infile.readline()
+    return lines
 
 
 class TranssysProgramParser :
@@ -1400,7 +1455,7 @@ class TranssysProgramParser :
     arglist = self.parse_argument_list()
     if len(arglist) != 2 :
       raise StandardError, 'line %d: gauss() takes 2 parameters, but got %d' % (self.scanner.lineno, len(arglist))
-    return ExpressionNodeGaussianRandom(arglist[0], arglist[1])
+    return ExpressionNodeGaussianRandom([arglist[0], arglist[1]])
 
 
   def parse_random_expr(self) :
@@ -1408,7 +1463,7 @@ class TranssysProgramParser :
     arglist = self.parse_argument_list()
     if len(arglist) != 2 :
       raise StandardError, 'line %d: gauss() takes 2 parameters, but got %d' % (self.scanner.lineno, len(arglist))
-    return ExpressionNodeUniformRandom(arglist[0], arglist[1])
+    return ExpressionNodeUniformRandom([arglist[0], arglist[1]])
 
 
   def parse_value_expr(self) :
@@ -1549,6 +1604,7 @@ class TranssysProgramParser :
   def parse_factor_combination(self) :
     fc = [self.expect_token('identifier')]
     while self.scanner.lookahead() == '+' :
+      self.expect_token('+')
       fc.append(self.expect_token('identifier'))
     return fc
 
@@ -1644,6 +1700,18 @@ class TranssysProgramParser :
     factors, genes = self.parse_transsys_elements()
     self.expect_token('}')
     return TranssysProgram(transsys_name, factors, genes)
+
+
+  # kludges for handling lsys code in lists of lines
+
+  def lsys_lines(self, f) :
+    """read lsys code lines (no parsing)"""
+    return self.scanner.get_lines()
+
+
+def write_lsys_code(f, lines) :
+  for l in lines :
+    f.write('%s\n' % l)
 
 
 def write_random_transsys(f, name, rtp) :
