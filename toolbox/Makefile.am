@@ -13,8 +13,11 @@
 # $Id$
 
 # $Log$
-# Revision 1.1  2005/03/08 17:12:02  jtk
-# Initial revision
+# Revision 1.2  2005/04/04 21:31:44  jtk
+# added random_transsys_lsys to Makefile.am
+#
+# Revision 1.1.1.1  2005/03/08 17:12:02  jtk
+# new cvs after loss at INB
 #
 # Revision 1.9  2004/04/13 17:36:37  kim
 # some changes to adapt to new automake / autoconf under Debian
@@ -52,7 +55,7 @@
 #
 
 PYTHONMODULES	= transsys.py arrtool.py transrnd.py regstruct.py
-PYTHONSCRIPTS	= random_transsys transarray regstruct_transsys regstruct_transarray mutant_transsys get_overlap
+PYTHONSCRIPTS	= random_transsys random_transsys_lsys transarray regstruct_transsys regstruct_transarray mutant_transsys get_overlap
 RPACKAGE	= transarr
 
 pylibdir	= $(DESTDIR)/$(libdir)/python
