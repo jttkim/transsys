@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.5  2005/04/04 09:39:54  jtk
+ * added lsys capabilities to transexpr, various small changes
+ *
  * Revision 1.4  2005/03/31 16:07:36  jtk
  * finished (initial) implementation of lsys diffusion
  *
@@ -47,10 +50,11 @@ int main(int argc, char **argv)
   int yyreturn;
   int num_derivations = 10, i;
   int process_transsys = 1, process_diffusion = 1;
+  unsigned int rndseed = 1;
   LSYS_STRING *lstr, *dstring;
   LSYS *ls;
 
-  while ((oc = getopt(argc, argv, "d:DXh")) != -1)
+  while ((oc = getopt(argc, argv, "s:d:DXh")) != -1)
   {
     switch(oc)
     {
@@ -62,6 +66,9 @@ int main(int argc, char **argv)
       break;
     case 'd':
       num_derivations = strtol(optarg, NULL, 10);
+      break;
+    case 's':
+      rndseed = strtoul(optarg, NULL, 10);
       break;
     case 'h':
       printf("-d <num>: set number of derivations\n");
@@ -115,6 +122,7 @@ int main(int argc, char **argv)
   }
   for (ls = parsed_lsys; ls; ls = ls->next)
   {
+    ulong_srandom(rndseed);
     lstr = axiom_string(ls);
     if (lstr == NULL)
       fprintf(stderr, "axiom_string() returned NULL\n");
