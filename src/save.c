@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.6  2005/04/04 21:30:07  jtk
+ * differentiated fprint_lsys_string and fprint_lsys_string_distances
+ *
  * Revision 1.5  2005/04/04 09:39:54  jtk
  * added lsys capabilities to transexpr, various small changes
  *
@@ -590,12 +593,10 @@ void fprint_symbol_instance_list(FILE *f, const SYMBOL_INSTANCE *si, const char 
 }
 
 
-void fprint_lsys_string(FILE *f, const LSYS_STRING *lstr, const char *sep)
+void fprint_lsys_string_distances(FILE *f, const LSYS_STRING *lstr)
 {
   int i, j;
 
-  fprintf(f, "symbol string of lsys %s\n", lstr->lsys->name);
-  fprint_symbol_instance_list(f, lstr->symbol, sep);
   if (lstr->arrayed && lstr->lsys->arrayed && lstr->distance)
   {
     for (i = 0; i < lstr->num_symbols; i++)
@@ -608,6 +609,13 @@ void fprint_lsys_string(FILE *f, const LSYS_STRING *lstr, const char *sep)
       fprintf(f, "\n");
     }
   }
+}
+
+
+void fprint_lsys_string(FILE *f, const LSYS_STRING *lstr, const char *sep)
+{
+  fprintf(f, "symbol string of lsys %s\n", lstr->lsys->name);
+  fprint_symbol_instance_list(f, lstr->symbol, sep);
 }
 
 
