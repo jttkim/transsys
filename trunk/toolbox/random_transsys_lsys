@@ -1,0 +1,96 @@
+#!/usr/bin/env python
+
+# $Id$
+
+# $Log$
+# Revision 1.1  2005/04/04 21:29:09  jtk
+# random_transsys_lsys -- assemble lsys with randomly generated transsys part
+#
+
+
+
+import sys
+import math
+import getopt
+
+import transsys
+import transrnd
+import regstruct
+
+
+def read_lsys_code(f) :
+  """read lsys code lines (no parsing"""
+  lsys_lines = []
+  l = f.readline()
+  while l :
+    lsys_lines.append(l[:-1])
+    l = f.readline()
+  return lsys_lines
+
+
+def set_factor_names(tp, factor_name) :
+  """warning: this function cannot handle transsys programs in which a
+factor is encoded by multiple genes correctly."""
+  if tp.num_factors() < len(factor_name) or tp.num_genes() < len(factor_name) :
+    raise StandardError, 'too few genes / factors'
+  for i in xrange(len(factor_name)) :
+    tp.factor_list[i].name = factor_name[i]
+    tp.gene_list[i].name = 'gene_%s' % factor_name[i]
+
+
+def usage() :
+  print '-R <filename>: specify rtp file'
+  print '-F <factors>: specify factor names (mainly for interconnecting to lsys)'
+  print '-r <integer>: specify random seed'
+  print '-h: print this help and exit'
+
+
+rtp = None
+rndseed = 1
+factor_name = []
+lsys_fname = None
+transsys_fname = None
+
+options, args = getopt.getopt(sys.argv[1:], 'R:F:L:T:r:h')
+for opt in options :
+  if opt[0] == '-h' :
+    usage()
+    sys.exit()
+  elif opt[0] == '-R' :
+    rtp = transsys.RandomTranssysParameters()
+    rtp.parse(open(opt[1], 'r'))
+  elif opt[0] == '-F' :
+    factor_name = opt[1].split()
+  elif opt[0] == '-L' :
+    lsys_fname = opt[1]
+  elif opt[0] == '-T' :
+    transsys_fname = opt[1]
+  elif opt[0] == '-r' :
+    rndseed = int(opt[1])
+  else :
+    raise StandardError, 'unimplemented option "%s"' % opt[0]
+if rtp is None :
+  sys.stderr.write('no RTP for regulatory network (use -r option)\n')
+  sys.exit(1)
+if len(args) > 0 :
+  basename = args[0]
+else :
+  basename = 'lsysdummy'
+if len(args) > 1 :
+  out_fname = args[1]
+rng = transrnd.transrnd(rndseed)
+tp = rtp.generate_transsys(basename)
+set_factor_names(tp, factor_name)
+if transsys_fname is not None :
+  p = transsys.TranssysProgramParser(transsys_fname)
+  tp1 = p.parse_transsys()
+  tp1.merge(tp)
+  tp = tp1
+outfile = open(out_fname, 'w')
+# tp.factor_list[0].name = 'bleh'
+outfile.write(str(tp))
+if lsys_fname is not None :
+  outfile.write('\n')
+  for l in lsys_lines :
+    outfile.write('%s\n' % l)
+outfile.close()
