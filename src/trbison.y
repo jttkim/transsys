@@ -6,8 +6,11 @@
  * $Id$
  *
  * $Log$
- * Revision 1.1  2005/03/08 17:12:02  jtk
- * Initial revision
+ * Revision 1.2  2005/03/31 16:07:36  jtk
+ * finished (initial) implementation of lsys diffusion
+ *
+ * Revision 1.1.1.1  2005/03/08 17:12:02  jtk
+ * new cvs after loss at INB
  *
  * Revision 1.2  2003/01/22 11:39:24  kim
  * added dot.c
@@ -22,6 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "trconfig.h"
 #include "transsys.h"
@@ -123,6 +127,9 @@ void yyerror(const char *s, ...)
     break;
   case DIFFUSIBILITY_DEF:
     fprintf(stderr, "    token: DIFFUSIBILITY_DEF:\n");
+    break;
+  case DIFFUSIONRANGE_DEF:
+    fprintf(stderr, "    token: DIFFUSIONRANGE_DEF:\n");
     break;
   case LSYS_DEF:
     fprintf(stderr, "    token: LSYS_DEF:\n");
@@ -899,6 +906,12 @@ static void add_axiom_definition(LSYS *ls, SYMBOL_PRODUCTION *sp)
 }
 
 
+static void add_diffusionrange_definition(LSYS *ls, double diffusionrange)
+{
+  ls->diffusion_range = (int) floor(diffusionrange);
+}
+
+
 static void resolve_rule_identifiers(RULE_ELEMENT *re)
 {
   PRODUCTION_ELEMENT *pe;
@@ -1004,7 +1017,7 @@ static void add_graphics_to_symbol(LSYS *ls, const char *symbol_name, GRAPHICS_P
 %token <real> REALVALUE
 %token <identifier> IDENTIFIER
 %token FACTOR_DEF GENE_DEF PROMOTER_DEF PRODUCT_DEF CONSTITUTIVE ACTIVATE REPRESS DEFAULT RANDOM GAUSS TRANSSYS_DEF DECAY_DEF DIFFUSIBILITY_DEF
-%token LSYS_DEF SYMBOL_DEF RULE_DEF AXIOM_DEF GRAPHICS_DEF ARROW MOVE COLOR SPHERE CYLINDER BOX TURN ROLL BANK PUSH POP
+%token LSYS_DEF SYMBOL_DEF RULE_DEF AXIOM_DEF DIFFUSIONRANGE_DEF GRAPHICS_DEF ARROW MOVE COLOR SPHERE CYLINDER BOX TURN ROLL BANK PUSH POP
 %token LOWER_EQUAL GREATER_EQUAL EQUAL UNEQUAL LOGICAL_AND LOGICAL_OR
 
 %type <factor> factor_definition
@@ -1015,6 +1028,7 @@ static void add_graphics_to_symbol(LSYS *ls, const char *symbol_name, GRAPHICS_P
 %type <promoter> promoter_component promoter_statements promoter_statement
 %type <expression> expr and_expr not_expr cmp_expr arithmetic_expr term value
 %type <symbol_element> symbol_definition
+%type <real> diffusionrange_definition
 %type <production_element> production_element_string production_element
 %type <symbol_production> axiom_definition rule_rhs
 %type <rule_element> rule_definition rule_components
@@ -1043,6 +1057,7 @@ lsys_element_list
 lsys_element
 	: symbol_definition { add_symbol_definition(current_lsys, $1); }
 	| axiom_definition { add_axiom_definition(current_lsys, $1); }
+	| diffusionrange_definition { add_diffusionrange_definition(current_lsys, $1); }
 	| rule_definition { add_rule_definition(current_lsys, $1); }
 	| graphics_definition {}
 	;
@@ -1058,6 +1073,10 @@ symbol_definition
 
 axiom_definition
 	: AXIOM_DEF production_element_string ';' { $$ = new_symbol_production(NULL, $2); }
+	;
+
+diffusionrange_definition
+	: DIFFUSIONRANGE_DEF ':' REALVALUE ';' { $$ = $3; }
 	;
 
 rule_definition

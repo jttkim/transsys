@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.4  2005/03/31 16:07:36  jtk
+ * finished (initial) implementation of lsys diffusion
+ *
  * Revision 1.3  2005/03/30 18:30:27  jtk
  * progressed transition to arrayred lsys strings
  * introduced lsys string distance matrices
@@ -518,6 +521,7 @@ void fprint_lsys(FILE *f, int indent_depth, const LSYS *lsys)
     fprintf(f, "\n");
     fprint_rule(f, indent_depth + 2, re, lsys->symbol_list);
   }
+  fprint_indented(f, indent_depth + 2, "diffusionrange: %d;\n", lsys->diffusion_range);
   if (lsys->axiom)
   {
     fprintf(f, "\n");

@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.4  2005/03/31 16:07:36  jtk
+ * finished (initial) implementation of lsys diffusion
+ *
  * Revision 1.3  2005/03/30 18:30:27  jtk
  * progressed transition to arrayred lsys strings
  * introduced lsys string distance matrices
@@ -281,6 +284,7 @@ typedef struct tag_lsys
   struct tag_lsys *next;
   char name[IDENTIFIER_MAX];
   int arrayed;
+  int diffusion_range;
   int num_symbols, num_rules;
   SYMBOL_ELEMENT *symbol_list;
   SYMBOL_PRODUCTION *axiom;

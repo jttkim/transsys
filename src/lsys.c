@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.5  2005/03/31 16:07:36  jtk
+ * finished (initial) implementation of lsys diffusion
+ *
  * Revision 1.4  2005/03/31 10:14:05  jtk
  * partial implementation of diffusion
  *
@@ -156,18 +159,39 @@ static SYMBOL_INSTANCE *evaluate_production_list(const LSYS_STRING *lstr, const 
 }
 
 
+/*
+ * Note on the distance matrix of an axiom string:
+ * All symbols in the axiom have distance 1. This reflects
+ * the fact that they represent a "germ" structure in which
+ * no complex spatial structure has yet differentiated.
+ */
+
 LSYS_STRING *axiom_string(const LSYS *lsys)
 {
   LSYS_STRING *axiom;
+  int i, j;
 
   axiom = new_lsys_string(lsys);
   axiom->symbol = evaluate_production_list(axiom, lsys->axiom->production_list, NULL, 0, 0);
   arrange_lsys_string_arrays(axiom);
+  if(alloc_lsys_string_distance(axiom) != 0)
+  {
+    free_lsys_string(axiom);
+    return (NULL);
+  }
+  for (i = 0; i < axiom->num_symbols; i++)
+  {
+    for (j = 0; j < axiom->num_symbols; j++)
+    {
+      axiom->distance[i][j] = i != j;
+    }
+  }
   return(axiom);
 }
 
 
 /*
+ * FIXME??? (is this already fixed?)
  * preliminary: use single (i.e. first) symbol for obtaining transsys...
  */
 
@@ -229,6 +253,11 @@ int lsys_string_expression(LSYS_STRING *lstr)
 }
 
 
+static int within_diffusion_range(const LSYS_STRING *lstr, int i, int j)
+{
+  return (lstr->distance[i][j] <= lstr->lsys->diffusion_range);
+}
+
 /*
  * for all symbol instances, initialise all elements in new_concentration
  * to 0.0.
@@ -255,50 +284,86 @@ static void diffusion_init_new_concentration(LSYS_STRING *lstr)
 }
 
 
+static void diffusion_weights(const LSYS_STRING *lstr, int i, double *w)
+{
+  double wsum = 0.0;
+  int j;
+
+  for (j = 0; j < lstr->num_symbols; j++)
+  {
+    if ((lstr->symbol[i].transsys_instance.transsys == lstr->symbol[j].transsys_instance.transsys)
+	&& within_diffusion_range(lstr, i, j))
+    {
+      w[i] = 1.0;
+      wsum += 1.0;
+    }
+    else
+    {
+      w[i] = 0.0;
+    }
+  }
+  for (j = 0; j < lstr->num_symbols; j++)
+  {
+    w[j] /= wsum;
+  }
+}
+
+
 int lsys_string_diffusion(LSYS_STRING *lstr)
 {
-  int n, i, f;
-  double *dx, *w;
+  int i, j, f;
+  double *w, dc, dcsum, diffusibility;
   const TRANSSYS *transsys;
+  const TRANSSYS_INSTANCE *ti;
 
   if (!lstr->arrayed)
   {
     fprintf(stderr, "lsys_string_diffusion: cannot process non-arrayed lsys string\n");
     return (-1);
   }
-  dx = (double *) malloc(lstr->num_symbols * sizeof(double));
-  if (dx == NULL)
-  {
-    fprintf(stderr, "lsys_string_diffusion: malloc failed\n");
-    return (-1);
-  }
   w = (double *) malloc(lstr->num_symbols * sizeof(double));
   if (w == NULL)
   {
-    free(dx);
     fprintf(stderr, "lsys_string_diffusion: malloc failed\n");
     return (-1);
   }
   diffusion_init_new_concentration(lstr);
-  for (n = 0; n < lstr->num_symbols; n++)
+  for (i = 0; i < lstr->num_symbols; i++)
   {
-    if (lstr->symbol[n].transsys_instance.transsys)
+    ti = &(lstr->symbol[i].transsys_instance);
+    transsys = ti->transsys;
+    if (ti->transsys)
     {
-      for (i = 0; i < lstr->num_symbols; i++)
+      diffusion_weights(lstr, i, w);
+      for (f = 0; f < transsys->num_factors; f++)
       {
-	dx[i] = 0.0;
-	w[i] = 0.0;
-	if (lstr->symbol[n].transsys_instance.transsys == lstr->symbol[i].transsys_instance.transsys)
+	diffusibility = evaluate_expression(ti->transsys->factor_list[f].diffusibility_expression, &ti);
+	dcsum = 0.0;
+	for (j = 0; j < lstr->num_symbols; j++)
 	{
-	  transsys = lstr->symbol[n].transsys_instance.transsys;
-	  for (f = 0; f < transsys->num_factors; f++)
+	  if ((i != j)
+	      && (transsys == lstr->symbol[j].transsys_instance.transsys)
+	      && within_diffusion_range(lstr, i, j))
 	  {
+	    dc = (ti->factor_concentration[f] - lstr->symbol[j].transsys_instance.factor_concentration[f]) * diffusibility * w[j];
+	    dcsum += dc;
+	    lstr->symbol[j].transsys_instance.new_concentration[f] += dc;
 	  }
 	}
+	ti->new_concentration[f] -= dcsum;
       }
     }
   }
-  free(dx);
+  for (i = 0; i < lstr->num_symbols; i++)
+  {
+    if (lstr->symbol[i].transsys_instance.transsys)
+    {
+      for (f = 0; f < lstr->symbol[i].transsys_instance.transsys->num_factors; f++)
+      {
+	lstr->symbol[i].transsys_instance.factor_concentration[f] += lstr->symbol[i].transsys_instance.new_concentration[f];
+      }
+    }
+  }
   free(w);
   return (0);
 }
