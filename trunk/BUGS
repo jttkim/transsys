@@ -13,6 +13,13 @@ etc):
 
     * the fontheight setting is not honoured in EPS mode
 
+    * if a required transsys spec in a variable is missing, a
+      "no transsys, no factor xxx" error message is printed, but
+      parsing continues, returning a faulty structure that normally
+      triggers a core dump somewhere down the line.
+
+    * unknown symbols in rules don't result in a parse error either.
+
 
 Features / properties that are missing
 
