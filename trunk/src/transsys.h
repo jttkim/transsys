@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.3  2005/03/30 09:51:56  jtk
+ * added include for dmalloc (contitional upon DMALLOC macro)
+ *
  * Revision 1.2  2005/03/29 17:33:02  jtk
  * introduced arrayed lsys string, with symbol distance matrix.
  *
@@ -30,6 +33,9 @@
 
 #ifdef MEMDEBUG
 #  include <memdebug.h>
+#endif
+#ifdef DMALLOC
+#  include <dmalloc.h>
 #endif
 
 #include "trtypes.h"
