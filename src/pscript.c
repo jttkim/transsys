@@ -4,8 +4,11 @@
  * $Id$
  *
  * $Log$
- * Revision 1.1  2005/03/08 17:12:02  jtk
- * Initial revision
+ * Revision 1.2  2005/03/29 17:33:02  jtk
+ * introduced arrayed lsys string, with symbol distance matrix.
+ *
+ * Revision 1.1.1.1  2005/03/08 17:12:02  jtk
+ * new cvs after loss at INB
  *
  * Revision 1.2  2002/01/25 03:35:03  kim
  * Added gnuplot link functionality to transexpr, transscatter, improved
@@ -45,6 +48,7 @@ static int postscript_page_start(FILE *f, const POSTSCRIPT_STYLE *style)
   fprintf(f, "%%%%Page: %d %d\n", style->page_num, style->page_num);
   fprintf(f, "save\n");
   fprintf(f, "/%s findfont %f scalefont setfont\n", style->fontname, style->fontheight);
+  return (0);
 }
 
 
@@ -52,6 +56,7 @@ static int postscript_page_end(FILE *f, const POSTSCRIPT_STYLE *style)
 {
   fprintf(f, "restore\n");
   fprintf(f, "showpage\n");
+  return (0);
 }
 
 
@@ -186,7 +191,7 @@ int postscript_symbol_string(FILE *f, const SYMBOL_INSTANCE *symbol_string, cons
   fprintf(f, "%e %e translate\n", style->lnd_x0, style->lnd_y0);
   for (symbol = symbol_string; symbol; symbol = symbol->next)
   {
-    for (gp = symbol->lsys->symbol_list[symbol->symbol_index].graphics_primitive_list; gp; gp = gp->next)
+    for (gp = symbol->lsys_string->lsys->symbol_list[symbol->symbol_index].graphics_primitive_list; gp; gp = gp->next)
     {
       return_value = postscript_graphics_primitive(f, gp, &(symbol->transsys_instance), scale);
       if (return_value)
@@ -406,6 +411,7 @@ int postscript_transsys_init(FILE *f, const char *title, const POSTSCRIPT_STYLE 
 int postscript_transsys_finish(FILE *f, const POSTSCRIPT_STYLE *style)
 {
   postscript_trailer(f, style);
+  return (0);
 }
 
 

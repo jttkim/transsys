@@ -4,8 +4,11 @@
  * $Id$
  *
  * $Log$
- * Revision 1.1  2005/03/08 17:12:02  jtk
- * Initial revision
+ * Revision 1.2  2005/03/29 17:33:02  jtk
+ * introduced arrayed lsys string, with symbol distance matrix.
+ *
+ * Revision 1.1.1.1  2005/03/08 17:12:02  jtk
+ * new cvs after loss at INB
  *
  * Revision 1.1  2001/04/04 11:12:00  kim
  * Initial addition of files previously not CVS managed
@@ -77,7 +80,20 @@ size_t symbol_strlen(const SYMBOL_INSTANCE *symbol_string)
 }
 
 
-static SYMBOL_INSTANCE *evaluate_production(const LSYS *lsys, const PRODUCTION_ELEMENT *pe, const TRANSSYS_INSTANCE **ti_list)
+size_t lsys_string_length(const LSYS_STRING *lstr)
+{
+  if (lstr->arrayed)
+  {
+    return (lstr->num_symbols);
+  }
+  else
+  {
+    return (symbol_strlen(lstr->symbol));
+  }
+}
+
+
+static SYMBOL_INSTANCE *evaluate_production(const LSYS_STRING *lstr, const PRODUCTION_ELEMENT *pe, const TRANSSYS_INSTANCE **ti_list)
 {
   SYMBOL_INSTANCE *si;
   ASSIGNMENT *a;
@@ -89,7 +105,7 @@ static SYMBOL_INSTANCE *evaluate_production(const LSYS *lsys, const PRODUCTION_E
 /*     fprintf(stderr, "evaluate_production: context transsys is \"%s\"\n", context->transsys->name); */
 /*   else */
 /*     fprintf(stderr, "evaluate_production: no context transsys\n"); */
-  si = new_symbol_instance(lsys, pe->symbol_index);
+  si = new_symbol_instance(lstr, pe->symbol_index);
   if (si == NULL)
     return (NULL);
   /* copy transsys instance if target transsys is source transsys -- how to extend this for multi-symbol lhs? */
@@ -118,20 +134,20 @@ static SYMBOL_INSTANCE *evaluate_production(const LSYS *lsys, const PRODUCTION_E
 }
 
 
-static SYMBOL_INSTANCE *evaluate_production_list(const LSYS *lsys, const PRODUCTION_ELEMENT *plist, const TRANSSYS_INSTANCE **ti_list)
+static SYMBOL_INSTANCE *evaluate_production_list(const LSYS_STRING *lstr, const PRODUCTION_ELEMENT *plist, const TRANSSYS_INSTANCE **ti_list)
 {
   SYMBOL_INSTANCE *slist, *stail, *si;
   PRODUCTION_ELEMENT *p;
 
   if (plist == NULL)
     return (NULL);
-  slist = evaluate_production(lsys, plist, ti_list);
+  slist = evaluate_production(lstr, plist, ti_list);
   if (slist == NULL)
     return (NULL);
   stail = slist;
   for (p = plist->next; p; p = p->next)
   {
-    si = evaluate_production(lsys, p, ti_list);
+    si = evaluate_production(lstr, p, ti_list);
     if (si == NULL)
     {
       free_symbol_instance_list(slist);
@@ -144,9 +160,14 @@ static SYMBOL_INSTANCE *evaluate_production_list(const LSYS *lsys, const PRODUCT
 }
 
 
-SYMBOL_INSTANCE *axiom_string(const LSYS *lsys)
+LSYS_STRING *axiom_string(const LSYS *lsys)
 {
-  return (evaluate_production_list(lsys, lsys->axiom->production_list, NULL));
+  LSYS_STRING *axiom;
+
+  axiom = new_lsys_string(lsys);
+  axiom->symbol = evaluate_production_list(axiom, lsys->axiom->production_list, NULL);
+  arrange_lsys_string_arrays(axiom);
+  return(axiom);
 }
 
 
@@ -197,38 +218,51 @@ static int rule_match(const SYMBOL_INSTANCE *symbol, const RULE_ELEMENT *rule)
 }
 
 
-int string_transsys_expression(SYMBOL_INSTANCE *symbol_string)
+int lsys_string_expression(LSYS_STRING *lstr)
 {
   SYMBOL_INSTANCE *symbol;
-  int return_value;
+  int return_value = 0;
 
-  for (symbol = symbol_string; symbol; symbol = symbol->next)
+  for (symbol = lstr->symbol; symbol; symbol = symbol->next)
   {
     return_value = process_expression(&(symbol->transsys_instance));
     if (return_value)
       break;
   }
+  return (return_value);
+}
+
+
+int lsys_string_diffusion(LSYS_STRING *lstr)
+{
   return (0);
 }
 
 
-SYMBOL_INSTANCE *derived_string(const LSYS *lsys, const SYMBOL_INSTANCE *source_string)
+LSYS_STRING *derived_string(const LSYS_STRING *lstr)
 {
+  LSYS_STRING *dstr;
   const SYMBOL_INSTANCE *source_symbol;
-  SYMBOL_INSTANCE *target_string = NULL, *target_tail = NULL, *target_symbol;
+  SYMBOL_INSTANCE *target_tail = NULL, *target_symbol;
   const RULE_ELEMENT *rule;
   const TRANSSYS_INSTANCE **ti_list;
   int i;
 
-  for (source_symbol = source_string; source_symbol; source_symbol = source_symbol->next)
+  dstr = new_lsys_string(lstr->lsys);
+  if (dstr == NULL)
   {
-    for (rule = lsys->rule_list; rule; rule = rule->next)
+    fprintf(stderr, "derived_string: could not allocate new symbol string\n");
+    return (NULL);
+  }
+  for (source_symbol = lstr->symbol; source_symbol; source_symbol = source_symbol->next)
+  {
+    for (rule = lstr->lsys->rule_list; rule; rule = rule->next)
     {
       if (rule_match(source_symbol, rule))
       {
 	/* fprintf(stderr, "derived_string: applying rule \"%s\"\n", rule->name); */
 	ti_list = transsys_instance_list(source_symbol, rule);
-	target_symbol = evaluate_production_list(lsys, rule->rhs->production_list, ti_list);
+	target_symbol = evaluate_production_list(lstr, rule->rhs->production_list, ti_list);
 	free_transsys_instance_list(ti_list);
 	break;
       }
@@ -243,7 +277,7 @@ SYMBOL_INSTANCE *derived_string(const LSYS *lsys, const SYMBOL_INSTANCE *source_
     if (target_symbol)
     {
       if (target_tail == NULL)
-	target_string = target_symbol;
+	dstr->symbol = target_symbol;
       else
 	target_tail->next = target_symbol;
       for (target_tail = target_symbol; target_tail->next; target_tail = target_tail->next)
@@ -255,6 +289,6 @@ SYMBOL_INSTANCE *derived_string(const LSYS *lsys, const SYMBOL_INSTANCE *source_
 	fprintf(stderr, "derived_string: failed to produce target symbol\n");
     }
   }
-  return (target_string);
+  return (dstr);
 }
 

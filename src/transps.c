@@ -4,8 +4,11 @@
  * $Id$
  *
  * $Log$
- * Revision 1.1  2005/03/08 17:12:02  jtk
- * Initial revision
+ * Revision 1.2  2005/03/29 17:33:02  jtk
+ * introduced arrayed lsys string, with symbol distance matrix.
+ *
+ * Revision 1.1.1.1  2005/03/08 17:12:02  jtk
+ * new cvs after loss at INB
  *
  * Revision 1.5  2003/02/26 17:50:04  kim
  * fixed bug of returning success when parse errors occurred
@@ -25,6 +28,7 @@
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "trconfig.h"
 #include "trtypes.h"

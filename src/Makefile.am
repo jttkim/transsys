@@ -10,8 +10,11 @@
 
 # $Id$
 # $Log$
-# Revision 1.1  2005/03/08 17:12:02  jtk
-# Initial revision
+# Revision 1.2  2005/03/29 17:33:02  jtk
+# introduced arrayed lsys string, with symbol distance matrix.
+#
+# Revision 1.1.1.1  2005/03/08 17:12:02  jtk
+# new cvs after loss at INB
 #
 # Revision 1.6  2004/04/13 17:36:37  kim
 # some changes to adapt to new automake / autoconf under Debian
@@ -47,6 +50,8 @@ ltrcheck_SOURCES = ltrcheck.c
 ltransps_SOURCES = ltransps.c
 ltransgl_SOURCES = ltransgl.c
 LDADD = libtrans.a
+
+AM_CFLAGS = -Wall -pedantic -g
 
 CLEANFILES = *~
 DISTCLEANFILES = trlex.c trbison.h trbison.c

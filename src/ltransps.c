@@ -4,8 +4,11 @@
  * $Id$
  *
  * $Log$
- * Revision 1.1  2005/03/08 17:12:02  jtk
- * Initial revision
+ * Revision 1.2  2005/03/29 17:33:02  jtk
+ * introduced arrayed lsys string, with symbol distance matrix.
+ *
+ * Revision 1.1.1.1  2005/03/08 17:12:02  jtk
+ * new cvs after loss at INB
  *
  * Revision 1.2  2003/02/26 17:50:04  kim
  * fixed bug of returning success when parse errors occurred
@@ -39,7 +42,7 @@ int main(int argc, char **argv)
   int num_derivations = 3;
   double scale = 1.0;
   POSTSCRIPT_STYLE style;
-  SYMBOL_INSTANCE *symbol_string, *dstring;
+  LSYS_STRING *lstr, *dstring;
 
   set_default_postscript_style(0, NULL, &style);
   while ((oc = getopt(argc, argv, "n:s:w:vh")) != -1)
@@ -110,8 +113,8 @@ int main(int argc, char **argv)
       fclose(outfile);
     exit(EXIT_FAILURE);
   }
-  symbol_string = axiom_string(parsed_lsys);
-  if (symbol_string == NULL)
+  lstr = axiom_string(parsed_lsys);
+  if (lstr == NULL)
   {
     fprintf(stderr, "ltransps: axiom_string() returned NULL\n");
     exit(EXIT_FAILURE);
@@ -122,27 +125,27 @@ int main(int argc, char **argv)
     if (verbose)
     {
       fprintf(stderr, "***** step %d *****\n", style.page_num);
-      fprint_symbol_instance_list(stderr, symbol_string, "\n");
+      fprint_symbol_instance_list(stderr, lstr->symbol, "\n");
       fprintf(stderr, "\n");
     }
-    postscript_symbol_string(outfile, symbol_string, &style, scale);
-    string_transsys_expression(symbol_string);
-    dstring = derived_string(parsed_lsys, symbol_string);
-    free_symbol_instance_list(symbol_string);
-    symbol_string = dstring;
+    postscript_symbol_string(outfile, lstr->symbol, &style, scale);
+    lsys_string_expression(lstr);
+    dstring = derived_string(lstr);
+    free_lsys_string(lstr);
+    lstr = dstring;
     if (dstring == NULL)
     {
       fprintf(stderr, "ltransps: derived_string() returned NULL\n");
       break;
     }
   }
-  if (symbol_string)
+  if (lstr)
   {
-    postscript_symbol_string(outfile, symbol_string, &style, scale);
+    postscript_symbol_string(outfile, lstr->symbol, &style, scale);
     if (verbose)
     {
       fprintf(stderr, "***** step %d *****\n", style.page_num);
-      fprint_symbol_instance_list(stderr, symbol_string, "\n");
+      fprint_symbol_instance_list(stderr, lstr->symbol, "\n");
       fprintf(stderr, "\n");
     }
   }

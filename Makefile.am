@@ -10,8 +10,11 @@
 
 # $Id$
 # $Log$
-# Revision 1.1  2005/03/08 17:12:01  jtk
-# Initial revision
+# Revision 1.2  2005/03/29 17:32:39  jtk
+# introduced arrayed lsys string, with symbol distance matrix.
+#
+# Revision 1.1.1.1  2005/03/08 17:12:01  jtk
+# new cvs after loss at INB
 #
 # Revision 1.4  2003/01/28 21:12:25  kim
 # initial toolbox assembly
@@ -22,6 +25,8 @@
 # Revision 1.1  2001/04/04 11:11:42  kim
 # Initial addition of files previously not CVS managed
 #
+
+AM_CFLAGS = -Wall -pedantic
 
 EXTRA_DIST = BUGS
 
