@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.4  2005/04/04 21:30:54  jtk
+ * minor changes / comments
+ *
  * Revision 1.3  2005/04/04 09:39:54  jtk
  * added lsys capabilities to transexpr, various small changes
  *
@@ -85,6 +88,7 @@ typedef struct
 
 
 char *prgname = "ltransgl";
+int verbose = 0;
 
 static MOUSE_BLOCK mouse_block = { 0, GLUT_UP, 0, 0, 0 };
 
@@ -303,6 +307,10 @@ static void print_lstr_block(FILE *f, const LSTR_BLOCK *lstr_block)
   {
     fprintf(f, "current string is #%d:\n", lstr_block->string_index);
     fprint_lsys_string(f, lstr_block->lstr[lstr_block->string_index], "\n");
+    if (verbose)
+    {
+      fprint_lsys_string_distances(f, lstr_block->lstr[lstr_block->string_index]);
+    }
   }
 }
 
@@ -524,7 +532,10 @@ static int ltgl_graphics_primitive(const GRAPHICS_PRIMITIVE *gp, const TRANSSYS_
     gluQuadricOrientation(glu_quadric_object, GLU_INSIDE);
     gluDisk(glu_quadric_object, 0.0, arg[0], 10, 1);
     gluQuadricOrientation(glu_quadric_object, GLU_OUTSIDE);
-    gluCylinder(glu_quadric_object, arg[0], arg[0], arg[1], 10, 1);
+    if (arg[1] > 0.0)
+    {
+      gluCylinder(glu_quadric_object, arg[0], arg[0], arg[1], 10, 1);
+    }
     glTranslatef(0.0, 0.0, arg[1]);
     gluDisk(glu_quadric_object, 0.0, arg[0], 10, 1);
     glPopMatrix();
@@ -712,6 +723,8 @@ static void ltgl_key(unsigned char key, int x, int y)
     write_ppm();
   else if (key == '?')
     print_globals(stdout);
+  else if (key == 'v')
+    verbose = !verbose;
   else
   {
     if (isprint(key))
@@ -877,7 +890,7 @@ static void ltgl_display(void)
 
 static void glu_quadric_error(GLenum horror)
 {
-  fprintf(stderr, "GLU quadric error: %s\n", gluErrorString(horror));
+  fprintf(stderr, "GLU quadric error #%d: %s\n", (int) horror, gluErrorString(horror));
 }
 
 
@@ -942,7 +955,6 @@ int main(int argc, char **argv)
   extern int optind;
   char *outfile_name = NULL;
   FILE *outfile;
-  int verbose = 0;
   int yyreturn;
   double triple[3];
   int num_initial_derivations = 0;

@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.3  2005/04/04 21:30:54  jtk
+ * minor changes / comments
+ *
  * Revision 1.2  2005/03/29 17:33:02  jtk
  * introduced arrayed lsys string, with symbol distance matrix.
  *
@@ -301,3 +304,6 @@ int dot_transsys(FILE *f, const TRANSSYS *transsys)
   fprintf(f, "}\n");
   return (0);
 }
+
+
+/* IMPLEMENTME: dot output for diffusion range graph */
