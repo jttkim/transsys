@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.3  2005/03/30 09:51:02  jtk
+ * fixed free_lsys_string to actually free the string itself
+ *
  * Revision 1.2  2005/03/29 17:33:02  jtk
  * introduced arrayed lsys string, with symbol distance matrix.
  *
@@ -1458,6 +1461,7 @@ void free_lsys_string(LSYS_STRING *lstr)
     free_symbol_instance_list(lstr->symbol);
   }
   free_lsys_string_distance(lstr);
+  free(lstr);
 }
 
 
