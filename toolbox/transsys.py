@@ -3,6 +3,9 @@
 # $Id$
 
 # $Log$
+# Revision 1.6  2005/04/06 21:04:54  jtk
+# minor fixes
+#
 # Revision 1.5  2005/04/06 09:54:38  jtk
 # debugged transdisrupt.py
 #
@@ -513,9 +516,11 @@ class PromoterElementRepress(PromoterElementLink) :
 
 class Factor :
 
-  def __init__(self, name, decay_expr, diffusibility_expr = None, dot_attrs = None) :
+  def __init__(self, name, decay_expr = None, diffusibility_expr = None, dot_attrs = None) :
     self.name = name
     self.decay_expression = decay_expr
+    if decay_expr is None :
+      self.decay_expression = ExpressionNodeValue(1.0)
     self.diffusibility_expression = diffusibility_expr
     if diffusibility_expr is None :
       self.diffusibility_expression = ExpressionNodeValue(1.0)
@@ -626,7 +631,11 @@ class Gene :
 
 
 class TranssysProgram :
-
+  """Note: unresolved_copy returns a TranssysProgram instance, also for
+classes derived from TranssysProgram. If unresolved_copy for such classes
+is required to return the derived class, these classes will have to
+re-implement this method.
+  """
   def __init__(self, name, factor_list = None, gene_list = None, resolve = True) :
     self.name = name
     if factor_list is None :
@@ -732,7 +741,10 @@ gene names and factor names can be altered without changing the network."""
     gene_list = []
     for g in self.gene_list :
       gene_list.append(g.unresolved_copy())
-    return self.__class__(self.name, factor_list, gene_list, False)
+    # since we don't know what might be derived from TranssysProgram and what
+    # constructors they may have, we don't use the self.__class__() constructor
+    # call here.
+    return TranssysProgram(self.name, factor_list, gene_list, False)
 
 
   def encoding_gene_list(self, factor_name) :
@@ -849,7 +861,7 @@ class TranssysInstance :
       glue = ' '
     cmd = cmd + ' -F \'%s\'' % s
     if lsys_lines is not None :
-      cmd = cmd + ' -l'
+      cmd = cmd + ' -l -t \'%s\'' % self.transsys_program.name
     if lsys_symbol is not None :
       cmd = cmd + ' -y \'%s\'' % lsys_symbol
     # sys.stderr.write('%s\n' % cmd)
@@ -885,6 +897,9 @@ class TranssysInstance :
     status = p.wait()
     if status != 0 :
       errmsg = p.childerr.readline()
+      while errmsg :
+        sys.stderr.write(errmsg)
+        errmsg = p.childerr.readline()
       raise StandardError, 'TranssysInstance::time_series: transexpr exit status %d ("%s")' % (status, errmsg.strip())
     os.wait()
     return tseries_dict
@@ -897,6 +912,7 @@ class DotParameters :
     self.display_factors = 1
     self.activate_arrowhead = 'normal'
     self.repress_arrowhead = 'tee'
+
 
 class CyclicSequence :
   """A convenience class for use with RandomTranssysParameters. Implements an
@@ -1706,7 +1722,7 @@ class TranssysProgramParser :
 
   # kludges for handling lsys code in lists of lines
 
-  def lsys_lines(self, f) :
+  def lsys_lines(self) :
     """read lsys code lines (no parsing)"""
     return self.scanner.get_lines()
 
