@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# $Id$
+
+# $Log$
+# Revision 1.1  2005/03/29 17:33:54  jtk
+# convenience script maintainer_start for aclocal autoconf, autoheader, automake
+#
+
+
+aclocal
+autoconf
+autoheader
+automake -a
+
+# this should become a --with-memdebug thing perhaps...
+# CFLAGS="-DMEMDEBUG -I${HOME}/include" LDFLAGS="-L${HOME}/lib" LIBS=-lmemdebug sandconf
