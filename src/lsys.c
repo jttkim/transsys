@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.6  2005/04/04 21:30:45  jtk
+ * fixed diffusion bug (index error)
+ *
  * Revision 1.5  2005/03/31 16:07:36  jtk
  * finished (initial) implementation of lsys diffusion
  *
@@ -31,6 +34,9 @@
 
 #include "trconfig.h"
 #include "transsys.h"
+
+
+int tolerate_negative_concentrations = 0;
 
 
 static void free_transsys_instance_list(const TRANSSYS_INSTANCE **ti_list)
@@ -291,15 +297,15 @@ static void diffusion_weights(const LSYS_STRING *lstr, int i, double *w)
 
   for (j = 0; j < lstr->num_symbols; j++)
   {
-    if ((lstr->symbol[i].transsys_instance.transsys == lstr->symbol[j].transsys_instance.transsys)
+    if ((i != j) && (lstr->symbol[i].transsys_instance.transsys == lstr->symbol[j].transsys_instance.transsys)
 	&& within_diffusion_range(lstr, i, j))
     {
-      w[i] = 1.0;
+      w[j] = 1.0;
       wsum += 1.0;
     }
     else
     {
-      w[i] = 0.0;
+      w[j] = 0.0;
     }
   }
   for (j = 0; j < lstr->num_symbols; j++)
@@ -346,8 +352,11 @@ int lsys_string_diffusion(LSYS_STRING *lstr)
 	      && within_diffusion_range(lstr, i, j))
 	  {
 	    dc = (ti->factor_concentration[f] - lstr->symbol[j].transsys_instance.factor_concentration[f]) * diffusibility * w[j];
-	    dcsum += dc;
-	    lstr->symbol[j].transsys_instance.new_concentration[f] += dc;
+	    if (dc > 0)
+	    {
+	      dcsum += dc;
+	      lstr->symbol[j].transsys_instance.new_concentration[f] += dc;
+	    }
 	  }
 	}
 	ti->new_concentration[f] -= dcsum;
@@ -367,6 +376,13 @@ int lsys_string_diffusion(LSYS_STRING *lstr)
   free(w);
   return (0);
 }
+
+
+/*
+ * IMPLEMENTME: a function to compute the total amount (sum of concentrations)
+ * in an lsys string. To be used to check correct implementation of diffusion
+ * (conservation)
+ */
 
 
 int compute_distance_matrix(LSYS_STRING *lstr, const LSYS_STRING *predecessor)
