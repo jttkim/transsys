@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.4  2005/03/31 16:07:36  jtk
+ * finished (initial) implementation of lsys diffusion
+ *
  * Revision 1.3  2005/03/30 18:30:27  jtk
  * progressed transition to arrayred lsys strings
  * introduced lsys string distance matrices
@@ -43,23 +46,27 @@ int main(int argc, char **argv)
   FILE *outfile;
   int yyreturn;
   int num_derivations = 10, i;
-  int process_transsys = 0;
+  int process_transsys = 1, process_diffusion = 1;
   LSYS_STRING *lstr, *dstring;
   LSYS *ls;
 
-  while ((oc = getopt(argc, argv, "n:th")) != -1)
+  while ((oc = getopt(argc, argv, "d:DXh")) != -1)
   {
     switch(oc)
     {
-    case 't':
-      process_transsys = 1;
+    case 'X':
+      process_transsys = 0;
       break;
-    case 'n':
+    case 'D':
+      process_diffusion = 0;
+      break;
+    case 'd':
       num_derivations = strtol(optarg, NULL, 10);
       break;
     case 'h':
-      printf("-n <num>: set number of derivations\n");
-      printf("-t: activate transsys between derivations\n");
+      printf("-d <num>: set number of derivations\n");
+      printf("-X: suppress gene expression (and factor decay) between derivations\n");
+      printf("-D: suppress diffusion of factors between derivations\n");
       printf("-h: print this help and exit\n");
       exit(EXIT_SUCCESS);
     }
@@ -122,6 +129,8 @@ int main(int argc, char **argv)
 	fprintf(outfile, "\n");
 	if (process_transsys)
 	  lsys_string_expression(lstr);
+	if (process_diffusion)
+	  lsys_string_diffusion(lstr);
 	dstring = derived_string(lstr);
 	free_lsys_string(lstr);
 	lstr = dstring;

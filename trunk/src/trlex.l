@@ -6,8 +6,11 @@
  * $Id$
  *
  * $Log$
- * Revision 1.1  2005/03/08 17:12:02  jtk
- * Initial revision
+ * Revision 1.2  2005/03/31 16:07:36  jtk
+ * finished (initial) implementation of lsys diffusion
+ *
+ * Revision 1.1.1.1  2005/03/08 17:12:02  jtk
+ * new cvs after loss at INB
  *
  * Revision 1.1  2001/04/04 11:12:00  kim
  * Initial addition of files previously not CVS managed
@@ -42,6 +45,7 @@ random			{ return (RANDOM); }
 transsys		{ return (TRANSSYS_DEF); }
 decay			{ return (DECAY_DEF); }
 diffusibility		{ return (DIFFUSIBILITY_DEF); }
+diffusionrange		{ return (DIFFUSIONRANGE_DEF); }
 lsys			{ return (LSYS_DEF); }
 symbol			{ return (SYMBOL_DEF); }
 axiom			{ return (AXIOM_DEF); }
