@@ -13,6 +13,9 @@
 # $Id$
 
 # $Log$
+# Revision 1.3  2005/04/06 21:02:08  jtk
+# added transdisrupt.py to installation target
+#
 # Revision 1.2  2005/04/04 21:31:44  jtk
 # added random_transsys_lsys to Makefile.am
 #
@@ -54,7 +57,7 @@
 # initial toolbox assembly
 #
 
-PYTHONMODULES	= transsys.py arrtool.py transrnd.py regstruct.py
+PYTHONMODULES	= transsys.py arrtool.py transrnd.py regstruct.py transdisrupt.py
 PYTHONSCRIPTS	= random_transsys random_transsys_lsys transarray regstruct_transsys regstruct_transarray mutant_transsys get_overlap
 RPACKAGE	= transarr
 
