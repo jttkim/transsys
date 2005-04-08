@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.6  2005/04/08 20:04:28  jtk
+ * added missing options in help output
+ *
  * Revision 1.5  2005/04/05 10:12:39  jtk
  * made diffusion consistent (no oscillation due to overshooting), small fixes
  *
@@ -480,7 +483,9 @@ int main(int argc, char **argv)
       printf("-d <intnum>: specify period of output (i.e. 0, d, 2*d etc. will be printed)\n");
       printf("-F <string>: specify initial factor concentrations (ws separated)\n");
       printf("-n <num>: specify number of time steps\n");
+      printf("-r <num>: specify number of repeats\n");
       printf("-t <name>: specify name of transsys to process\n");
+      printf("-s <num>: specify random seed\n");
       printf("-y <name>: specify name of symbol to be monitored (lsys mode)\n");
       printf("-h: print this help and exit\n");
       exit(EXIT_SUCCESS);
