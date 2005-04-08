@@ -3,6 +3,9 @@
 # $Id$
 
 # $Log$
+# Revision 1.7  2005/04/08 20:05:18  jtk
+# added indegree and outdegree methods to TranssysProgram
+#
 # Revision 1.6  2005/04/06 21:04:54  jtk
 # minor fixes
 #
@@ -791,6 +794,21 @@ gene names and factor names can be altered without changing the network."""
       if factor in gene.regulating_factors() :
         rgenes.append(gene)
     return rgenes
+
+
+  def indegree_list(self) :
+    dlist = []
+    for gene in self.gene_list :
+      dlist.append(len(gene.regulating_factors()))
+    return dlist
+
+
+  def outdegree_list(self) :
+    dlist = []
+    for gene in self.gene_list :
+      factor = gene.product
+      dlist.append(len(self.regulated_genes(factor)))
+    return dlist
 
 
   def merge(self, other) :
