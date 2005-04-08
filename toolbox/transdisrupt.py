@@ -259,7 +259,8 @@ the scorefunc on the promoter element. All other entries are None.
           #
           # FIXME ??? what's wrong here?
           if adj_matrix.get_element(fj, fi) is not None :
-            errlogger.message('score_matrix_error: multiple links %s --> %s' % (fj, fi), 0)
+            # perhaps, the bug was relying on this global ErrorLogger instance...?
+            # errlogger.message('score_matrix_error: multiple links %s --> %s' % (fj, fi), 0)
             raise StandardError, 'score_matrix: multiple links %s --> %s' % (fj, fi)
           #
           #         
@@ -309,10 +310,10 @@ def adjacency_matrix_scorefunc(promoter) :
     elif isinstance(promoter, transsys.PromoterElementRepress) :
       return 1
     else :
-      errlogger.message('adjacency_error: unknown PromoterElementLink subclass "%s"' % promoter.__class__.__name__ , 0)
+      # errlogger.message('adjacency_error: unknown PromoterElementLink subclass "%s"' % promoter.__class__.__name__ , 0)
       raise StandardError, 'adjacency_matrix_scorefunc: unknown PromoterElementLink subclass "%s"' % promoter.__class__.__name__
   else :
-    errlogger.message('adjacency_error: unknown PromoterElement class "%s"' % promoter.__class__.__name__ , 0)
+    # errlogger.message('adjacency_error: unknown PromoterElement class "%s"' % promoter.__class__.__name__ , 0)
     raise StandardError, 'adjacency_matrix_scorefunc: unknown PromoterElement class "%s"' % promoter.__class__.__name__
 
 
@@ -381,7 +382,7 @@ def reconstructed_adjacency_matrix(matrix_E, gamma, sigma) :
     for fname in matrix_E.get_fnamelist() :
       sigma[fname] = 1.0
   if len(sigma) != len(matrix_E.get_fnamelist()) :
-    errlogger.message('reconstructed_adjacency_matrix: sigma_error: invalid size ',errorlogger_verbositylevel)
+    # errlogger.message('reconstructed_adjacency_matrix: sigma_error: invalid size ',errorlogger_verbositylevel)
     raise StandardError, 'matrix_D: invalid size of vector sigma'
   matrix_D = copy.deepcopy(matrix_E)
   matrix_D.name = 'matrix_D'
@@ -524,7 +525,8 @@ def logratio_matrix(ref_conc_matrix, conc_matrix) :
           overflows = overflows + 1
           matrix_E.set_element(fi, fj, float(-sys.maxint))
   if overflows > 0 :
-    errlogger.message('number of overflows, when calculating the logarithm: '+str(overflows), errorlogger_verbositylevel)
+    # errlogger.message('number of overflows, when calculating the logarithm: '+str(overflows), errorlogger_verbositylevel)
+    sys.stderr.write('transdisrupt.logratio_matrix: number of overflows, when calculating the logarithm: %d\n' % overflows)
   return matrix_E
 
 
