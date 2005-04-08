@@ -3,6 +3,9 @@
 # $Id$
 
 # $Log$
+# Revision 1.8  2005/04/08 21:07:58  jtk
+# fixed random transsys generation to prevent generation of multiple links
+#
 # Revision 1.7  2005/04/08 20:05:18  jtk
 # added indegree and outdegree methods to TranssysProgram
 #
@@ -1315,6 +1318,11 @@ function."""
       for i in xrange(num_edges) :
         g0 = wheel.pocket()
         g1 = wheel.pocket()
+        # FIXME: this loop may run very often or even infinitely often when
+        # generating dense graphs
+        while g1 in linklist[g0] or -g1 in linklist[g0] :
+          g0 = wheel.pocket()
+          g1 = wheel.pocket()
         if rng.random_range(2) :
           linklist[g0].append(-g1 - 1)
         else :
@@ -1322,12 +1330,18 @@ function."""
       return linklist
 
     def random_uniform_linklist(num_genes, num_edges, rng) :
+      all_links = []
+      for i in xrange(num_genes) :
+        for j in xrange(num_genes) :
+          if i != j :
+            all_links.append((i, j))
       linklist = []
       for i in xrange(num_genes) :
         linklist.append([])
       for i in xrange(num_edges) :
-        g0 = rng.random_range(num_genes)
-        g1 = rng.random_range(num_genes)
+        r = rng.random_range(len(all_links))
+        g0, g1 = all_links[r]
+        del all_links[r]
         if rng.random_range(2) :
           linklist[g0].append(-g1 - 1)
         else :
