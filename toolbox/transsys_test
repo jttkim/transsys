@@ -5,6 +5,32 @@ import sys
 import transsys
 
 
+def degree_distribution(l) :
+  d = []
+  for x in l :
+    while len(d) < x + 1 :
+      d.append(0)
+    d[x] = d[x] + 1
+  return d
+
+
+f = open(sys.argv[1], 'r')
+p = transsys.TranssysProgramParser(f)
+tp = p.parse_transsys()
+di = tp.indegree_list()
+do = tp.outdegree_list()
+ddi = degree_distribution(di)
+ddo = degree_distribution(do)
+f = open('ddi.plt', 'w')
+for i in xrange(len(ddi)) :
+  f.write('%d %d\n' % (i, ddi[i]))
+f.close()
+f = open('ddo.plt', 'w')
+for i in xrange(len(ddo)) :
+  f.write('%d %d\n' % (i, ddo[i]))
+f.close()
+sys.exit()
+
 f = open('mhcells.trl', 'r')
 p = transsys.TranssysProgramParser(f)
 tp = p.parse_transsys()

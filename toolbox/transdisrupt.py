@@ -413,7 +413,7 @@ def referencestate_concentration_matrix(network, timesteps) :
   """
   gfd = gene_factor_dictionary(network)  
   ti = transsys.TranssysInstance(network)
-  tseries = ti.time_series(timesteps, 1)
+  tseries = ti.time_series(timesteps, timesteps - 1)
   reference_state = tseries[max(tseries.keys())]
   ref_conc_matrix = ExpressionSimilarityMatrix('ref_conc_matrix', gfd )
   for fi in network.factor_names() :
@@ -445,7 +445,7 @@ carried out for timesteps timesteps.
     knockout_network.do_knockout(knockout_network.find_gene_index(gi))
     initial_state = ref_state.perturbed_copy(identity_perturber)
     initial_state.transsys_program = knockout_network
-    m_tseries = initial_state.time_series(timesteps, 1)
+    m_tseries = initial_state.time_series(timesteps, timesteps - 1)
     this_mutant = m_tseries[max(m_tseries.keys())]
     for fi in wildtype_factor_names :
       # expression of fi is affected by knockout of gi as quantified by concentration of fi
@@ -477,8 +477,7 @@ def knockout_concentration_matrix_lsys(knockout_network, aux_network, lsys_lines
       merged_network.merge(knockout_network)
     # print merged_network
     initial_state = transsys.TranssysInstance(merged_network)
-    m_tseries = initial_state.time_series(timesteps, 1, lsys_lines)
-    # FIXME: all the intervening entries in the time series are not needed...
+    m_tseries = initial_state.time_series(timesteps, timesteps - 1, lsys_lines)
     this_mutant = m_tseries[max(m_tseries.keys())]
     for fi in wildtype_factor_names :
       # expression of fi is affected by knockout of gi as quantified by concentration of fi
