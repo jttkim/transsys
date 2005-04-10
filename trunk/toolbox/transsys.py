@@ -3,6 +3,9 @@
 # $Id$
 
 # $Log$
+# Revision 1.9  2005/04/10 19:38:00  jtk
+# fixed powerlaw_linkist off by one bug
+#
 # Revision 1.8  2005/04/08 21:07:58  jtk
 # fixed random transsys generation to prevent generation of multiple links
 #
@@ -1320,7 +1323,7 @@ function."""
         g1 = wheel.pocket()
         # FIXME: this loop may run very often or even infinitely often when
         # generating dense graphs
-        while g1 in linklist[g0] or -g1 in linklist[g0] :
+        while g1 in linklist[g0] or -g1 - 1 in linklist[g0] :
           g0 = wheel.pocket()
           g1 = wheel.pocket()
         if rng.random_range(2) :
