@@ -1,0 +1,21 @@
+transsys example
+{
+  factor F1
+  {
+    decay: 1;
+    diffusibility: 1;
+  }
+
+  gene g1
+  {
+    promoter
+    {
+      constitutive: 1;
+    }
+    product
+    {
+      default: F1;
+    }
+  }
+}
+

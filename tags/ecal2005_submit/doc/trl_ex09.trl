@@ -1,0 +1,7 @@
+    meristem
+    {
+      move(0.2);
+      color(0.0, 1.0, 0.0);
+      sphere(0.2);
+      move(0.2);
+    }

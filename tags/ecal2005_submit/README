@@ -1,0 +1,14 @@
+This is the initial release of transsys / ltranssys. This release just
+provides the core software and is quite incomplete in many respects.
+Please check http://www.inb.mu-luebeck.de/transsys/ for ongoing
+development, upcoming documentation, and (hopefully much) more.
+
+This release is not free software, see the file COPYING. (This file
+does not contain a copy of the GPL, as you might expect.)
+
+See the file INSTALL for generic compilation and installation
+instructions.
+
+For reporting bugs, problems, suggestions and any other information,
+please send email kim@inb.mu-luebeck.de
+

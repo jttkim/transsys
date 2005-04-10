@@ -1,0 +1,9 @@
+lsys example
+{
+  symbol shoot_piece;
+
+  rule doubleshoot
+  {
+    shoot_piece --> shoot_piece shoot_piece
+  }
+}

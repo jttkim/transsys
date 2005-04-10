@@ -1,0 +1,77 @@
+#!/usr/bin/env python
+
+import sys
+import copy
+import os
+
+import transsys
+import transdisrupt
+
+
+def read_lines(fname) :
+  f = open(fname, 'r')
+  lines = []
+  l = f.readline()
+  while l :
+    lines.append(l[:-1])
+    l = f.readline()
+  f.close()
+  return lines
+
+
+def read_transsys(fname) :
+  f = open(fname, 'r')
+  p = transsys.TranssysProgramParser(f)
+  tp = p.parse_transsys()
+  f.close()
+  return tp
+
+
+def dotgraph(basename, tp, dp) :
+  dotname = '%s.dot' % basename
+  psname = '%s.ps' % basename
+  f = open(dotname, 'w')
+  tp.write_dot(f, dp)
+  f.close()
+  cmd = 'neato -Tps -o %s %s' % (psname, dotname)
+  os.system(cmd)
+
+
+timesteps = 100
+gamma = 16.0
+tname = 'tdis_simple'
+me_fmt = '% 10.4g'
+
+tp = read_transsys('%s.tra' % tname)
+pm = transdisrupt.pathscore_matrix(tp, transdisrupt.link_scorefunc, None)
+print pm
+aux = read_transsys('foobar.tra')
+lsys_lines = read_lines('baz.trl')
+dp = transsys.DotParameters()
+dp.display_factors = 0
+tp.dot_positions_circle(10.0, 10.0, 5.0)
+dotgraph(tname, tp, dp)
+refconc = transdisrupt.referencestate_concentration_matrix(copy.deepcopy(tp), timesteps)
+print refconc.__str__(element_fmt = me_fmt)
+ktp = transdisrupt.KnockoutTranssysProgram(tp)
+knockconc = transdisrupt.knockout_concentration_matrix_lsys(ktp, aux, lsys_lines, timesteps)
+print knockconc.__str__(element_fmt = me_fmt)
+logratio = transdisrupt.logratio_matrix(refconc, knockconc)
+print logratio.__str__(element_fmt = me_fmt)
+reconst_adj = transdisrupt.reconstructed_adjacency_matrix(logratio, gamma, None)
+tp_rec = transdisrupt.create_disruption_network('%s_rec' % tname, reconst_adj, tp.gene_names(), 0.2, 0.1, 1.0, 0.4711)
+tp_rec.dot_positions_circle(10.0, 10.0, 5.0)
+shared, only_tp, only_rec = transdisrupt.overlaps(tp, tp_rec)
+dotgraph('%s_s' % tname, tp, dp)
+dotgraph('%s_rec_s' % tname, tp_rec, dp)
+n = tp.num_genes()
+num_shared_edges = len(shared)
+num_only_tp = len(only_tp)
+num_only_rec = len(only_rec)
+num_potential_edges = n * n
+num_edges = num_shared_edges + num_only_tp
+num_nonedges = num_potential_edges - num_shared_edges - num_only_tp
+sensitivity = float(num_shared_edges) / float(num_edges)
+specificity = float(num_nonedges - num_only_rec) / float(num_nonedges)
+print 'true: %d original edges, %d reconstructed, %d missed, %d false positives' % (num_edges, num_shared_edges, num_only_tp, num_only_rec)
+print 'sensitivity = %f, specificity = %f' % (sensitivity, specificity)

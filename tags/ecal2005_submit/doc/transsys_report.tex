@@ -1,0 +1,925 @@
+% Copyright (C) 2001 Jan T. Kim <kim@inb.mu-luebeck.de>
+
+% $Id$
+% $Log$
+% Revision 1.1  2005/03/08 17:12:01  jtk
+% Initial revision
+%
+% Revision 1.5  2003/01/28 16:59:19  kim
+% separated makefile for transsys_report from Makefile.am, simplified things
+%
+% Revision 1.4  2002/01/25 03:36:20  kim
+% Wrote some paragraphs in transsys_report, hopefully removed necessity
+%     of generating GL graphics after unpacking from archive
+%
+% Revision 1.2  2001/04/05 17:24:27  kim
+% Added examples (partially finished only)
+%
+% Revision 1.1  2001/04/05 15:41:39  kim
+% moved transsys.tex to transsys_report.tex
+%
+% Revision 1.1  2001/04/04 11:11:55  kim
+% Initial addition of files previously not CVS managed
+%
+
+\documentclass[12pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage{times}
+\usepackage[english]{babel}
+%\usepackage{cover2e}
+\usepackage{alltt}
+\usepackage{moreverb}
+\usepackage{graphicx}
+
+
+\newcommand{\transsys}{\texttt{transsys}}
+\newcommand{\ltranssys}{\texttt{L-}\transsys}
+\newcommand{\codeword}[1]{\texttt{#1}}
+\newcommand{\amax}{\ensuremath{a_{\mathrm{max}}}}
+\newcommand{\aspec}{\ensuremath{a_{\mathrm{spec}}}}
+\newcommand{\factorset}{\ensuremath{\mathcal{F}}}
+\newcommand{\factorsym}[1]{\ensuremath{\mathtt{#1}}}
+\newcommand{\factorvar}[1]{\ensuremath{\mathit{#1}}}
+\newcommand{\factorconc}[1]{\ensuremath{c_{#1}}}
+\newcommand{\concset}{\ensuremath{\mathcal{C}}}
+\newcommand{\geneset}{\ensuremath{\mathcal{G}}}
+\newcommand{\genesym}[1]{\ensuremath{\mathtt{#1}}}
+\newcommand{\genevar}[1]{\ensuremath{\mathit{#1}}}
+\newcommand{\encodingset}[1]{\ensuremath{\mathcal{E}_{#1}}}
+\newcommand{\decrate}[1]{\ensuremath{r_{#1}}}
+\newcommand{\diffrate}[1]{\ensuremath{d_{#1}}}
+\newcommand{\newterm}[1]{\textsl{#1}}
+
+\newcommand{\keyword}[1]{\textbf{\texttt{#1}}}
+\newcommand{\prgname}[1]{\texttt{#1}}
+\newcommand{\cmdline}[2][\% ]{\texttt{#1\textbf{#2}}}
+\newcommand{\keyboardin}[1]{\fbox{\texttt{#1}}}
+
+
+\begin{document}
+
+%\Number{unassigned}
+\title{\transsys{} User Manual}
+\author{Jan T.\ Kim \\[\bigskipamount]
+  \texttt{kim@inb.uni-luebeck.de} \\[\bigskipamount]
+  Institute for Neuro- und Bioinformatics \\
+  Seelandstr.\ 1a \\
+  D-23569 L\"{u}beck, Germany}
+%\Authors{Jan T.\ Kim}
+%\Name{kim}
+%\Phone{3909-546}
+%\Fax{3909-545}
+%\makecover
+\maketitle
+
+\section{Introduction}
+
+\subsection{Motivation}
+
+During recent years, gene regulation has become a major focus in the
+molecular biosciences. Many important biological processes, such as
+cell differentiation, morphogenesis, diseases and responses to drug
+administration, have been found to be determined by networks of
+regulatory genes at the molecular level. However, there is a lack of
+generic and theoretical understanding of regulatory networks. Progress
+in this area would benefit from a concise and generic representation
+of regulatory networks, rendering them accessible to theoretical,
+statistical and modelling approaches. \transsys{}, a contraction of
+"transcription factor system", is intended to be a contribution
+towards this goal.
+
+
+\subsection{Concept}
+
+Regulatory gene networks are constituted by genes encoding
+transcription factors and the encoded transcription factors which
+regulate the expression (and hence the activity) of the regulatory
+genes as well as the expression of other genes (which are sometimes
+referred to as "phenotypic realizator genes"). \transsys{} attempts to
+capture these two essential components and their interrelations. At
+the core, \transsys{} is a formal language for specifying the core
+entities constituting regulatory networks as described above. The
+\transsys{} sofware package provides a set of tools for visualizing
+and analyzing networks specified in the \transsys{} language.
+
+While a concise representation of a regulatory network may already be
+of some value for managing this type of biological information, a
+network alone is of limited use as a model of a biological system.
+Regulatory networks receive input from the biological system in which
+they are embeded. These input signals can, depending on the level of
+resolution or abstraction of the particular model, be thought of as
+other regulatory networks, terminals of intracellular signal cascades,
+intercellular signals, or environmental signals. Moreover, there are
+feedback loops between the regulatory network and the pattern
+formation and morphogenesis processes which unfolds in response to
+activities within the network.
+
+The major goal of \transsys{} is to capture the integration of
+regulatory networks within such biological contexts, as these contexts
+can be assumed to qualitatively determine the dynamics and phenomena
+emerging within a network, and moreover, the biological sense made by
+regulatory networks can only be captured by integratively
+(holistically?) modelling a network along with its biological
+context. To achieve this goal, \transsys{} is designed as a
+component which conceptually can be embedded within a more extensive
+modelling context. As a first case study, \transsys{} has been
+combined with the Lindenmayer system formalism. The resulting model,
+labelled \ltranssys{}, is described in the last part of this report.
+
+As the modelling level of \transsys{} is the level of regulatory
+networks, surrounding levels of biological organization are not
+represented in much detail, e.g.\ because \transsys{} does not address
+the metabolic level, no attempt is made to enforce energy or mass
+conservation. The rationale for this is the observation that
+transcription factor synthesis and decay accounts for a minute
+fraction of the entire cellular metabolism.
+
+
+\section{The \transsys{} Model}
+
+Modelling with \transsys{} involves a two-stage process: Firstly, a
+\transsys{} model has to be defined. In a \transsys{} definition, the
+core elements of the regulatory network are described by a set of
+numerical properties. For factors, these properties are the decay rate
+and the diffusibility. The properties of genes are divided in a
+promoter section, specifying which factors have activating or
+repressing effects on the expression of the gene, and a product
+section, specifying which factor is encoded by the gene.
+
+Once a \transsys{} is specified, instances can be created. The
+information stored in a \transsys{} instance is an array holding the
+concentrations of the factors of the network. The factor and gene
+properties specify a procedure for updating these concentrations,
+i.e.\ for computing the factor concentrations in the next time step
+given the concentrations in the current time step. In OO parlance, the
+factor concentrations may be thought of as member variables of a
+\transsys{} instance, while the factor and gene properties specify and
+parameterize the method for simulating the internal processes taking
+place within the instance during one time step.
+
+
+\subsection{Factor Model}
+
+The properties of a factor in \transsys{} are a decay rate and a
+diffusion rate. The decay rate is a value between 0 and 1 that
+specifies how much of the total amount of a factor decays during a
+time step. The diffusion rate specifies how large a fraction of a
+factor is distributed among the neighbouring \transsys{} instances.
+Evidently, the existence of at least two instances that are coupled in
+some way is necessary in order to get any reasonable effect from
+diffusion. The details of this coupling cannot be deduced from the
+\transsys{} alone, the system relies on the context model to provide
+multiple instances and a connection graph of some kind. As a simple
+example, these can be provided by a CA.
+
+
+\subsection{Gene Model}
+
+The gene model used in \transsys{} comprises two parts, a regulatory
+block and a product block. The regulatory block describes how the
+gene's activity is affected by the various factors. The product block
+simply determines which factor is synthesized as the gene's product.
+
+
+\section{Program Overview}
+
+The \transsys{} package currently comprises these programs:
+\begin{itemize}
+\item \prgname{transcheck}: Parse \transsys{} code and write parsed
+  code into output. This is used during parser developments, to ensure
+  that all information from the code is read in as intended. However,
+  this program may also be of some use for locating errors in
+  \transsys{} code.
+\item \prgname{transexpr} Generate a time series factor
+  concentrations. Output file format is suitable for the
+  \prgname{gnuplot} program.
+\item \prgname{transps} Generate PostScript graphics of regulatory
+  networks specified as \transsys{} programs
+\item \prgname{transscatter} Produce scatter plots by starting off a
+  \transsys{} instance with random initial factor concentrations and
+  performing a given number of updates. Intended to check networks for
+  robustness and to search and characterize attractors.
+\item \prgname{ltrcheck} Perform some derivations of an \ltranssys{}
+  program and write each \ltranssys{} string to output. Used for
+  exploring, checking and debugging \ltranssys{} programs.
+\item \prgname{ltransps} Produce graphical 2D rendition of
+  \ltranssys{} run in PostScript
+\item \prgname{ltransgl} Produce 3D rendition of \ltranssys{} run
+  using OpenGL
+\end{itemize}
+
+
+\section{Examples}
+
+\subsection{Writing a \transsys{} Program}
+
+\subsubsection{The Beginning}
+
+A \transsys{} program consists of the keyword \keyword{transsys},
+followed by a name and a body which is enclosed by curly braces and
+contains the actual components forming a regulatory network. As a
+start, and to set up a framework, we'll start with an empty system,
+i.e.\ with one that does not contain any components:
+\verbatimtabinput[8]{tr_ex00.tra}
+
+
+\subsubsection{Adding a Factor}
+
+Transcription factors are specified by \keyword{factor} statements in
+the body. So, let's start filling our emtpy system by adding a factor:
+\verbatimtabinput[8]{tr_ex01.tra}
+As you see, a factor specification has the same structure as a
+\transsys{} specification: A keyword (\keyword{factor}), a name
+(\factorsym{F1}) and a block enclosed by curly braces, which is empty here
+but will be filled soon.
+
+
+\subsubsection{Adding a Gene}
+
+Our transcription factor \factorsym{F1} won't be much fun unless we also
+provide a gene encoding it. Perhaps not surprisingly, genes are also
+specified by a keyword, namely \keyword{gene}, followed by a name and
+a block:
+\verbatimtabinput[8]{tr_ex02.tra}
+
+
+\subsubsection{Trying it out}
+
+\begin{figure}
+\centerline{
+\includegraphics[width=0.45\linewidth]{tr_ex02.eps}
+\includegraphics[width=0.45\linewidth]{tr_ex04.eps}
+}
+\caption{\label{fig_onefactor}
+  Temporal dynamics of factor \factorsym{F1} with a decay rate of $1$
+  (left) and a decay rate of $0.5$ (right).
+}
+\end{figure}
+
+Our example \transsys{} program is not (yet) anything interesting as a
+biological model or a complex system. But we can use some \transsys{}
+programs on it for demonstration purposes. You can create a time
+course of the concentration of \factorsym{F1} with the command
+\begin{quote}
+\cmdline{transexpr example.tra example.plt}
+\end{quote}
+The resulting file can be plotted using \prgname{gnuplot}:
+\begin{quote}
+\cmdline{gnuplot} \\
+\cmdline[gnuplot> ]{plot 'example.plt' using 1:2 with lines}
+\end{quote}
+This plot, shown in Fig.\ \ref{fig_onefactor}, will show you that
+the concentration of \factorsym{F1} is 1 at all time steps excepting
+the initial one. This may not seem quite right to you: If 1.0 is the
+amount of factor synthesized from \genesym{g1} in each time step,
+should it not accumulate over time? The answer is that it could, if we
+had specified a decay rate. Let's use this occasion to introduce the
+\prgname{transcheck} program for revealing the default factor
+properties:
+\begin{quote}
+\cmdline{transcheck example.tra}
+\end{quote}
+gives you the an output of our example \transsys{} program in which
+the \factorsym{F1} block reads
+\verbatimtabinput[8]{tr_ex03.tra}
+As we see, each factor has two properties, a decay rate and a
+diffusion rate. If no specification is given in a factor's block,
+\transsys{} assumes the parameter to be 1.  A decay rate of 1 means
+that all factor molecules (i.e. 100\% of them) decay within one time
+step. This explains why the factor concentration does not exceed 1.
+
+
+\subsubsection{Specifying a Decay Rate}
+
+It would not make any sense if the decay rate could not be changed,
+and quite obviously, this is done as seen in the \prgname{transcheck}
+output shown above. So, let's specify the decay rate explicitly:
+\verbatimtabinput[8]{tr_ex04.tra}
+If you run \prgname{transexpr} on the \transsys{} program with the
+factor definition modified this way, you'll see that \factorsym{F1}
+indeed accumulates over time, approaching a limit of 2
+asymptotically, see Fig.\ \ref{fig_onefactor}.
+
+
+\subsubsection{Controlling a Gene's Expression}
+
+\begin{figure}
+\centerline{\includegraphics[width=0.45\textwidth]{tr_ex05.eps}}
+\caption{\label{fig_twofactors}
+  Dynamics of concentration of \factorsym{F1} and \factorsym{F2} in a
+  \transsys{} program where \factorsym{F1} regulates expression of the
+  gene encoding \factorsym{F2}.
+}
+\end{figure}
+In the example \transsys{} program developed so far, the gene
+\genesym{g1} is constitutively expressed. Now, it's time to take a
+central step towards modelling regulatory networks by introducing
+another gene controlled by \factorsym{F1}. We do this by adding the
+following to our \transsys{} program:
+\verbatimtabinput[8]{tr_ex05.tra}
+You can check the resulting dynamics in factor concentrations by
+running:
+\begin{quote}
+\cmdline{transexpr example.tra example.plt} \\
+\cmdline{gnuplot} \\
+\cmdline[gnuplot> ]{plot 'example.plt' using 1:2 with lines} \\
+\cmdline[gnuplot> ]{replot 'example.plt' using 1:3 with lines}
+\end{quote}
+The results are also shown in Fig.\ \ref{fig_twofactors}. The dynamics
+of \factorsym{F1} are as in the preceding versions of the example. To
+understand the dynamics of \factorsym{F2}, notice first that the decay
+rate was set explicitly to 1. Thus, the total amount of \factorsym{F2}
+in a time step is equal to the amount synthesized in that time step.
+
+Regulation of \genesym{g2} by \factorsym{F1} is modelled by the
+\codeword{activate} statement. The factor activating the gene is
+mentioned before the keyword \codeword{activate}. Quantitatively,
+activation is computed according to the Michaelis-Menten-equation. The
+two parameters of \codeword{activate}, which are denoted by \aspec and
+\amax, are analogous to the Michaelis-Menten parameter $K_M$ and
+$v_{\mathrm{max}}$, respectively. Thus, as the concentration of
+\factorsym{F1} approaches 2, the rate of synthesis of \factorsym{F2}
+approaches $\frac{\amax \cdot \factorconc{F1}}{\aspec +
+  \factorconc{F1}} = \frac{5 \cdot 2}{2 + 2} = 2.5$.
+
+Fig.\ \ref{fig_twofactors} shows that synthesis of \factorsym{F2}
+starts one time step after \factorsym{F1} begins to accumulate. This
+is due to the implementation of \transsys{}: Factor synthesized in a
+time step does not participate in gene regulation in that time step,
+effects set in in the subsequent time step.
+
+
+\subsubsection{Getting Advanced: Autoregulation}
+\label{sect_cycler_final}
+
+\begin{figure}
+\centerline{
+  \includegraphics[width=0.45\textwidth]{tr_ex06.eps}
+  \includegraphics[width=0.45\textwidth]{tr_ex06_netgraph.eps}
+}
+\caption{\label{fig_cycler}
+  Oscillatory dynamics in a regulatory network of two genes (left) and
+  a graph representation of the regulatory network (right).
+}
+\end{figure}
+
+Having seen how one gene can be regulated by a factor encoded by
+another gene, the stage is now ready for presenting a \transsys{}
+program that deserves being called a regulatory network:
+\verbatimtabinput[8]{tr_ex06.tra}
+Fig.\ \ref{fig_cycler} shows the temporal dynamics of the two factors
+\factorsym{A}, which activates both genes and \factorsym{R}, which
+represses both genes. Initially, \genesym{agene} is slightly activated
+due to the \codeword{constitutive} statement in the
+promoter. Accumulation of \factorsym{A} amplifies activation of
+\genesym{agene}, but also results in activation of \genesym{rgene},
+which encodes \factorsym{R}. The parameters of activation and
+repression are chosen such that the repression effects of
+\factorsym{R} eventually lead to a temporary shutdown of expression of
+both genes. After that, decay of \factorsym{R} finally allows
+constitutive expression of \genesym{agene} to set in again, which
+starts the next oscillation.
+
+
+\subsubsection{Visualizing the Regulatory Network}
+
+The \transsys{} program introduced above is surely simple enough to be
+understandable by just reading the code. Larger networks, however,
+demand larger and more complex \transsys{} programs. The program
+\prgname{transps} can be used to graphically render the regulatory
+network structures encoded in a \transsys{} program:
+\begin{quote}
+\cmdline{transps example.tra example.ps}
+\end{quote}
+For the simple autoregulatory network shown above, the corresponding
+graph is shown in Fig.\ \ref{fig_cycler}.
+
+
+\subsection{Writing a \ltranssys{} Program}
+
+\subsubsection{The Beginning}
+
+\ltranssys{} uses the same principles as
+\transsys{}, in particular, the concept of named blocks was applied in
+\ltranssys{} whereever it seemed reasonable. Thus, an empty
+\ltranssys{} looks like this:
+\verbatimtabinput[8]{trl_ex00.trl}
+
+
+\subsubsection{Defining a Symbols}
+
+Symbols (from which strings are assembled) are the basic unit of
+L-systems. In \ltranssys{} symbols have to be defined before they can
+be used. So, let's define a symbol:
+\verbatimtabinput[8]{trl_ex01.trl}
+
+
+\subsubsection{Defining a Rule}
+
+Rules are the centerpiece of traditional L-systems, and in
+\ltranssys{}, they are mechanism which links realization of
+morphogenetic processes to gene expression. But we'll postpone
+introduction of \transsys{} programs with \ltranssys{} a little in
+order to first demonstrate the basics of rule definition. A simple
+example rule reads:
+\verbatimtabinput{trl_ex02.trl}
+As you might guess (at least, if you have some experience with
+L-systems) this rule replaces each occurrence of a
+\codeword{shoot\_piece} symbol with a string of two
+\codeword{shoot\_piece} symbols. Repeated application yields a string
+of \codeword{shoot\_piece} symbols which exponentially grows in length.
+
+
+\subsubsection{Trying it out}
+
+To actually see the rapidly growing string, it is necessary to provide
+the system with an initial string to start with. This initial string
+is called the axiom in L-system terminology, therefore, \ltranssys{}
+uses a keyword called \codeword{axiom} for this purpose:
+\verbatimtabinput[8]{trl_ex03.trl}
+This \ltranssys{} program is certainly minimalistic, and it's not
+original at all as it doesn't use anything \transsys{} specific, but
+let's use it to see \ltranssys{} at work nonetheless:
+\begin{quote}
+\cmdline{ltrcheck -n 5 example.trl}
+\end{quote}
+This command prints out the result of the first $5$ derivations of the
+axiom. The output is not really interesting, consisting just of lots
+of \codeword{shoot\_piece}s, so it's not shown here.
+
+
+\subsubsection{Adding Graphics}
+
+The output not shown above is not just boring because the \ltranssys{}
+program comprises just one symbol. String dumps are useful for
+debugging, but the real strength of L-systems can only be seen if the
+string is rendered graphically. Now, since \ltranssys{} lets us define
+arbitrary symbols, it cannot know how what graphics we want to
+associate with our symbols. Thus, we end up having to specify that too:
+\verbatimtabinput[8]{trl_ex04.trl}
+By adding this piece to the \ltranssys{} program developed so far, we
+obtain a minimalistic system which can be used for 3D rendering with
+the program \prgname{ltransgl}:
+\begin{quote}
+\cmdline{ltransgl example.trl}
+\end{quote}
+Running this program brings up an OpenGL window in which a grey
+cylinder is displayed. The object can be moved along the X axis by
+dragging with the left mouse button. Translation along the Y and Z
+axes are possible by pressing and holding down the shift or control
+key, respectively. The object can also be rotated around all axes by
+dragging with the right mouse button, again using the shift or control
+key to select the Y or Z axis. Pressing \keyboardin{n} computes shows
+the next derivation step, \keyboardin{p} shows the preceding step. The
+\keyboardin{Home} and \keyboardin{End} keys move to the initial step
+(i.e.\ the axiom) and the last step computed so far, respectively.
+
+
+\subsubsection{Changing Direction}
+
+\begin{figure}
+\centerline{
+  \includegraphics[width=0.45\textwidth]{trl_ex05_glgraph.eps}
+}
+\caption{\label{fig_wiggle}
+  Demo of \codeword{turn()} graphics command.
+}
+\end{figure}
+
+Shoot pieces forming a straight chain seem somewhat unflexible. Of
+course, \ltranssys{} allows changes in orientation. There are three
+axes around which one can rotate in 3D, and rotations are done with
+the graphics functions \codeword{turn()}, \codeword{roll()} and
+\codeword{bank()}. Let's demonstrate the \codeword{turn()} function
+with an example:
+\verbatimtabinput[8]{trl_ex05.trl}
+In this example, we have introduced two new symbols, \codeword{left}
+and \codeword{right}, which are associated with turns to the left and
+to the right, respectively. The rule was also modified to actually use
+the new symbols. The graphical result is shown in Fig.\ \ref{fig_wiggle}.
+You may be surprised about the irregular wiggling structure; it is due
+to the fact that \codeword{left} and \codeword{right} symbols occur in
+multiple repeats, sometimes cancelling each other out. If you're puzzled,
+the \prgname{ltrcheck} program might help you.
+
+
+\subsubsection{Push and Pop Symbols}
+
+\begin{figure}
+\centerline{
+  \includegraphics[width=0.45\textwidth]{trl_ex06_glgraph.eps}
+}
+\caption{\label{fig_branch}
+  A branched structure generated with \ltranssys{}.
+}
+\end{figure}
+
+Drawing branched structures requires functions for saving the current
+position and orientation, along with other information collecively
+called a state, and for returning to the saved state at some later
+time. These operations are called pushing (the state) and popping (the
+state), respectively. In \ltranssys{}, pushing and popping are
+graphical functions, so in order to use these operations, we firstly
+have to define symbols for them and secondly, we have to associate
+them with the corresponding graphics primitives. Here's a code
+fragment that does all that:
+\verbatimtabinput[8]{trl_ex06.trl}
+This code shows that the square brackets, \codeword{[} and
+\codeword{]}, can be used as symbols. The intention is to use them as
+push and pop symbols, as shown here. In addition to introducing the
+new symbols and their graphics, the rule has again been modified to
+show off the new stuff. Fig.\ \ref{fig_branch} shows that the system
+indeed yields a branched structure.
+
+
+\subsubsection{Integrating \transsys{}}
+
+\transsys{} is integrated into \ltranssys{} by extending the concept
+of parametric L-systems: Symbols can be defined to have a \transsys{}
+instance associated with them, as in
+\verbatimtabinput[8]{trl_ex07.trl}
+As you see, attaching a \transsys{} instance to a symbol is really
+easy, the difficult part is to write the \transsys{} program in the
+first place. For our example, we'll use the \codeword{cycler} program
+listed in section \ref{sect_cycler_final}.
+
+
+\subsubsection{Handling \transsys{} Instances in Rules}
+
+Having defined that \codeword{meristem} symbols should have a
+\codeword{cycler} instance attached, we now need a way to access
+what's going on in the \codeword{cycler} instance and to use this
+information for controlling the growth process modelled by
+\ltranssys{} rules. Here's the code:
+\verbatimtabinput[8]{trl_ex08.trl}
+This example introduces several new constructs. Firstly, we see that a
+\transsys{} instance associated with a symbol is given a local name
+within the lefthand side of a rule. Here, the \transsys{} instance
+associated with the \codeword{meristem} symbol is labelled
+\codeword{t}.
+
+Secondly, we see a new element in this rule: A condition which must be
+fulfilled in order to activate the rule. In our example, the rule is
+only activated if the concentration of factor \factorsym{A} in the
+\transsys{} instance labelled \codeword{t} is greater than $0.91$.
+
+Thirdly, the \transsys{} instance is also used for creating new
+symbols on the righthand side of a rule. All \codeword{meristem}
+symbols specified there are qualified with \codeword{(transsys~t:~)}.
+This means that the factor concentration values from the \transsys{}
+instance labelled \codeword{t} are copied into the \transsys{}
+instances associated with the newly created symbols.
+
+
+\subsubsection{A Plant Branching Under the Control of Genes}
+
+\begin{figure}
+\centerline{
+  \includegraphics[width=0.45\textwidth]{trl_ex09_glgraph.eps}
+}
+\caption{\label{fig_transsysgrow}
+  Another branched structure generated with \ltranssys{}. In this
+  case, branching is controlled by gene activity within \transsys{}
+  instances in the meristems which are graphically rendered as green
+  spheres.
+}
+\end{figure}
+
+Having introduced the handling of \transsys{} instances in rules, we
+are finally ready to write an \ltranssys{} program in which branching
+is controlled by gene activity within meristems. We just have to add
+the graphics instructions for rendering \codeword{meristem} symbols:
+\verbatimtabinput{trl_ex09.trl}
+A graphical display of the virtual plant obtained with this
+\ltranssys{} program is shown in Fig.\ \ref{fig_transsysgrow}.
+
+
+\subsubsection{Visualizing Factor Concentrations}
+
+In the \ltranssys{} program which we've developed now, factor
+concentrations are causal for branching. So, it would be nice if we
+could somehow see the oscillations in concentrations of factor
+\factorsym{A} as our plant develops. This is easily feasible, as
+factor concentrations are accessible within graphics definitions. All
+we need is to modify the meristem graphics:
+\verbatimtabinput{trl_ex10.trl}
+This modification does not alter the morphology of the plant. But
+instead of showing all meristems as spheres with a bright green
+colour, the spheres are now coloured according to the concentrations
+of the two factors. This is best seen in an animation. Such an
+animation can be seen by running \prgname{ltransgl}: Firstly, let
+\prgname{ltransgl} do a few hundred derivations. Here, the fact that
+pressing \keyboardin{N} performs 50 derivations at once is handy. Once
+you've done that, press \keyboardin{Home} to get back to the
+axiom. Now press \keyboardin{>} to see an animation running through
+all steps. A reverse animation can be shown by pressing \keyboardin{<}.
+
+
+\section{Formal \transsys{} Specification}
+
+\subsection{Constitutents of a \transsys{} program: Lexical Analysis}
+
+The \transsys{} language consists of tokens (lexical elements), much
+as many common computer languages, such as C. The token classes are:
+
+\begin{itemize}
+
+\item Comment: All characters between a \verb|#| (hash character) and
+  the end of a line are considered a comment and are ignored by
+  \transsys{}.
+
+\item Number: All numbers in \transsys{} are real valued and are
+  written in the usual notation, e.g.\ \verb|12|, \verb|3.14|,
+  \verb|47.11e22| etc.
+  
+\item Identifier: An identifier is a string in which the first
+  character is an alphabetical character and the subsequent characters
+  are alphanumerical characters. The underscore \verb|_| is considered
+  an alphabetical character. Identifiers are case sensitive. Their
+  main purpose in \transsys{} is denoting genes and factors.
+  
+\item Keyword: The keywords reserved by the core \transsys{} language
+  are \verb|activate|, \verb|constitutive|, \verb|decay|, \verb|default|,
+  \verb|diffusibility|, \verb|factor|, \verb|gauss|, \verb|gene|,
+  \verb|product|, \verb|promoter|, \verb|random|, \verb|repress|,
+  \verb|transsys|.
+  
+  Additionally, the following keywords are reserved by \ltranssys{}:
+  \verb|axiom|, \verb|bank|, \verb|box|, \verb|color|, \verb|cylinder|,
+  \verb|graphics|, \verb|lsys|, \verb|move|, \verb|pop|, \verb|push|,
+  \verb|roll|, \verb|rule|, \verb|sphere|, \verb|symbol|, \verb|turn|.
+
+  Reserved keywords may only be used in the ways defined by the
+  language specifications, i.e.\ they cannot be used as identifiers or
+  for other purposes. Please see section \ref{future_plans} below for
+  additional info and advice.
+
+\item Operator: \transsys{} uses the following operators, which should
+  look familiar to those programming in C or C++: \verb|<=|, \verb|>=|,
+  \verb|==|, \verb|!=|, \verb|&&|, \verb|x|, \verb|+|, \verb|-|,
+  \verb|*|, \verb|/|, \verb|!|, \verb|<|, \verb|>|, \verb|=|.
+  
+  Additionally, \ltranssys{} reserves and uses the production operator
+  \verb|-->|.
+  
+\item Punctuation and Structure: Curly braces \verb|{|, \verb|}| are
+  used to separate a \transsys{} specification into modular
+  blocks. Parentheses \verb|(| and \verb|)| are used for explicitly
+  specifying precedence in arithmetic and logical
+  expressions. Individual statements are separated by semicolons
+  \verb|;|, assignment lists in \ltranssys{} are separated by commas.
+
+\end{itemize}
+
+
+\subsection{Overall Structure}
+
+A \transsys{} is specified by the keyword \keyword{transsys}, followed
+by a name and a body, consisting of \transsys{} elements enclosed in
+curly braces. \transsys{} elements are factor definitions and gene
+definitions.
+
+An empty \transsys{}, i.e.\ one with no factors or genes, is formally
+allowed but it may be of limited use.
+
+\begin{footnotesize}
+\begin{verbatim}
+transsys -> "transsys" identifier "{" transsys_element_list "}"
+transsys_element_list -> /* empty */
+transsys_element_list -> transsys_element_list factor_definition
+transsys_element_list -> transsys_element_list gene_definition
+\end{verbatim}
+\end{footnotesize}
+
+
+\subsection{Factor Definition}
+
+A factor in \transsys{} is specified by the keyword \keyword{factor},
+followed by a name and a body. Within the body, the factor's decay
+rate and diffusion rate are specified. These specifications may be
+omitted, in which case the default value of 0 is assumed for both
+parameters.
+
+Formally, the grammar allows multiple specifications of both
+parameters; in the current parser implementation, the last
+specification will become effective. However, relying on this
+"feature" is strongly discouraged.
+\begin{footnotesize}
+\begin{verbatim}
+factor_definition -> "factor" identifier "{" factordef_components "}"
+factordef_components -> /* empty */
+factordef_components -> factordef_components factordef_component
+factordef_component -> "decay" ":" expr ";"
+factordef_component -> "diffusibility" ":" expr ";"
+\end{verbatim}
+\end{footnotesize}
+
+
+\subsection{Gene Definition}
+
+A gene in \transsys{} is specified by the keyword \keyword{gene},
+followed by a name and a body. The contents of the body are subdivided
+into a promoter component and a product component. The promoter
+component specifies the level of the gene's expression activity as a
+function of the factor concentrations. The product component specifies
+which factor is encoded by the gene (i.e.\ which factor is synthesized
+upon the gene's expression).
+\begin{footnotesize}ene's activation).
+\begin{verbatim}
+gene_definition -> "gene" identifier "{" promoter_component product_component "}"
+\end{verbatim}
+\end{footnotesize}
+
+
+\subsubsection{Promoter Definition}
+
+The promoter component specifies computation of the level of the
+gene's expression as a function of the factor concentrations.
+Currently, there are three types of statements possible in the
+\keyword{promoter} component. Each statement is evaluated to compute a
+contribution of activation (or repression). The activation contributed
+by statement $i$ is denoted by $a_i$.
+
+\keyword{constitutive} is the most generic type, this statement
+specifies an expression determining an amount of activation:
+\begin{equation}
+a_i = \mbox{ result of evaluating expression}
+\end{equation}
+\keyword{activate} and \keyword{repress} statements are both
+preceded by a factor name $\factorvar{f}$, and both have a list of two
+expressions as arguments. The arguments determine the specificity,
+denoted by $\aspec$, and the maximal rate of activation, denoted by
+$\amax$. The actual amount of activation is calculated according to
+the Michaelis-Menten-equation:
+\begin{equation}
+a_i = \frac{\amax \factorconc{\factorvar{f}}}{\aspec + \factorconc{\factorvar{f}}}
+\end{equation}
+Repression is calculated by the same formula with the sign reversed:
+\begin{equation}
+a_i = -\frac{\amax \factorconc{\factorvar{f}}}{\aspec + \factorconc{\factorvar{f}}}
+\end{equation}
+Both parameters $\aspec$ and $\amax$ are specified by expressions,
+which allows modelling of modulation of activation by protein-protein
+interactions. The amount of product $\factorvar{p}$ synthesized
+through expression of gene $\genevar{g}$ in a time step is given by
+\begin{equation}
+\label{eq_delta_g_fconc}
+\Delta_{\genevar{g}} \factorconc{\factorvar{p}} = \left\{
+\begin{array}{ll}
+a_{\mathrm{total}} := \sum_i a_i & \mbox{ if } a_{\mathrm{total}} > 0 \\
+0 & \mbox{ otherwise} \\
+\end{array}
+\right.
+\end{equation}
+\begin{footnotesize}
+\begin{verbatim}
+promoter_component -> "promoter" "{" promoter_statements "}"
+promoter_statements -> promoter_statement
+promoter_statements -> promoter_statements promoter_statement
+promoter_statement -> "constitutive" ":" expr ";"
+promoter_statement -> factor_combination ":" "activate" "(" expr "," expr ")" ";"
+promoter_statement -> factor_combination ":" "repress" "(" expr "," expr ")" ";"
+factor_combination -> identifier
+factor_combination -> factor_combination "+" identifier
+\end{verbatim}
+\end{footnotesize}
+
+
+\subsubsection{Gene Product Definition}
+
+\begin{footnotesize}
+\begin{verbatim}
+product_component -> "product" "{" product_statements "}"
+product_statements -> "default" ":" identifier ";"
+\end{verbatim}
+\end{footnotesize}
+
+
+\subsection{Expressions}
+
+\begin{footnotesize}
+\begin{verbatim}
+expr -> expr LOGICAL_OR and_expr
+expr -> and_expr
+and_expr -> and_expr LOGICAL_AND not_expr
+and_expr -> not_expr
+not_expr -> '!' not_expr
+not_expr -> cmp_expr
+cmp_expr -> cmp_expr '<' arithmetic_expr
+cmp_expr -> cmp_expr '>' arithmetic_expr
+cmp_expr -> cmp_expr LOWER_EQUAL arithmetic_expr
+cmp_expr -> cmp_expr GREATER_EQUAL arithmetic_expr
+cmp_expr -> cmp_expr EQUAL arithmetic_expr
+cmp_expr -> cmp_expr UNEQUAL arithmetic_expr
+cmp_expr -> arithmetic_expr
+arithmetic_expr -> arithmetic_expr '+' term
+arithmetic_expr -> arithmetic_expr '-' term
+arithmetic_expr -> term
+term -> term '*' value
+term -> term '/' value
+term -> value
+value -> REALVALUE
+value -> '(' expr ')'
+value -> RANDOM '(' expr ',' expr ')'
+value -> GAUSS '(' expr ',' expr ')'
+value -> IDENTIFIER
+value -> IDENTIFIER '.' IDENTIFIER
+\end{verbatim}
+\end{footnotesize}
+
+
+\subsection{\ltranssys{}}
+
+\begin{footnotesize}
+\begin{verbatim}
+lsys -> LSYS_DEF IDENTIFIER @1 '{' lsys_element_list '}'
+lsys_element_list -> lsys_element
+lsys_element_list -> lsys_element_list lsys_element
+lsys_element -> symbol_definition
+lsys_element -> axiom_definition
+lsys_element -> rule_definition
+lsys_element -> graphics_definition
+symbol_definition -> SYMBOL_DEF IDENTIFIER ';'
+symbol_definition -> SYMBOL_DEF IDENTIFIER '(' IDENTIFIER ')' ';'
+symbol_definition -> SYMBOL_DEF '[' ';'
+symbol_definition -> SYMBOL_DEF '[' '(' IDENTIFIER ')' ';'
+symbol_definition -> SYMBOL_DEF ']' ';'
+symbol_definition -> SYMBOL_DEF ']' '(' IDENTIFIER ')' ';'
+axiom_definition -> AXIOM_DEF production_element_string ';'
+rule_definition -> RULE_DEF IDENTIFIER '{' rule_components '}'
+rule_components -> rule_lhs ':' expr ARROW rule_rhs
+rule_components -> rule_lhs ARROW rule_rhs
+rule_lhs -> lhs_element_string
+lhs_element_string ->           /* empty */
+lhs_element_string -> lhs_element_string lhs_element
+lhs_element -> IDENTIFIER
+lhs_element -> IDENTIFIER '(' IDENTIFIER ')'
+rule_rhs -> production_element_string
+production_element_string ->            /* empty */
+production_element_string -> production_element_string production_element
+production_element -> IDENTIFIER
+production_element -> IDENTIFIER '(' transsys_initializer ')'
+production_element -> '['
+production_element -> ']'
+transsys_initializer -> source_transsys_specifier assignment_list
+transsys_initializer -> assignment_list
+source_transsys_specifier -> TRANSSYS_DEF IDENTIFIER ':'
+assignment_list ->              /* empty */
+assignment_list -> assignment
+assignment_list -> assignment_list ',' assignment
+assignment -> IDENTIFIER '=' expr
+graphics_definition -> GRAPHICS_DEF '{' symgraph_list '}'
+symgraph_list ->                /* empty */
+symgraph_list -> symgraph_list symgraph
+symgraph -> IDENTIFIER '{' graphcmd_list '}'
+symgraph -> '[' '{' graphcmd_list '}'
+symgraph -> ']' '{' graphcmd_list '}'
+graphcmd_list ->                /* empty */
+graphcmd_list -> graphcmd_list graphcmd
+graphcmd -> MOVE '(' expr ')' ';'
+graphcmd -> PUSH '(' ')' ';'
+graphcmd -> POP '(' ')' ';'
+graphcmd -> TURN '(' expr ')' ';'
+graphcmd -> ROLL '(' expr ')' ';'
+graphcmd -> BANK '(' expr ')' ';'
+graphcmd -> SPHERE '(' expr ')' ';'
+graphcmd -> CYLINDER '(' expr ',' expr ')' ';'
+graphcmd -> BOX '(' expr ',' expr ',' expr ')' ';'
+graphcmd -> COLOR '(' expr ',' expr ',' expr ')' ';'
+\end{verbatim}
+\end{footnotesize}
+
+
+\subsection{Future Development Plans}
+\label{future_plans}
+
+\subsubsection{Additional Keywords}
+
+It is a notorious problem that the set of keywords of a computer
+language increases as the language evolves, and that the introduction
+of new keywords may result in old code becoming malfunctional and
+"illegal".
+
+Extending \transsys{}, particularly by integration of additional
+modelling methods, is definitely intended. However, it is not clear
+which keywords will be introduced in this process. Therefore, at this
+time, only some rather general design principles can be given. These
+may provide some guidance for the cautiously minded:
+\begin{itemize}
+\item No keywords containing any capital letters will be introduced.
+\item No keywords beginning with an underscore will be introduced, and
+  introduction of keywords containing underscores is unlikely.
+\item Introduction of keywords containing numbers is also unlikely
+\item Most likely candidates for keywords are on the one hand words
+  that are used as keywords in other computer languages, an on the
+  other hand terms for generic biological structures. Examples for the
+  latter category are \keyword{cell}, \keyword{tissue},
+  \keyword{organ}, \keyword{enhancer}, \keyword{chromosome} etc. It is
+  recommended to avoid such terms in order to minimize troubles due to
+  future development of \transsys{}.
+\end{itemize}
+
+
+\end{document}
+

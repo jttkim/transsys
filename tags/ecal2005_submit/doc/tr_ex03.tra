@@ -1,0 +1,5 @@
+  factor F1
+  {
+    decay: 1;
+    diffusibility: 1;
+  }
