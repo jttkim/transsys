@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.6  2005/04/12 17:49:46  jtk
+ * minor changes to make string and state reporting more convenient
+ *
  * Revision 1.5  2005/04/05 10:12:39  jtk
  * made diffusion consistent (no oscillation due to overshooting), small fixes
  *
@@ -319,9 +322,15 @@ static void print_lstr_block(FILE *f, const LSTR_BLOCK *lstr_block)
 }
 
 
-static void print_globals(FILE *f)
+static void print_lstrings(FILE *f)
 {
   print_lstr_block(f, &lstr_block);
+}
+
+
+static void print_globals(FILE *f)
+{
+  fprintf(f, "current string is #%d out of %d\n", lstr_block.string_index, lstr_block.num_strings);
   print_render_parameters(f, &render_parameters);
 }
 
@@ -727,6 +736,8 @@ static void ltgl_key(unsigned char key, int x, int y)
     write_ppm();
   else if (key == '?')
     print_globals(stdout);
+  else if (key == 's')
+    print_lstrings(stdout);
   else if (key == 'v')
     verbose = !verbose;
   else
