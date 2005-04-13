@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.8  2005/04/13 13:29:30  jtk
+ * compute contact_table for diffusion explicitly and only once (optimisation)
+ *
  * Revision 1.7  2005/04/05 10:12:39  jtk
  * made diffusion consistent (no oscillation due to overshooting), small fixes
  *
@@ -271,6 +274,58 @@ static int within_diffusion_range(const LSYS_STRING *lstr, int i, int j)
   return (lstr->distance[i][j] <= lstr->lsys->diffusion_range);
 }
 
+
+static void free_contact_table(const LSYS_STRING *lstr, SYMBOL_INSTANCE ***contact_table)
+{
+  int i;
+
+  for (i = 0; i < lstr->num_symbols; i++)
+  {
+    free(contact_table[i]);
+  }
+  free(contact_table);
+}
+
+
+static SYMBOL_INSTANCE ***symbol_contact_table(const LSYS_STRING *lstr)
+{
+  SYMBOL_INSTANCE ***contact_table;
+  int row_length, i, j;
+
+  contact_table = (SYMBOL_INSTANCE ***) malloc(lstr->num_symbols * sizeof(SYMBOL_INSTANCE **));
+  if (contact_table == NULL)
+  {
+    fprintf(stderr, "symbol_contact_table: malloc failed (contact_table)\n");
+    return (NULL);
+  }
+  for (i = 0; i < lstr->num_symbols; i++)
+  {
+    contact_table[i] = (SYMBOL_INSTANCE **) malloc((lstr->num_symbols + 1) * sizeof(SYMBOL_INSTANCE *));
+    if (contact_table[i] == NULL)
+    {
+      fprintf(stderr, "symbol_contact_table: malloc failed (row)\n");
+      for (j = 0; j < i; j++)
+      {
+	free(contact_table[j]);
+      }
+      free(contact_table);
+      return (NULL);
+    }
+    row_length = 0;
+    for (j = 0; j < lstr->num_symbols; j++)
+    {
+      if (within_diffusion_range(lstr, i, j))
+      {
+	contact_table[i][row_length++] = lstr->symbol + j;
+      }
+    }
+    contact_table[i][row_length++] = NULL;
+    realloc(contact_table[i], row_length * sizeof(SYMBOL_INSTANCE *));
+  }
+  return (contact_table);
+}
+
+
 /*
  * for all symbol instances, initialise all elements in new_concentration
  * to 0.0.
@@ -338,19 +393,20 @@ static void diffusion_weights(const LSYS_STRING *lstr, int i, double *w)
 int lsys_string_diffusion(LSYS_STRING *lstr)
 {
   int i, j, f;
-  double *w, dc, dcsum, diffusibility;
+  double w, dc, dcsum, diffusibility;
   const TRANSSYS *transsys;
   const TRANSSYS_INSTANCE *ti;
+  SYMBOL_INSTANCE ***contact_table;
 
   if (!lstr->arrayed)
   {
     fprintf(stderr, "lsys_string_diffusion: cannot process non-arrayed lsys string\n");
     return (-1);
   }
-  w = (double *) malloc(lstr->num_symbols * sizeof(double));
-  if (w == NULL)
+  contact_table = symbol_contact_table(lstr);
+  if (contact_table == NULL)
   {
-    fprintf(stderr, "lsys_string_diffusion: malloc failed\n");
+    fprintf(stderr, "lsys_string_diffusion: symbol_contact_table failed\n");
     return (-1);
   }
   diffusion_init_new_concentration(lstr);
@@ -360,27 +416,24 @@ int lsys_string_diffusion(LSYS_STRING *lstr)
     transsys = ti->transsys;
     if (ti->transsys)
     {
-      diffusion_weights(lstr, i, w);
+      for (j = 0; contact_table[i][j]; j++)
+	;
+      w = 1.0 / ((double) j);
       for (f = 0; f < transsys->num_factors; f++)
       {
 	diffusibility = evaluate_expression(ti->transsys->factor_list[f].diffusibility_expression, &ti);
 	dcsum = 0.0;
-	for (j = 0; j < lstr->num_symbols; j++)
+	for (j = 0; contact_table[i][j]; j++)
 	{
-	  if (within_diffusion_range(lstr, i, j))
-	  {
-	    dc = (ti->factor_concentration[f] - lstr->symbol[j].transsys_instance.factor_concentration[f]) * diffusibility * w[j];
-	    if (dc > 0)
-	    {
-	      dcsum += dc;
-	      lstr->symbol[j].transsys_instance.new_concentration[f] += dc;
-	    }
-	  }
+	  dc = (ti->factor_concentration[f] - contact_table[i][j]->transsys_instance.factor_concentration[f]) * diffusibility * w;
+	  dcsum += dc;
+	  contact_table[i][j]->transsys_instance.new_concentration[f] += dc;
 	}
 	ti->new_concentration[f] -= dcsum;
       }
     }
   }
+  free_contact_table(lstr, contact_table);
   for (i = 0; i < lstr->num_symbols; i++)
   {
     if (lstr->symbol[i].transsys_instance.transsys)
@@ -391,7 +444,6 @@ int lsys_string_diffusion(LSYS_STRING *lstr)
       }
     }
   }
-  free(w);
   return (0);
 }
 
