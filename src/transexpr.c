@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.8  2005/04/14 20:43:15  jtk
+ * entropy bugfix: log(2) -> 1.0 / log(2), changed entropy plot command to lines
+ *
  * Revision 1.7  2005/04/14 18:50:15  jtk
  * added entropy computation, introduced magic line for transexpr
  *
@@ -98,7 +101,7 @@ int fprint_plotcommands(FILE *f, const TRANSSYS *tr, const char *outfile_name, i
     fprintf(f, "plot \'%s\' using 1:%d:%d title \'%s:%s\' with errorbars\n",
 	    outfile_name, i * 3 + 3, i * 3 + 4, tr->name, tr->factor_list[i].name);
     fprintf(f, "pause -1 \'Hit return\'\n");
-    fprintf(f, "plot \'%s\' using 1:%d title \'%s:%s, entropy\'\n", outfile_name, i * 3 + 5, tr->name, tr->factor_list[i].name);
+    fprintf(f, "plot \'%s\' using 1:%d title \'%s:%s, entropy\' with lines\n", outfile_name, i * 3 + 5, tr->name, tr->factor_list[i].name);
     fprintf(f, "pause -1 \'Hit return\'\n");
   }
   if (extensiveness == 0)
@@ -204,7 +207,7 @@ int fprint_expression_record(FILE *outfile, TRANSSYS_INSTANCE **ti, size_t n, un
 {
   size_t i, f;
   double d, *average, *stddev, *entropy;
-  double log2 = log(2.0);
+  double log2 = 1.0 / log(2.0);
   const TRANSSYS *transsys = ti[0]->transsys;
 
   average = (double *) malloc(3 * transsys->num_factors * sizeof(double));
