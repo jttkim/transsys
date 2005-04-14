@@ -3,6 +3,9 @@
 # $Id$
 
 # $Log$
+# Revision 1.10  2005/04/14 18:50:17  jtk
+# added entropy computation, introduced magic line for transexpr
+#
 # Revision 1.9  2005/04/10 19:38:00  jtk
 # fixed powerlaw_linkist off by one bug
 #
@@ -645,6 +648,7 @@ classes derived from TranssysProgram. If unresolved_copy for such classes
 is required to return the derived class, these classes will have to
 re-implement this method.
   """
+
   def __init__(self, name, factor_list = None, gene_list = None, resolve = True) :
     self.name = name
     if factor_list is None :
@@ -834,10 +838,24 @@ gene names and factor names can be altered without changing the network."""
 
 class TranssysInstance :
 
+  # the 'magic first line' of transexpr output. If this is not found
+  # an error is triggered, as a safeguard against nonsense due to
+  # incompatiblilities between TranssysInstance and the transexpr
+  # program invoked by the time_series method.
+
+  magic = '# transsys expression records 1.0'
+
   def __init__(self, tp) :
     self.transsys_program = tp
     self.factor_concentration = [0.0] * self.transsys_program.num_factors()
+    # FIXME (conceptual issue):
+    # the stddev and entropy members are optional and they do not pertain
+    # to an individual instance (obviously). As long as TranssysInstance
+    # instances are only used for getting levels from transexpr, this is
+    # not too much of a problem, but eventually, instances and statistical
+    # results should be handled by separated classes.
     self.factor_concentration_stddev = [0.0] * self.transsys_program.num_factors()
+    self.factor_concentration_entropy = [0.0] * self.transsys_program.num_factors()
 
 
   def __str__(self) :
@@ -905,16 +923,23 @@ class TranssysInstance :
     p.tochild.close()
     tseries_dict = {}
     line = p.fromchild.readline()
+    magic = line.strip()
+    if magic != self.magic :
+      sys.stderr.write('bad "magic" first line: got "%s", expected "%s"\n' % (magic, self.magic))
+      raise StandardError, 'TranssysInstance.time_series: bad header (incompatible transexpr version?)'
     while line :
       line = string.strip(line)
       if line :
         if line[0] != '#' :
           l = string.split(line)
+          if len(l) != 3 * self.transsys_program.num_factors() + 2 :
+            raise StandardError, 'TranssysInstance.time_series: bad line format: expected %d words, got %d' % (3 * self.transsys_program.num_factors() + 2, len(l))
           t = string.atoi(l[0])
           ti = TranssysInstance(self.transsys_program)
           for i in xrange(len(self.transsys_program.factor_list)) :
-            ti.factor_concentration[i] = float(l[2 * i + 2])
-            ti.factor_concentration_stddev[i] = float(l[2 * i + 3])
+            ti.factor_concentration[i] = float(l[3 * i + 2])
+            ti.factor_concentration_stddev[i] = float(l[3 * i + 3])
+            ti.factor_concentration_stddev[i] = float(l[3 * i + 4])
           tseries_dict[t] = ti
       line = p.fromchild.readline()
     p.fromchild.close()

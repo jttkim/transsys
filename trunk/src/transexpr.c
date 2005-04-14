@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.7  2005/04/14 18:50:15  jtk
+ * added entropy computation, introduced magic line for transexpr
+ *
  * Revision 1.6  2005/04/08 20:04:28  jtk
  * added missing options in help output
  *
@@ -93,7 +96,9 @@ int fprint_plotcommands(FILE *f, const TRANSSYS *tr, const char *outfile_name, i
   for (i = 0; i < tr->num_factors; i++)
   {
     fprintf(f, "plot \'%s\' using 1:%d:%d title \'%s:%s\' with errorbars\n",
-	    outfile_name, i * 2 + 3, i * 2 + 4, tr->name, tr->factor_list[i].name);
+	    outfile_name, i * 3 + 3, i * 3 + 4, tr->name, tr->factor_list[i].name);
+    fprintf(f, "pause -1 \'Hit return\'\n");
+    fprintf(f, "plot \'%s\' using 1:%d title \'%s:%s, entropy\'\n", outfile_name, i * 3 + 5, tr->name, tr->factor_list[i].name);
     fprintf(f, "pause -1 \'Hit return\'\n");
   }
   if (extensiveness == 0)
@@ -108,29 +113,6 @@ int fprint_plotcommands(FILE *f, const TRANSSYS *tr, const char *outfile_name, i
     }
   }
   return (0);
-}
-
-
-int fprint_lsys_plotcommands(FILE *f, const LSYS *lsys, const char *outfile_name, int extensiveness)
-{
-  return (0);
-}
-
-
-static void fprint_factorconc_commentline(FILE *f, const TRANSSYS *transsys)
-{
-  int i;
-  time_t t;
-
-  fprintf(f, "# time n.instances");
-  for (i = 0; i < transsys->num_factors; i++)
-  {
-    fprintf(f, "  %s.avg %s.stddev", transsys->factor_list[i].name, transsys->factor_list[i].name);
-  }
-  fprintf(f, "\n");
-  t = time(NULL);
-  fprintf(f, "# transsys %s\n", transsys->name);
-  fprintf(f, "# run on %s\n", ctime(&t));
 }
 
 
@@ -168,33 +150,106 @@ static int fprint_null_expression_line(FILE *outfile, const TRANSSYS *transsys, 
 }
 
 
-int fprint_average_expression_line(FILE *outfile, TRANSSYS_INSTANCE **ti, size_t n, unsigned long t)
+/*
+ * expression_record_version *must* be incremented each time the record
+ * format changes *semantically*. It should not be changed on other
+ * occasions.
+ * The main use of this versioning is to provide tools like transsys.py
+ * (TranssysInstance.time_series) with a means to detect whether they
+ * are working on a compatible numeric output produced by transexpr.
+ *
+ * History:
+ * 1.0: Introduction of versioning. Record format is
+ *     - 0: time step
+ *     - 1: number of transsys instances
+ *     - 2 + 3 * i: average concentration of factor i
+ *     - 3 + 3 * i: standard deviation of concentration of factor i
+ *     - 4 + 3 * i: Shannon entropy of factor i.
+ */
+
+static const char *expression_record_version = "1.0";
+
+static void fprint_expression_header(FILE *f, const TRANSSYS *transsys, const LSYS *lsys)
 {
-  /*
-   * thetranssys instance  ti_stats is (ab-) used to accumulate the averages
-   * in factor_concentration and standard deviations in new_concentration
-   */
-  TRANSSYS_INSTANCE ti_stats;
-  size_t i, f;
-  double d;
-  const TRANSSYS *transsys = ti[0]->transsys;
-  
-  init_transsys_instance_components(&ti_stats);
-  if (alloc_transsys_instance_components(&ti_stats, transsys) != 0)
+  int i;
+  time_t t;
+
+  fprintf(f, "# transsys expression records %s\n", expression_record_version);
+  fprintf(f, "# time n.instances");
+  for (i = 0; i < transsys->num_factors; i++)
   {
-    fprintf(stderr, "fprint_average_expression_line: failed to alloc transsys instance components\n");
+    fprintf(f, "  %s.avg %s.stddev %s.entropy", transsys->factor_list[i].name, transsys->factor_list[i].name, transsys->factor_list[i].name);
+  }
+  fprintf(f, "\n");
+  t = time(NULL);
+  fprintf(f, "# transsys %s\n", transsys->name);
+  if (lsys)
+  {
+    fprintf(f, "# lsys %s\n", lsys->name);
+  }
+  else
+  {
+    fprintf(f, "# no lsys\n");
+  }
+  fprintf(f, "# run on %s", ctime(&t));
+}
+
+
+/*
+ * Remember to change the transsys_record_version on *each* change of
+ * the record format.
+ */
+
+int fprint_expression_record(FILE *outfile, TRANSSYS_INSTANCE **ti, size_t n, unsigned long t)
+{
+  size_t i, f;
+  double d, *average, *stddev, *entropy;
+  double log2 = log(2.0);
+  const TRANSSYS *transsys = ti[0]->transsys;
+
+  average = (double *) malloc(3 * transsys->num_factors * sizeof(double));
+  if (average == NULL)
+  {
+    fprintf(stderr, "fprint_expression_record: malloc failed\n");
     return (-1);
+  }
+  stddev = average + transsys->num_factors;
+  entropy = average + 2 * transsys->num_factors;
+  for (i = 0; i < transsys->num_factors; i++)
+  {
+    average[i] = 0.0;
+    stddev[i] = 0.0;
+    entropy[i] = 0.0;
   }
   for (i = 0; i < n; i++)
   {
     for (f = 0; f < transsys->num_factors; f++)
     {
-      ti_stats.factor_concentration[f] += ti[i]->factor_concentration[f];
+      average[f] += ti[i]->factor_concentration[f];
+    }
+  }
+  /*
+   * some abuse: average really contains the sums of factor concentration
+   * at this point, we use that for calculating relative concentrations in
+   * entropy calculation before computing the actual average.
+   */
+  if (n > 1)
+  {
+    for (i = 0; i < n; i++)
+    {
+      for (f = 0; f < transsys->num_factors; f++)
+      {
+	d = ti[i]->factor_concentration[f] / average[f];
+	if (d > 0.0)
+	{
+	  entropy[f] -= d * log(d) * log2;
+	}
+      }
     }
   }
   for (f = 0; f < transsys->num_factors; f++)
   {
-    ti_stats.factor_concentration[f] /= n;
+    average[f] /= n;
   }
   if (n > 1)
   {
@@ -202,22 +257,22 @@ int fprint_average_expression_line(FILE *outfile, TRANSSYS_INSTANCE **ti, size_t
     {
       for (f = 0; f < transsys->num_factors; f++)
       {
-	d = ti[i]->factor_concentration[f] - ti_stats.factor_concentration[f];
-	ti_stats.new_concentration[f] += d * d;
+	d = ti[i]->factor_concentration[f] - average[f];
+	stddev[f] += d * d;
       }
     }
     for (f = 0; f < transsys->num_factors; f++)
     {
-      ti_stats.new_concentration[f] = sqrt(ti_stats.new_concentration[f]) / (n - 1);
+      stddev[f] = sqrt(stddev[f]) / (n - 1);
     }
   }
   fprintf(outfile, "%lu %lu", t, (unsigned long) n);
   for (f = 0; f < transsys->num_factors; f++)
   {
-    fprintf(outfile, "  %g %g", ti_stats.factor_concentration[f], ti_stats.new_concentration[f]);
+    fprintf(outfile, "  %g %g %g", average[f], stddev[f], entropy[f]);
   }
   fprintf(outfile, "\n");
-  free_transsys_instance_components(&ti_stats);
+  free(average);
   return (0);
 }
 
@@ -324,12 +379,12 @@ static int transexpr(FILE *outfile, const TRANSSYS *transsys, unsigned int rndse
   {
     fprint_plotcommands(plotcmdfile, transsys, outfile_name, plot_extensiveness);
   }
-  fprint_factorconc_commentline(outfile, transsys);
+  fprint_expression_header(outfile, transsys, NULL);
   for (t = 0; t < num_timesteps; t++)
   {
     if ((t % output_period) == 0)
     {
-      fprint_average_expression_line(outfile, ti, num_repeats, t);
+      fprint_expression_record(outfile, ti, num_repeats, t);
     }
     for (r = 0; r < num_repeats; r++)
     {
@@ -366,6 +421,7 @@ static int transexpr_lsys(FILE *outfile, const LSYS *lsys, const TRANSSYS *trans
   }
   ulong_srandom(rndseed);
   lstr = axiom_string(lsys);
+  fprint_expression_header(outfile, transsys, lsys);
   for (t = 0; t < num_timesteps; t++)
   {
     if ((t % output_period) == 0)
@@ -394,7 +450,7 @@ static int transexpr_lsys(FILE *outfile, const LSYS *lsys, const TRANSSYS *trans
       }
       if (n > 0)
       {
-	fprint_average_expression_line(outfile, ti, n, t);
+	fprint_expression_record(outfile, ti, n, t);
       }
       else
       {
