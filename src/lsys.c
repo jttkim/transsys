@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.9  2005/04/14 18:48:59  jtk
+ * diffusion fix: amount transferred must be independent of gradient
+ *
  * Revision 1.8  2005/04/13 13:29:30  jtk
  * compute contact_table for diffusion explicitly and only once (optimisation)
  *
@@ -422,10 +425,10 @@ int lsys_string_diffusion(LSYS_STRING *lstr)
       for (f = 0; f < transsys->num_factors; f++)
       {
 	diffusibility = evaluate_expression(ti->transsys->factor_list[f].diffusibility_expression, &ti);
+	dc = diffusibility * ti->factor_concentration[f] * w;
 	dcsum = 0.0;
 	for (j = 0; contact_table[i][j]; j++)
 	{
-	  dc = (ti->factor_concentration[f] - contact_table[i][j]->transsys_instance.factor_concentration[f]) * diffusibility * w;
 	  dcsum += dc;
 	  contact_table[i][j]->transsys_instance.new_concentration[f] += dc;
 	}
