@@ -6,6 +6,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.4  2005/04/14 18:44:46  jtk
+ * fixed parser slipthrough of symbols declared with nonexistent transsys programs
+ *
  * Revision 1.3  2005/04/01 13:37:05  jtk
  * Made parser somewhat more strict
  *
@@ -1087,12 +1090,12 @@ lsys_element
 	;
 
 symbol_definition
-	: SYMBOL_DEF IDENTIFIER ';' { $$ = create_symbol_element($2, NULL); }
-	| SYMBOL_DEF IDENTIFIER '(' IDENTIFIER ')' ';' { $$ = create_symbol_element($2, $4); }
-	| SYMBOL_DEF '[' ';' { $$ = create_symbol_element("[", NULL); }
-	| SYMBOL_DEF '[' '(' IDENTIFIER ')' ';' { $$ = create_symbol_element("[", $4); }
-	| SYMBOL_DEF ']' ';' { $$ = create_symbol_element("]", NULL); }
-	| SYMBOL_DEF ']' '(' IDENTIFIER ')' ';' { $$ = create_symbol_element("]", $4); }
+	: SYMBOL_DEF IDENTIFIER ';' { $$ = create_symbol_element($2, NULL); if ($$ == NULL) YYABORT; }
+	| SYMBOL_DEF IDENTIFIER '(' IDENTIFIER ')' ';' { $$ = create_symbol_element($2, $4); if ($$ == NULL) YYABORT; }
+	| SYMBOL_DEF '[' ';' { $$ = create_symbol_element("[", NULL); if ($$ == NULL) YYABORT; }
+	| SYMBOL_DEF '[' '(' IDENTIFIER ')' ';' { $$ = create_symbol_element("[", $4); if ($$ == NULL) YYABORT; }
+	| SYMBOL_DEF ']' ';' { $$ = create_symbol_element("]", NULL); if ($$ == NULL) YYABORT; }
+	| SYMBOL_DEF ']' '(' IDENTIFIER ')' ';' { $$ = create_symbol_element("]", $4); if ($$ == NULL) YYABORT; }
 	;
 
 axiom_definition
