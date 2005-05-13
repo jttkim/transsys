@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.10  2005/05/13 20:08:21  jtk
+ * implementation information-decreasing diffusion underway
+ *
  * Revision 1.9  2005/04/14 18:48:59  jtk
  * diffusion fix: amount transferred must be independent of gradient
  *
@@ -276,6 +279,22 @@ static int within_diffusion_range(const LSYS_STRING *lstr, int i, int j)
   }
   return (lstr->distance[i][j] <= lstr->lsys->diffusion_range);
 }
+
+
+typedef struct
+{
+  const SYMBOL_INSTANCE *s1, *s2;  /* the symbols that are in contact */
+  double amount_diffused;          /* the amount of a factor that is transferred by diffusion */
+                                   /* Notice that the direction is from s1 to s2. */
+} CONTACT_GRAPH_EDGE;
+
+
+typedef struct
+{
+  const LSYS_STRING *lstr;
+  SYMBOL_INSTANCE ***contact_table;
+  CONTACT_GRAPH_EDGE *edge;
+} CONTACT_GRAPH;
 
 
 static void free_contact_table(const LSYS_STRING *lstr, SYMBOL_INSTANCE ***contact_table)
