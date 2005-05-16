@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.7  2005/05/16 12:02:10  jtk
+ * in transition from distance matrices to contact graphs
+ *
  * Revision 1.6  2005/04/12 17:49:46  jtk
  * minor changes to make string and state reporting more convenient
  *
@@ -316,7 +319,7 @@ static void print_lstr_block(FILE *f, const LSTR_BLOCK *lstr_block)
     fprint_lsys_string(f, lstr_block->lstr[lstr_block->string_index], "\n");
     if (verbose)
     {
-      fprint_lsys_string_distances(f, lstr_block->lstr[lstr_block->string_index]);
+      fprint_lsys_string_contact_graph(f, lstr_block->lstr[lstr_block->string_index]);
     }
   }
 }

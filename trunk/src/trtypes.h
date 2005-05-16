@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.5  2005/05/16 12:02:10  jtk
+ * in transition from distance matrices to contact graphs
+ *
  * Revision 1.4  2005/03/31 16:07:36  jtk
  * finished (initial) implementation of lsys diffusion
  *
@@ -294,16 +297,53 @@ typedef struct tag_lsys
 
 struct tag_lsys_string;
 typedef struct tag_lsys_string LSYS_STRING;
+struct tag_lsys_string_contact_edge;
+typedef struct tag_lsys_string_contact_edge LSYS_STRING_CONTACT_EDGE;
 
 typedef struct tag_symbol_instance
 {
   struct tag_symbol_instance *next;
   const LSYS_STRING *lsys_string;
   int symbol_index;
-  int num_predecessors, predecessor_index;
-  int predecessor_distance;
+  int lhs_group_start, lhs_group_length;
+  int successor_distance;
+  int num_successors, successor_index;
+  int num_contact_edges;
+  LSYS_STRING_CONTACT_EDGE **contact_edge;
   TRANSSYS_INSTANCE transsys_instance;
 } SYMBOL_INSTANCE;
+
+/*
+ * Implementation notices: Even though the contact graph is undirected
+ * conceptually, the order of i1 and i2 does matter: Flow is directed
+ * from symbol i1 to symbol i2, a net flow from symbol i2 to symbol i1
+ * is represented by negative values of amount_diffused.
+ * The type of i1 and i2 is int, not size_t, so that -1 can be used to
+ * represent "not an index".
+ */
+
+struct tag_lsys_string_contact_edge
+{
+  int i1, i2;  /* indices of contacting symbols */
+  int distance;
+  int amount_valid;
+  double amount_diffused;
+}; /* LSYS_STRING_CONTACT_EDGE */
+
+/*
+ * Implementation notice:
+ * the edge component of a contact graph may not be reallocated or
+ * otherwise moved around in memory, unless it is certain that there
+ * are no references to edges from symbol instances that could be
+ * rendered invalid by such relocations.
+ */
+
+typedef struct
+{
+  size_t array_size;
+  size_t num_edges;
+  LSYS_STRING_CONTACT_EDGE *edge;
+} LSYS_STRING_CONTACT_GRAPH;
 
 struct tag_lsys_string
 {
@@ -311,7 +351,7 @@ struct tag_lsys_string
   int arrayed;
   size_t num_symbols;
   SYMBOL_INSTANCE *symbol;
-  int **distance;
+  LSYS_STRING_CONTACT_GRAPH contact_graph;
 };
 
 #endif /* TRTYPES_H */
