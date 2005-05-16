@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.8  2005/05/16 21:03:27  jtk
+ * contact graph implementation still buggy
+ *
  * Revision 1.7  2005/05/16 12:02:10  jtk
  * in transition from distance matrices to contact graphs
  *
@@ -621,7 +624,7 @@ void fprint_lsys_string_contact_graph(FILE *f, const LSYS_STRING *lstr)
     for (e = 0; e < lstr->symbol[i].num_contact_edges; e++)
     {
       other_index = other_symbol_instance_index(lstr->symbol[i].contact_edge[e], i);
-      fprintf(f, " %d", other_index);
+      fprintf(f, " %d(d=%d)", other_index, lstr->symbol[i].contact_edge[e]->distance);
     }
     fprintf(f, "\n");
   }
