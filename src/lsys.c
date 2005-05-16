@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.11  2005/05/16 12:02:10  jtk
+ * in transition from distance matrices to contact graphs
+ *
  * Revision 1.10  2005/05/13 20:08:21  jtk
  * implementation information-decreasing diffusion underway
  *
@@ -43,6 +46,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "trconfig.h"
 #include "transsys.h"
@@ -56,6 +60,12 @@ static void free_transsys_instance_list(const TRANSSYS_INSTANCE **ti_list)
   free(ti_list);
 }
 
+
+/*
+ * Assemble an array of pointers to the transsys instances associated with
+ * a substring of symbol instances, starting at symbol_list, and with a length
+ * determined by the lhs of the rule.
+ */
 
 static const TRANSSYS_INSTANCE **transsys_instance_list(const SYMBOL_INSTANCE *symbol_list, const RULE_ELEMENT *rule)
 {
@@ -121,14 +131,14 @@ size_t lsys_string_length(const LSYS_STRING *lstr)
 }
 
 
-static SYMBOL_INSTANCE *evaluate_production(const LSYS_STRING *lstr, const PRODUCTION_ELEMENT *pe, const TRANSSYS_INSTANCE **ti_list, int num_predecessors, int predecessor_index)
+static SYMBOL_INSTANCE *evaluate_production(const LSYS_STRING *lstr, const PRODUCTION_ELEMENT *pe, const TRANSSYS_INSTANCE **ti_list)
 {
   SYMBOL_INSTANCE *si;
   ASSIGNMENT *a;
   int return_value;
   int i;
 
-  si = new_symbol_instance(lstr, pe->symbol_index, num_predecessors, predecessor_index, 1);
+  si = new_symbol_instance(lstr, pe->symbol_index);
   if (si == NULL)
     return (NULL);
   if (pe->template_lhs_symbol_index != NO_INDEX)
@@ -151,20 +161,20 @@ static SYMBOL_INSTANCE *evaluate_production(const LSYS_STRING *lstr, const PRODU
 }
 
 
-static SYMBOL_INSTANCE *evaluate_production_list(const LSYS_STRING *lstr, const PRODUCTION_ELEMENT *plist, const TRANSSYS_INSTANCE **ti_list, int num_predecessors, int predecessor_index)
+static SYMBOL_INSTANCE *evaluate_production_list(const LSYS_STRING *lstr, const PRODUCTION_ELEMENT *plist, const TRANSSYS_INSTANCE **ti_list)
 {
   SYMBOL_INSTANCE *slist, *stail, *si;
   PRODUCTION_ELEMENT *p;
 
   if (plist == NULL)
     return (NULL);
-  slist = evaluate_production(lstr, plist, ti_list, num_predecessors, predecessor_index);
+  slist = evaluate_production(lstr, plist, ti_list);
   if (slist == NULL)
     return (NULL);
   stail = slist;
   for (p = plist->next; p; p = p->next)
   {
-    si = evaluate_production(lstr, p, ti_list, num_predecessors, predecessor_index);
+    si = evaluate_production(lstr, p, ti_list);
     if (si == NULL)
     {
       free_symbol_instance_list(slist);
@@ -178,7 +188,7 @@ static SYMBOL_INSTANCE *evaluate_production_list(const LSYS_STRING *lstr, const 
 
 
 /*
- * Note on the distance matrix of an axiom string:
+ * Note on the contact graph of an axiom string:
  * All symbols in the axiom have distance 1. This reflects
  * the fact that they represent a "germ" structure in which
  * no complex spatial structure has yet differentiated.
@@ -187,21 +197,27 @@ static SYMBOL_INSTANCE *evaluate_production_list(const LSYS_STRING *lstr, const 
 LSYS_STRING *axiom_string(const LSYS *lsys)
 {
   LSYS_STRING *axiom;
-  int i, j;
+  int i, j, return_value;
 
   axiom = new_lsys_string(lsys);
-  axiom->symbol = evaluate_production_list(axiom, lsys->axiom->production_list, NULL, 0, 0);
+  axiom->symbol = evaluate_production_list(axiom, lsys->axiom->production_list, NULL);
   arrange_lsys_string_arrays(axiom);
-  if(alloc_lsys_string_distance(axiom) != 0)
+  return_value = alloc_lsys_string_contact_graph_components(&(axiom->contact_graph), axiom->num_symbols * (axiom->num_symbols - 1) / 2);
+  if (return_value)
   {
     free_lsys_string(axiom);
     return (NULL);
   }
   for (i = 0; i < axiom->num_symbols; i++)
   {
-    for (j = 0; j < axiom->num_symbols; j++)
+    for (j = 0; j < i; j++)
     {
-      axiom->distance[i][j] = i != j;
+      return_value = connect_lsys_string_symbols(axiom, i, j, 1);
+      if (return_value != 0)
+      {
+	free_lsys_string(axiom);
+	return (NULL);
+      }
     }
   }
   return(axiom);
@@ -265,86 +281,11 @@ int lsys_string_expression(LSYS_STRING *lstr)
   {
     return_value = process_expression(&(symbol->transsys_instance));
     if (return_value)
+    {
       break;
+    }
   }
   return (return_value);
-}
-
-
-static int within_diffusion_range(const LSYS_STRING *lstr, int i, int j)
-{
-  if (lstr->symbol[i].transsys_instance.transsys != lstr->symbol[j].transsys_instance.transsys)
-  {
-    return (0);
-  }
-  return (lstr->distance[i][j] <= lstr->lsys->diffusion_range);
-}
-
-
-typedef struct
-{
-  const SYMBOL_INSTANCE *s1, *s2;  /* the symbols that are in contact */
-  double amount_diffused;          /* the amount of a factor that is transferred by diffusion */
-                                   /* Notice that the direction is from s1 to s2. */
-} CONTACT_GRAPH_EDGE;
-
-
-typedef struct
-{
-  const LSYS_STRING *lstr;
-  SYMBOL_INSTANCE ***contact_table;
-  CONTACT_GRAPH_EDGE *edge;
-} CONTACT_GRAPH;
-
-
-static void free_contact_table(const LSYS_STRING *lstr, SYMBOL_INSTANCE ***contact_table)
-{
-  int i;
-
-  for (i = 0; i < lstr->num_symbols; i++)
-  {
-    free(contact_table[i]);
-  }
-  free(contact_table);
-}
-
-
-static SYMBOL_INSTANCE ***symbol_contact_table(const LSYS_STRING *lstr)
-{
-  SYMBOL_INSTANCE ***contact_table;
-  int row_length, i, j;
-
-  contact_table = (SYMBOL_INSTANCE ***) malloc(lstr->num_symbols * sizeof(SYMBOL_INSTANCE **));
-  if (contact_table == NULL)
-  {
-    fprintf(stderr, "symbol_contact_table: malloc failed (contact_table)\n");
-    return (NULL);
-  }
-  for (i = 0; i < lstr->num_symbols; i++)
-  {
-    contact_table[i] = (SYMBOL_INSTANCE **) malloc((lstr->num_symbols + 1) * sizeof(SYMBOL_INSTANCE *));
-    if (contact_table[i] == NULL)
-    {
-      fprintf(stderr, "symbol_contact_table: malloc failed (row)\n");
-      for (j = 0; j < i; j++)
-      {
-	free(contact_table[j]);
-      }
-      free(contact_table);
-      return (NULL);
-    }
-    row_length = 0;
-    for (j = 0; j < lstr->num_symbols; j++)
-    {
-      if (within_diffusion_range(lstr, i, j))
-      {
-	contact_table[i][row_length++] = lstr->symbol + j;
-      }
-    }
-    contact_table[i][row_length++] = NULL;
-    realloc(contact_table[i], row_length * sizeof(SYMBOL_INSTANCE *));
-  }
-  return (contact_table);
 }
 
 
@@ -374,98 +315,286 @@ static void diffusion_init_new_concentration(LSYS_STRING *lstr)
 }
 
 
-static void diffusion_weights(const LSYS_STRING *lstr, int i, double *w)
+static void diffusion_init_contact_edges(LSYS_STRING *lstr)
 {
-  double wsum = 0.0;
-  int j;
+  size_t i, j;
 
-  for (j = 0; j < lstr->num_symbols; j++)
+  for (i = 0; i < lstr->num_symbols; i++)
   {
-    if (within_diffusion_range(lstr, i, j))
+    for (j = 0; j < lstr->symbol[i].num_contact_edges; j++)
     {
-      w[j] = 1.0;
-      wsum += 1.0;
+      lstr->symbol[i].contact_edge[j]->amount_diffused = 0.0;
+      lstr->symbol[i].contact_edge[j]->amount_valid = 0;
     }
-    else
-    {
-      w[j] = 0.0;
-    }
-  }
-  for (j = 0; j < lstr->num_symbols; j++)
-  {
-    w[j] /= wsum;
   }
 }
 
 
-/*
- * FIXME: the diffusion algorithm has complexity square of
- * num_symbols in string, could be optimised by initially computing
- * contact graph (num_symbols^2 would remain to be worst case, but
- * one can reasonably assume that contact graph is normally rather
- * sparse)
- */
+static int diffusion_set_transferred_amount(LSYS_STRING_CONTACT_EDGE *edge, int symbol_index, double amount)
+{
+  if (edge->i2 == symbol_index)
+  {
+    amount = -amount;
+  }
+  else if (edge->i1 != symbol_index)
+  {
+    fprintf(stderr, "diffusion_set_transferred_amount: illegal symbol index\n");
+    return (-1);
+  }
+  if (edge->amount_valid)
+  {
+    if (fabs(edge->amount_diffused) > fabs(amount))
+    {
+      edge->amount_diffused = amount;
+    }
+  }
+  else
+  {
+    edge->amount_diffused = amount;
+  }
+  edge->amount_valid = 1;
+  return (0);
+}
+
+
+static const TRANSSYS **lsys_string_transsys_list(const LSYS_STRING *lstr)
+{
+  size_t i, j, num_transsys = 0;
+  const TRANSSYS *t;
+  const TRANSSYS **tlist = (const TRANSSYS **) malloc(sizeof(const TRANSSYS *)), **tl1;
+
+  if (tlist == NULL)
+  {
+    fprintf(stderr, "lsys_string_transsys_list: malloc failed\n");
+    return (NULL);
+  }
+  for (i = 0; i < lstr->num_symbols; i++)
+  {
+    t = lstr->symbol[i].transsys_instance.transsys;
+    if (t)
+    {
+      for (j = 0; j < num_transsys; j++)
+      {
+	if (t == tlist[j])
+	{
+	  break;
+	}
+      }
+      if (j == num_transsys)
+      {
+	tl1 = (const TRANSSYS **) realloc(tlist, (num_transsys + 1) * sizeof(const TRANSSYS *));
+	if (tl1 == NULL)
+	{
+	  fprintf(stderr, "lsys_string_transsys_list: realloc failed\n");
+	  free(tlist);
+	  return (NULL);
+	}
+	tlist = tl1;
+	tlist[num_transsys++] = t;
+      }
+    }
+  }
+  return (tlist);
+}
+
+
+int other_symbol_instance_index(const LSYS_STRING_CONTACT_EDGE *edge, int si_index)
+{
+  if (si_index == edge->i1)
+  {
+    return (edge->i2);
+  }
+  if (si_index == edge->i2)
+  {
+    return (edge->i1);
+  }
+  fprintf(stderr, "other_symbol_instance_index: called with illegal symbol instance index\n");
+  return (-1);
+}
+
+
+typedef struct
+{
+  int num_neighbours;
+  int *neighbour_index;
+  int *edge_index;
+  double *gradient;
+  double mean_concentration;
+  double gradient_sum;
+} NEIGHBOURHOOD;
+
+
+static void free_neighbourhood(NEIGHBOURHOOD *neighbourhood)
+{
+  if (neighbourhood->num_neighbours > 0)
+  {
+    free(neighbourhood->neighbour_index);
+    free(neighbourhood->edge_index);
+    free(neighbourhood->gradient);
+  }
+  free(neighbourhood);
+}
+
+
+static NEIGHBOURHOOD *get_neighbourhood(const LSYS_STRING *lstr, int symbol_index, int factor_index)
+{
+  NEIGHBOURHOOD *neighbourhood = (NEIGHBOURHOOD *) malloc(sizeof(NEIGHBOURHOOD));
+  int i, n, other_index;
+  const SYMBOL_INSTANCE *si = lstr->symbol + symbol_index;
+  const TRANSSYS *transsys = si->transsys_instance.transsys;
+
+  if (neighbourhood == NULL)
+  {
+    fprintf(stderr, "get_neighbourhood: malloc failed\n");
+    return (NULL);
+  }
+  neighbourhood->num_neighbours = 0;
+  for (i = 0; i < si->num_contact_edges; i++)
+  {
+    other_index = other_symbol_instance_index(si->contact_edge[i], i);
+    if (lstr->symbol[other_index].transsys_instance.transsys == transsys)
+    {
+      neighbourhood->num_neighbours++;
+    }
+  }
+  if (neighbourhood->num_neighbours == 0)
+  {
+    neighbourhood->neighbour_index = NULL;
+    neighbourhood->edge_index = NULL;
+    neighbourhood->gradient = NULL;
+    neighbourhood->mean_concentration = si->transsys_instance.factor_concentration[factor_index];
+    return (neighbourhood);
+  }
+  neighbourhood->neighbour_index = (int *) malloc(neighbourhood->num_neighbours * sizeof(int));
+  if (neighbourhood->neighbour_index == NULL)
+  {
+    fprintf(stderr, "get_neighbourhood: malloc for neighbour_index failed\n");
+    free(neighbourhood);
+    return (NULL);
+  }
+  neighbourhood->edge_index = (int *) malloc(neighbourhood->num_neighbours * sizeof(int));
+  if (neighbourhood->neighbour_index == NULL)
+  {
+    fprintf(stderr, "get_neighbourhood: malloc for neighbour_index failed\n");
+    free(neighbourhood->neighbour_index);
+    free(neighbourhood);
+    return (NULL);
+  }
+  neighbourhood->gradient = (double *) malloc(neighbourhood->num_neighbours * sizeof(double));
+  if (neighbourhood->gradient == NULL)
+  {
+    fprintf(stderr, "get_neighbourhood: malloc for gradient failed\n");
+    free(neighbourhood->neighbour_index);
+    free(neighbourhood->edge_index);
+    free(neighbourhood);
+    return (NULL);
+  }
+  neighbourhood->mean_concentration = si->transsys_instance.factor_concentration[factor_index];
+  neighbourhood->gradient_sum = 0.0;
+  n = 0;
+  for (i = 0; i < si->num_contact_edges; i++)
+  {
+    other_index = other_symbol_instance_index(si->contact_edge[i], i);
+    if (lstr->symbol[other_index].transsys_instance.transsys == transsys)
+    {
+      neighbourhood->neighbour_index[n] = other_index;
+      neighbourhood->edge_index[n] = i;
+      neighbourhood->gradient[n] = lstr->symbol[other_index].transsys_instance.factor_concentration[factor_index] - si->transsys_instance.factor_concentration[factor_index];
+      neighbourhood->gradient_sum += neighbourhood->gradient[n];
+      neighbourhood->mean_concentration += lstr->symbol[other_index].transsys_instance.factor_concentration[factor_index];
+      n++;
+    }
+  }
+  neighbourhood->mean_concentration /= (neighbourhood->num_neighbours + 1);
+  return (neighbourhood);
+}
+
+
+static int diffuse_along_contact_edges(LSYS_STRING *lstr, int factor_index)
+{
+  int e;
+  SYMBOL_INSTANCE *s1, *s2;
+
+  for (e = 0; e < lstr->contact_graph.num_edges; e++)
+  {
+    s1 = lstr->symbol + lstr->contact_graph.edge[e].i1;
+    s2 = lstr->symbol + lstr->contact_graph.edge[e].i2;
+    s1->transsys_instance.factor_concentration[factor_index] += lstr->contact_graph.edge[e].amount_diffused;
+    s2->transsys_instance.factor_concentration[factor_index] -= lstr->contact_graph.edge[e].amount_diffused;
+  }
+  return (0);
+}
 
 
 /*
  * diffusion concept: diffusibility = 1 means that total equilibration
- * *within local neighbourhood* takes place in one time step.
+ * *within local neighbourhood* takes place in one time step (to the extent
+ * this is feasible).
  */
 
 int lsys_string_diffusion(LSYS_STRING *lstr)
 {
-  int i, j, f;
-  double w, dc, dcsum, diffusibility;
-  const TRANSSYS *transsys;
+  int i, j, f, t;
+  double diffusibility, d;
+  const TRANSSYS *transsys, **tlist;
   const TRANSSYS_INSTANCE *ti;
-  SYMBOL_INSTANCE ***contact_table;
+  SYMBOL_INSTANCE *si;
+  NEIGHBOURHOOD *neighbourhood;
 
   if (!lstr->arrayed)
   {
     fprintf(stderr, "lsys_string_diffusion: cannot process non-arrayed lsys string\n");
     return (-1);
   }
-  contact_table = symbol_contact_table(lstr);
-  if (contact_table == NULL)
+  tlist = lsys_string_transsys_list(lstr);
+  if (tlist == NULL)
   {
-    fprintf(stderr, "lsys_string_diffusion: symbol_contact_table failed\n");
     return (-1);
   }
   diffusion_init_new_concentration(lstr);
-  for (i = 0; i < lstr->num_symbols; i++)
+  for (t = 0; tlist[t]; t++)
   {
-    ti = &(lstr->symbol[i].transsys_instance);
-    transsys = ti->transsys;
-    if (ti->transsys)
+    for (f = 0; f < tlist[t]->num_factors; f++)
     {
-      for (j = 0; contact_table[i][j]; j++)
-	;
-      w = 1.0 / ((double) j);
-      for (f = 0; f < transsys->num_factors; f++)
+      diffusion_init_contact_edges(lstr);
+      for (i = 0; i < lstr->num_symbols; i++)
       {
-	diffusibility = evaluate_expression(ti->transsys->factor_list[f].diffusibility_expression, &ti);
-	dc = diffusibility * ti->factor_concentration[f] * w;
-	dcsum = 0.0;
-	for (j = 0; contact_table[i][j]; j++)
+	si = lstr->symbol + i;
+	ti = &(si->transsys_instance);
+	transsys = ti->transsys;
+	if (transsys == tlist[t])
 	{
-	  dcsum += dc;
-	  contact_table[i][j]->transsys_instance.new_concentration[f] += dc;
+	  neighbourhood = get_neighbourhood(lstr, i, f);
+	  if (neighbourhood == NULL)
+	  {
+	    return (-1);
+	  }
+	  /* FIXME (?) should diffusibility be clipped to [0, 1] ?? Warning? */
+	  diffusibility = evaluate_expression(transsys->factor_list[f].diffusibility_expression, &ti);
+	  for (j = 0; j < neighbourhood->num_neighbours; j++)
+	  {
+	    /* FIXME: this is numerically very unstable. Some more maths may help fixing this... */
+	    if (neighbourhood->gradient_sum == 0.0)
+	    {
+	      if (si->transsys_instance.factor_concentration[f] != neighbourhood->mean_concentration)
+	      {
+		fprintf(stderr, "lsys_string_diffusion: gradient sum 0 but local mean != local concentration\n");
+	      }
+	      d = diffusibility;
+	    }
+	    else
+	    {
+	      d = (neighbourhood->mean_concentration - si->transsys_instance.factor_concentration[f]) / neighbourhood->gradient_sum * diffusibility;
+	    }
+	    diffusion_set_transferred_amount(si->contact_edge[neighbourhood->edge_index[j]], i, d * neighbourhood->gradient[j]);
+	  }
+	  free_neighbourhood(neighbourhood);
 	}
-	ti->new_concentration[f] -= dcsum;
       }
+      diffuse_along_contact_edges(lstr, f);
     }
   }
-  free_contact_table(lstr, contact_table);
-  for (i = 0; i < lstr->num_symbols; i++)
-  {
-    if (lstr->symbol[i].transsys_instance.transsys)
-    {
-      for (f = 0; f < lstr->symbol[i].transsys_instance.transsys->num_factors; f++)
-      {
-	lstr->symbol[i].transsys_instance.factor_concentration[f] += lstr->symbol[i].transsys_instance.new_concentration[f];
-      }
-    }
-  }
+  free(tlist);
   return (0);
 }
 
@@ -477,70 +606,141 @@ int lsys_string_diffusion(LSYS_STRING *lstr)
  */
 
 
-int compute_distance_matrix(LSYS_STRING *lstr, const LSYS_STRING *predecessor)
+LSYS_STRING_CONTACT_GRAPH *group_contact_graph(const LSYS_STRING *lstr)
 {
-  int return_value;
-  int i, j, i1, j1, dmin;
-  const SYMBOL_INSTANCE *si, *sj;
+  LSYS_STRING_CONTACT_GRAPH *gcgraph = (LSYS_STRING_CONTACT_GRAPH *) malloc(sizeof(LSYS_STRING_CONTACT_GRAPH));
+  int e, ge, i1, i2, return_value, ls1, ls2;
+
+  if (gcgraph == NULL)
+  {
+    fprintf(stderr, "group_contact_graph: malloc failed\n");
+    return (NULL);
+  }
+  return_value = alloc_lsys_string_contact_graph_components(gcgraph, lstr->contact_graph.num_edges);
+  if (return_value != 0)
+  {
+    fprintf(stderr, "group_contact_graph: alloc_lsys_string_contact_graph_components failed\n");
+    free(gcgraph);
+    return (NULL);
+  }
+  for (e = 0; e < lstr->contact_graph.num_edges; e++)
+  {
+    i1 = lstr->contact_graph.edge[e].i1;
+    i2 = lstr->contact_graph.edge[e].i2;
+    ls1 = lstr->symbol[i1].lhs_group_start;
+    ls2 = lstr->symbol[i2].lhs_group_start;
+    for (ge = 0; ge < gcgraph->num_edges; ge++)
+    {
+      if (((gcgraph->edge[ge].i1 == ls1) && (gcgraph->edge[ge].i2 == ls2)) || ((gcgraph->edge[ge].i1 == ls2) && (gcgraph->edge[ge].i2 == ls1)))
+      {
+	break;
+      }
+    }
+    if (ge == gcgraph->num_edges)
+    {
+      if (add_lsys_string_contact_edge(gcgraph, ls1, ls2, lstr->contact_graph.edge[e].distance) != 0)
+      {
+	fprintf(stderr, "group_contact_graph: add_lsys_string_contact_edge failed\n");
+      }
+    }
+    else
+    {
+      if (gcgraph->edge[ge].distance > lstr->contact_graph.edge[e].distance)
+      {
+	gcgraph->edge[ge].distance = lstr->contact_graph.edge[e].distance;
+      }
+    }
+  }
+  return (gcgraph);
+}
+
+
+static int compute_contact_graph(LSYS_STRING *lstr, const LSYS_STRING *predecessor)
+{
+  int e, n, p_i1, p_i2, i, j, distance;
+  const SYMBOL_INSTANCE *p1, *p2;
+  LSYS_STRING_CONTACT_GRAPH *gcgraph;
 
   if (!lstr->arrayed)
   {
-    fprintf(stderr, "compute_distance_matrix: cannot process non-arrayed lsys string\n");
+    fprintf(stderr, "compute_contact_graph: cannot process non-arrayed lsys string\n");
     return (-1);
   }
   if (!predecessor->arrayed)
   {
-    fprintf(stderr, "compute_distance_matrix: predecessor not arrayed\n");
+    fprintf(stderr, "compute_contact_graph: predecessor not arrayed\n");
     return (-1);
   }
-  return_value = alloc_lsys_string_distance(lstr);
-  if (return_value != 0)
+  gcgraph = group_contact_graph(predecessor);
+  if (gcgraph == NULL)
   {
-    return (return_value);
+    fprintf(stderr, "compute_contact_graph: malloc failed\n");
+    return (-1);
   }
-  for (i = 0; i < lstr->num_symbols; i++)
+  /* FIXME: loop is repeatedly done for finding number of edges and for adding edges */
+  n = 0;
+  for (e = 0; e < gcgraph->num_edges; e++)
   {
-    si = lstr->symbol + i;
-    for (j = 0; j < lstr->num_symbols; j++)
+    p_i1 = gcgraph->edge[e].i1;
+    p_i2 = gcgraph->edge[e].i2;
+    p1 = predecessor->symbol + p_i1;
+    p2 = predecessor->symbol + p_i2;
+    for (i = p1->successor_index; i < p1->successor_index + p1->num_successors; i++)
     {
-      sj = lstr->symbol + j;
-      if (i == j)
+      /* FIXME: this could probably be improved in speed */
+      for (j = p2->successor_index; j < p2->successor_index + p2->num_successors; j++)
       {
-	lstr->distance[i][j] = 0;
-      }
-      else if (si->predecessor_index == sj->predecessor_index)
-      {
-	lstr->distance[i][j] = 1;
-      }
-      else
-      {
-	dmin = predecessor->distance[si->predecessor_index][sj->predecessor_index];
-	for (i1 = si->predecessor_index; i1 < si->predecessor_index + si->num_predecessors; i1++)
+	distance = gcgraph->edge[e].distance + p1->successor_distance + p2->successor_distance;
+	if (distance <= lstr->lsys->diffusion_range)
 	{
-	  for (j1 = sj->predecessor_index; j1 < sj->predecessor_index + sj->num_predecessors; j1++)
-	  {
-	    if (predecessor->distance[i1][j1] < dmin)
-	    {
-	      dmin = predecessor->distance[i1][j1];
-	    }
-	  }
+	  n++;
 	}
-	lstr->distance[i][j] = si->predecessor_distance + sj->predecessor_distance + dmin;
       }
-      /* fprintf(stderr, "distance[%d][%d]: %d\n", i, j, lstr->distance[i][j]); */
     }
   }
+  if (alloc_lsys_string_contact_graph_components(&(lstr->contact_graph), n) != 0)
+  {
+    fprintf(stderr, "compute_contact_graph: alloc_lsys_string_contact_graph_components failed\n");
+    free_lsys_string_contact_graph(gcgraph);
+    return (-1);
+  }
+  for (e = 0; e < gcgraph->num_edges; e++)
+  {
+    p_i1 = gcgraph->edge[e].i1;
+    p_i2 = gcgraph->edge[e].i2;
+    p1 = predecessor->symbol + p_i1;
+    p2 = predecessor->symbol + p_i2;
+    for (i = p1->successor_index; i < p1->successor_index + p1->num_successors; i++)
+    {
+      /* FIXME: this could probably be improved in speed */
+      for (j = p2->successor_index; j < p2->successor_index + p2->num_successors; j++)
+      {
+	distance = gcgraph->edge[e].distance + p1->successor_distance + p2->successor_distance;
+	if (distance <= lstr->lsys->diffusion_range)
+	{
+	  if (connect_lsys_string_symbols(lstr, i, j, distance) != 0)
+	  {
+	    fprintf(stderr, "compute_contact_graph: connect_lsys_string_symbols failed\n");
+	  }
+	}
+      }
+    }
+  }
+  free_lsys_string_contact_graph(gcgraph);
   return (0);
 }
 
 
-LSYS_STRING *derived_string(const LSYS_STRING *lstr)
+/* incomplete: successor info not stored in symbol instances (?) */
+
+LSYS_STRING *derived_string(LSYS_STRING *lstr)
 {
   LSYS_STRING *dstr;
   SYMBOL_INSTANCE *target_tail = NULL, *target_symbol;
   const RULE_ELEMENT *rule;
   const TRANSSYS_INSTANCE **ti_list;
-  int symbol_index;
+  int si_index, i, lhs_length;
+  int num_successors, successor_index;
 
   if (!lstr->arrayed)
   {
@@ -553,44 +753,90 @@ LSYS_STRING *derived_string(const LSYS_STRING *lstr)
     fprintf(stderr, "derived_string: could not allocate new symbol string\n");
     return (NULL);
   }
-  for (symbol_index = 0; symbol_index < lstr->num_symbols; symbol_index++)
+  successor_index = 0;
+  si_index = 0;
+  while (si_index < lstr->num_symbols)
   {
     for (rule = lstr->lsys->rule_list; rule; rule = rule->next)
     {
-      if (rule_match(lstr->symbol + symbol_index, rule))
+      if (rule_match(lstr->symbol + si_index, rule))
       {
 	/* fprintf(stderr, "derived_string: applying rule \"%s\"\n", rule->name); */
-	ti_list = transsys_instance_list(lstr->symbol + symbol_index, rule);
-	target_symbol = evaluate_production_list(dstr, rule->rhs->production_list, ti_list, rule->lhs->num_symbols, symbol_index);
-	free_transsys_instance_list(ti_list);
 	break;
       }
     }
-    if (rule == NULL)
+    if (rule)
     {
-      target_symbol = clone_symbol_instance(lstr->symbol + symbol_index, dstr, symbol_index);
+      /* FIXME: should bail out if there's a problem here... */
+      ti_list = transsys_instance_list(lstr->symbol + si_index, rule);
+      if (ti_list == NULL)
+      {
+	fprintf(stderr, "derived_string: transsys_instance_list failed\n");
+      }
+      target_symbol = evaluate_production_list(dstr, rule->rhs->production_list, ti_list);
+      free_transsys_instance_list(ti_list);
+      lhs_length = rule->lhs->num_symbols;
+      lstr->symbol[si_index].lhs_group_length = lhs_length;
+      for (i = 1; i < rule->lhs->num_symbols; i++)
+      {
+	lstr->symbol[si_index + i].lhs_group_length = -1;
+	lstr->symbol[si_index + i].lhs_group_start = si_index;
+      }
     }
     else
     {
-      symbol_index += rule->lhs->num_symbols - 1;
+      lhs_length = 1;
+      target_symbol = clone_symbol_instance(lstr->symbol + si_index, dstr, si_index);
+      lstr->symbol[si_index].lhs_group_length = 1;
     }
+    lstr->symbol[si_index].lhs_group_start = si_index;
     if (target_symbol)
     {
       if (target_tail == NULL)
+      {
 	dstr->symbol = target_symbol;
+      }
       else
+      {
 	target_tail->next = target_symbol;
-      for (target_tail = target_symbol; target_tail->next; target_tail = target_tail->next)
-	;
+      }
     }
     else
     {
-      if (rule->rhs->num_production_elements > 0)
+      if ((rule != NULL) && (rule->rhs->num_production_elements > 0))
+      {
+	/* FIXME: should bail out here */
 	fprintf(stderr, "derived_string: failed to produce target symbol\n");
+      }
     }
+    num_successors = 0;
+    /* advance target_tail to new tail and count number of successors in the process */
+    if (target_symbol != NULL)
+    {
+      for (target_tail = target_symbol; target_tail->next; target_tail = target_tail->next)
+      {
+	num_successors++;
+      }
+    }
+    for (i = 0; i < lhs_length; i++)
+    {
+      lstr->symbol[si_index].num_successors = num_successors;
+      lstr->symbol[si_index].successor_index = successor_index;
+      if  (rule != NULL)
+      {
+	lstr->symbol[si_index].successor_distance = 1;
+      }
+      else
+      {
+	lstr->symbol[si_index].successor_distance = 0;
+      }
+      si_index++;
+    }
+    successor_index += num_successors;
   }
+  /* FIXME: should return NULL if problems occur here */
   arrange_lsys_string_arrays(dstr);
-  compute_distance_matrix(dstr, lstr);
+  compute_contact_graph(dstr, lstr);
   /* fprint_lsys_string(stderr, dstr, "***\n"); */
   return (dstr);
 }

@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.7  2005/05/16 12:02:10  jtk
+ * in transition from distance matrices to contact graphs
+ *
  * Revision 1.6  2005/04/04 21:30:07  jtk
  * differentiated fprint_lsys_string and fprint_lsys_string_distances
  *
@@ -572,13 +575,13 @@ void fprint_symbol_instance(FILE *f, const SYMBOL_INSTANCE *si)
     }
     fprintf(f, ")");
   }
-  if (si->num_predecessors == 0)
+  if (si->num_successors == 0)
   {
-    fprintf(f, " [no predecessors]");
+    fprintf(f, " [no successors]");
   }
   else
   {
-    fprintf(f, " [predecessors:%d:%d, pdist:%d]", si->predecessor_index, si->predecessor_index + si->num_predecessors - 1, si->predecessor_distance);
+    fprintf(f, " [successors:%d:%d, pdist:%d]", si->successor_index, si->successor_index + si->num_successors - 1, si->successor_distance);
   }
 }
 
@@ -593,29 +596,35 @@ void fprint_symbol_instance_list(FILE *f, const SYMBOL_INSTANCE *si, const char 
 }
 
 
-void fprint_lsys_string_distances(FILE *f, const LSYS_STRING *lstr)
-{
-  int i, j;
-
-  if (lstr->arrayed && lstr->lsys->arrayed && lstr->distance)
-  {
-    for (i = 0; i < lstr->num_symbols; i++)
-    {
-      fprintf(f, "%20s: ", lstr->lsys->symbol_list[lstr->symbol[i].symbol_index].name);
-      for (j = 0; j < lstr->num_symbols; j++)
-      {
-	fprintf(f, " %3d", lstr->distance[i][j]);
-      }
-      fprintf(f, "\n");
-    }
-  }
-}
+/* FIXME: no functions for printing contact graphs yet */
 
 
 void fprint_lsys_string(FILE *f, const LSYS_STRING *lstr, const char *sep)
 {
   fprintf(f, "symbol string of lsys %s\n", lstr->lsys->name);
   fprint_symbol_instance_list(f, lstr->symbol, sep);
+}
+
+
+void fprint_lsys_string_contact_graph(FILE *f, const LSYS_STRING *lstr)
+{
+  int i, e, other_index;
+
+  if (!lstr->arrayed)
+  {
+    fprintf(stderr, "fprint_lsys_string_contact_graph: cannot operate with non-arrayed lsys string\n");
+    return;
+  }
+  for (i = 0; i < lstr->num_symbols; i++)
+  {
+    fprintf(f, "%d (%s):", i, lstr->lsys->symbol_list[lstr->symbol[i].symbol_index].name);
+    for (e = 0; e < lstr->symbol[i].num_contact_edges; e++)
+    {
+      other_index = other_symbol_instance_index(lstr->symbol[i].contact_edge[e], i);
+      fprintf(f, " %d", other_index);
+    }
+    fprintf(f, "\n");
+  }
 }
 
 

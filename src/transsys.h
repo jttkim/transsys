@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.7  2005/05/16 12:02:10  jtk
+ * in transition from distance matrices to contact graphs
+ *
  * Revision 1.6  2005/04/04 21:30:07  jtk
  * differentiated fprint_lsys_string and fprint_lsys_string_distances
  *
@@ -95,6 +98,7 @@ extern LHS_DESCRIPTOR *new_lhs_descriptor(LHS_SYMBOL *symbol_list);
 extern int arrange_lhs_descriptor_arrays(LHS_DESCRIPTOR *l);
 extern void free_symbol_element_components(SYMBOL_ELEMENT *sym);
 extern void free_symbol_element_list(SYMBOL_ELEMENT *sym);
+extern int extend_symbol_contact_edge_array(SYMBOL_INSTANCE *si, LSYS_STRING_CONTACT_EDGE *edge);
 extern SYMBOL_ELEMENT *new_symbol_element(const char *name, const TRANSSYS *transsys);
 extern int arrange_symbol_element_arrays(SYMBOL_ELEMENT *se);
 extern void free_assignment_components(ASSIGNMENT *a);
@@ -125,11 +129,16 @@ extern int alloc_cell_components(CELL *c, const TRANSSYS *transsys);
 extern CELL *new_cells(int num_cells, const TRANSSYS *transsys);
 extern void free_symbol_instance_components(SYMBOL_INSTANCE *si);
 extern void free_symbol_instance_list(SYMBOL_INSTANCE *slist);
-extern SYMBOL_INSTANCE *new_symbol_instance(const LSYS_STRING *lsys_string, int symbol_index, int num_predecessors, int predecessor_index, int predecessor_distance);
+extern SYMBOL_INSTANCE *new_symbol_instance(const LSYS_STRING *lsys_string, int symbol_index);
 extern SYMBOL_INSTANCE *clone_symbol_instance(const SYMBOL_INSTANCE *source, const LSYS_STRING *lsys_string, int predecessor_index);
-extern void free_lsys_string_distance(LSYS_STRING *lstr);
+extern void init_lsys_string_contact_graph_components(LSYS_STRING_CONTACT_GRAPH *g);
+extern void free_lsys_string_contact_graph_components(LSYS_STRING_CONTACT_GRAPH *g);
+extern void free_lsys_string_contact_graph(LSYS_STRING_CONTACT_GRAPH *g);
+extern int alloc_lsys_string_contact_graph_components(LSYS_STRING_CONTACT_GRAPH *g, size_t array_size);
+extern LSYS_STRING_CONTACT_GRAPH *new_lsys_string_contact_graph(size_t num_edges);
+extern int add_lsys_string_contact_edge(LSYS_STRING_CONTACT_GRAPH *g, int i1, int i2, int distance);
+extern int connect_lsys_string_symbols(LSYS_STRING *lstr, int i1, int i2, int distance);
 extern void free_lsys_string(LSYS_STRING *lstr);
-extern int alloc_lsys_string_distance(LSYS_STRING *lstr);
 extern int arrange_lsys_string_arrays(LSYS_STRING *lstr);
 extern LSYS_STRING *new_lsys_string(const LSYS *lsys);
 
@@ -143,9 +152,10 @@ extern double max_concentration(int num_cells, const CELL *cell, int factor_no);
 extern size_t symbol_strlen(const SYMBOL_INSTANCE *symbol_string);
 extern size_t lsys_string_length(const LSYS_STRING *lstr);
 extern int lsys_string_expression(LSYS_STRING *lstr);
+extern int other_symbol_instance_index(const LSYS_STRING_CONTACT_EDGE *edge, int si_index);
 extern int lsys_string_diffusion(LSYS_STRING *lstr);
 extern LSYS_STRING *axiom_string(const LSYS *lsys);
-extern LSYS_STRING *derived_string(const LSYS_STRING *lstr);
+extern LSYS_STRING *derived_string(LSYS_STRING *lstr);
 
 extern void fprint_transsys(FILE *f, int indent_depth, const TRANSSYS *transsys);
 
@@ -156,8 +166,8 @@ extern void fprint_transsys_instance(FILE *f, const TRANSSYS_INSTANCE *ti);
 extern void fprint_cell(FILE *f, const CELL *cell);
 extern void fprint_symbol_instance(FILE *f, const SYMBOL_INSTANCE *si);
 extern void fprint_symbol_instance_list(FILE *f, const SYMBOL_INSTANCE *si, const char *sep);
-extern void fprint_lsys_string_distances(FILE *f, const LSYS_STRING *lstr);
 extern void fprint_lsys_string(FILE *f, const LSYS_STRING *lstr, const char *sep); 
+extern void fprint_lsys_string_contact_graph(FILE *f, const LSYS_STRING *lstr); 
 extern double evaluate_expression(const EXPRESSION_NODE *expr, const TRANSSYS_INSTANCE **ti_list);
 
 extern int process_expression(TRANSSYS_INSTANCE *ti);

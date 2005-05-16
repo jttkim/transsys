@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.7  2005/05/16 12:02:10  jtk
+ * in transition from distance matrices to contact graphs
+ *
  * Revision 1.6  2005/04/05 10:12:39  jtk
  * made diffusion consistent (no oscillation due to overshooting), small fixes
  *
@@ -1383,6 +1386,10 @@ CELL *new_cells(int num_cells, const TRANSSYS *transsys)
 
 void free_symbol_instance_components(SYMBOL_INSTANCE *si)
 {
+  if (si->num_contact_edges > 0)
+  {
+    free(si->contact_edge);
+  }
   free_transsys_instance_components(&(si->transsys_instance));
 }
 
@@ -1401,7 +1408,31 @@ void free_symbol_instance_list(SYMBOL_INSTANCE *slist)
 }
 
 
-SYMBOL_INSTANCE *new_symbol_instance(const LSYS_STRING *lsys_string, int symbol_index, int num_predecessors, int predecessor_index, int predecessor_distance)
+int extend_symbol_contact_edge_array(SYMBOL_INSTANCE *si, LSYS_STRING_CONTACT_EDGE *edge)
+{
+  LSYS_STRING_CONTACT_EDGE **e;
+
+  if (si->num_contact_edges > 0)
+  {
+    e = (LSYS_STRING_CONTACT_EDGE **) realloc(si->contact_edge, (si->num_contact_edges + 1) * sizeof(LSYS_STRING_CONTACT_EDGE *));
+  }
+  else
+  {
+    e = (LSYS_STRING_CONTACT_EDGE **) malloc(sizeof(LSYS_STRING_CONTACT_EDGE *));
+  }
+  if (e == NULL)
+  {
+    fprintf(stderr, "add_symbol_contact_edge: malloc / realloc failed\n");
+    return (-1);
+  }
+  si->contact_edge = e;
+  si->contact_edge[si->num_contact_edges] = edge;
+  si->num_contact_edges++;
+  return (0);
+}
+
+
+SYMBOL_INSTANCE *new_symbol_instance(const LSYS_STRING *lsys_string, int symbol_index)
 {
   SYMBOL_INSTANCE *si;
 
@@ -1411,9 +1442,11 @@ SYMBOL_INSTANCE *new_symbol_instance(const LSYS_STRING *lsys_string, int symbol_
   si->next = NULL;
   si->lsys_string = lsys_string;
   si->symbol_index = symbol_index;
-  si->num_predecessors = num_predecessors;
-  si->predecessor_index = predecessor_index;
-  si->predecessor_distance = predecessor_distance;
+  si->num_successors = 0;
+  si->successor_index = -1;
+  si->successor_distance = -1;
+  si->num_contact_edges = 0;
+  si->contact_edge = NULL;
   init_transsys_instance_components(&(si->transsys_instance));
   if (alloc_transsys_instance_components(&(si->transsys_instance), lsys_string->lsys->symbol_list[symbol_index].transsys) != 0)
   {
@@ -1435,9 +1468,11 @@ SYMBOL_INSTANCE *clone_symbol_instance(const SYMBOL_INSTANCE *source, const LSYS
   si->next = NULL;
   si->lsys_string = lsys_string;
   si->symbol_index = source->symbol_index;
-  si->num_predecessors = 1;     /* cloned symbol is always "derived" from one symbol */
-  si->predecessor_index = predecessor_index;
-  si->predecessor_distance = 0; /* cloned symbol is always "same" as source symbol */
+  si->num_successors = 0;
+  si->successor_index = -1;
+  si->successor_distance = -1;
+  si->num_contact_edges = 0;    /* contact graph must be established by caller */
+  si->contact_edge = NULL;
   init_transsys_instance_components(&(si->transsys_instance));
   if (alloc_transsys_instance_components(&(si->transsys_instance), source->transsys_instance.transsys) != 0)
   {
@@ -1458,13 +1493,111 @@ SYMBOL_INSTANCE *clone_symbol_instance(const SYMBOL_INSTANCE *source, const LSYS
 }
 
 
-void free_lsys_string_distance(LSYS_STRING *lstr)
+void init_lsys_string_contact_graph_components(LSYS_STRING_CONTACT_GRAPH *g)
 {
-  if (lstr->distance)
+  g->array_size = 0;
+  g->num_edges = 0;
+  g->edge = NULL;
+}
+
+
+void free_lsys_string_contact_graph_components(LSYS_STRING_CONTACT_GRAPH *g)
+{
+  if (g->num_edges > 0)
   {
-    free(lstr->distance[0]);
-    free(lstr->distance);
+    free(g->edge);
   }
+  init_lsys_string_contact_graph_components(g);
+}
+
+
+void free_lsys_string_contact_graph(LSYS_STRING_CONTACT_GRAPH *g)
+{
+  free_lsys_string_contact_graph_components(g);
+  free(g);
+}
+
+
+int alloc_lsys_string_contact_graph_components(LSYS_STRING_CONTACT_GRAPH *g, size_t array_size)
+{
+  if (g->array_size > 0)
+  {
+    fprintf(stderr, "alloc_lsys_string_contact_graph_components: array already present\n");
+    return (-1);
+  }
+  g->edge = (LSYS_STRING_CONTACT_EDGE *) malloc(array_size * sizeof(LSYS_STRING_CONTACT_EDGE));
+  if (g->edge == NULL)
+  {
+    fprintf(stderr, "alloc_lsys_string_contact_graph_components: malloc failed\n");
+    return (-1);
+  }
+  g->array_size = array_size;
+  g->num_edges = 0;
+  return (0);
+}
+
+
+LSYS_STRING_CONTACT_GRAPH *new_lsys_string_contact_graph(size_t num_edges)
+{
+  LSYS_STRING_CONTACT_GRAPH *g = (LSYS_STRING_CONTACT_GRAPH *) malloc(sizeof(LSYS_STRING_CONTACT_GRAPH));
+
+  if (g == NULL)
+  {
+    fprintf(stderr, "new_lsys_string_contact_graph: malloc failed\n");
+    return (NULL);
+  }
+  init_lsys_string_contact_graph_components(g);
+  if (num_edges > 0)
+  {
+    if (alloc_lsys_string_contact_graph_components(g, num_edges) != 0)
+    {
+      fprintf(stderr, "new_lsys_string_contact_graph: alloc_lsys_string_graph_components failed\n");
+      free(g);
+      return (NULL);
+    }
+  }
+  return (g);
+}
+
+
+int add_lsys_string_contact_edge(LSYS_STRING_CONTACT_GRAPH *g, int i1, int i2, int distance)
+{
+  if (g->num_edges >= g->array_size)
+  {
+    fprintf(stderr, "add_lsys_string_contact_edge: contact graph full\n");
+    return (-1);
+  }
+  g->edge[g->num_edges].i1 = i1;
+  g->edge[g->num_edges].i2 = i2;
+  g->edge[g->num_edges].distance = distance;
+  g->num_edges++;
+  return (0);
+}
+
+
+int connect_lsys_string_symbols(LSYS_STRING *lstr, int i1, int i2, int distance)
+{
+  SYMBOL_INSTANCE *s1 = lstr->symbol + i1, *s2 = lstr->symbol + i2;
+  LSYS_STRING_CONTACT_EDGE *edge;
+
+  if (add_lsys_string_contact_edge(&(lstr->contact_graph), i1, i2, distance) != 0)
+  {
+    return (-1);
+  }
+  edge = lstr->contact_graph.edge + (lstr->contact_graph.num_edges - 1);
+  if (extend_symbol_contact_edge_array(s1, edge) != 0)
+  {
+    fprintf(stderr, "connect_contacting_symbols: failed to add edge to symbol\n");
+    return (-1);
+  }
+  if (extend_symbol_contact_edge_array(s2, edge) != 0)
+  {
+    fprintf(stderr, "connect_contacting_symbols: failed to add edge to symbol\n");
+    return (-1);
+  }
+  s1->contact_edge[s1->num_contact_edges - 1] = edge;
+  s2->contact_edge[s2->num_contact_edges - 1] = edge;
+  return (0);
 }
 
 
@@ -1472,6 +1605,7 @@ void free_lsys_string(LSYS_STRING *lstr)
 {
   size_t i;
 
+  free_lsys_string_contact_graph_components(&(lstr->contact_graph));
   if (lstr->arrayed)
   {
     for (i = 0; i < lstr->num_symbols; i++)
@@ -1484,47 +1618,7 @@ void free_lsys_string(LSYS_STRING *lstr)
   {
     free_symbol_instance_list(lstr->symbol);
   }
-  free_lsys_string_distance(lstr);
   free(lstr);
-}
-
-
-int alloc_lsys_string_distance(LSYS_STRING *lstr)
-{
-  size_t i, j;
-
-  if (!lstr->arrayed)
-  {
-    fprintf(stderr, "cannot alloc distance for non-arrayed lsys string\n");
-    return (-1);
-  }
-  if (lstr->distance)
-  {
-    fprintf(stderr, "alloc_lsys_string_distance: distance matrix already present\n");
-    free_lsys_string_distance(lstr);
-  }
-  lstr->distance = (int **) malloc(lstr->num_symbols * sizeof(int *));
-  if (lstr->distance == NULL)
-  {
-    fprintf(stderr, "alloc_lsys_string_distance: malloc failed\n");
-    return (-1);
-  }
-  lstr->distance[0] = (int *) malloc(lstr->num_symbols * lstr->num_symbols * sizeof(int));
-  if (lstr->distance[0] == NULL)
-  {
-    free(lstr->distance);
-    fprintf(stderr, "alloc_lsys_string_distance: malloc failed\n");
-    return (-1);
-  }
-  for (i = 1; i < lstr->num_symbols; i++)
-  {
-    lstr->distance[i] = lstr->distance[0] + lstr->num_symbols * i;
-    for (j = 0; j < lstr->num_symbols; j++)
-    {
-      lstr->distance[i][j] = 0;
-    }
-  }
-  return (0);
 }
 
 
@@ -1593,6 +1687,7 @@ LSYS_STRING *new_lsys_string(const LSYS *lsys)
   lstr->num_symbols = 0;
   lstr->arrayed = 0;
   lstr->symbol = NULL;
-  lstr->distance = NULL;
+  init_lsys_string_contact_graph_components(&(lstr->contact_graph));
   return (lstr);
 }
+
