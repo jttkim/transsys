@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.12  2005/05/16 21:03:27  jtk
+ * contact graph implementation still buggy
+ *
  * Revision 1.11  2005/05/16 12:02:10  jtk
  * in transition from distance matrices to contact graphs
  *
@@ -187,6 +190,25 @@ static SYMBOL_INSTANCE *evaluate_production_list(const LSYS_STRING *lstr, const 
 }
 
 
+static int connect_symbol_group(LSYS_STRING *lstr, int group_start, int group_length)
+{
+  int group_end = group_start + group_length, i, j;
+
+  for (i = group_start; i < group_end; i++)
+  {
+    for (j = 0; j < i; j++)
+    {
+      if (connect_lsys_string_symbols(lstr, i, j, 1) != 0)
+      {
+	fprintf(stderr, "connect_symbol_group: connect_lsys_string_symbols failed\n");
+	return (-1);
+      }
+    }
+  }
+  return (0);
+}
+
+
 /*
  * Note on the contact graph of an axiom string:
  * All symbols in the axiom have distance 1. This reflects
@@ -197,28 +219,21 @@ static SYMBOL_INSTANCE *evaluate_production_list(const LSYS_STRING *lstr, const 
 LSYS_STRING *axiom_string(const LSYS *lsys)
 {
   LSYS_STRING *axiom;
-  int i, j, return_value;
 
   axiom = new_lsys_string(lsys);
   axiom->symbol = evaluate_production_list(axiom, lsys->axiom->production_list, NULL);
   arrange_lsys_string_arrays(axiom);
-  return_value = alloc_lsys_string_contact_graph_components(&(axiom->contact_graph), axiom->num_symbols * (axiom->num_symbols - 1) / 2);
-  if (return_value)
+  if (alloc_lsys_string_contact_graph_components(&(axiom->contact_graph), axiom->num_symbols * (axiom->num_symbols - 1) / 2))
   {
+    fprintf(stderr, "axiom_string: alloc_lsys_string_contact_graph_components failed\n");
     free_lsys_string(axiom);
     return (NULL);
   }
-  for (i = 0; i < axiom->num_symbols; i++)
+  if (connect_symbol_group(axiom, 0, axiom->num_symbols) != 0)
   {
-    for (j = 0; j < i; j++)
-    {
-      return_value = connect_lsys_string_symbols(axiom, i, j, 1);
-      if (return_value != 0)
-      {
-	free_lsys_string(axiom);
-	return (NULL);
-      }
-    }
+    fprintf(stderr, "axiom_string: connect_symbol_group failed\n");
+    free_lsys_string(axiom);
+    return (NULL);
   }
   return(axiom);
 }
@@ -357,6 +372,12 @@ static int diffusion_set_transferred_amount(LSYS_STRING_CONTACT_EDGE *edge, int 
 }
 
 
+static void free_lsys_string_transsys_list(const TRANSSYS **tlist)
+{
+  free(tlist);
+}
+
+
 static const TRANSSYS **lsys_string_transsys_list(const LSYS_STRING *lstr)
 {
   size_t i, j, num_transsys = 0;
@@ -394,6 +415,7 @@ static const TRANSSYS **lsys_string_transsys_list(const LSYS_STRING *lstr)
       }
     }
   }
+  tlist[num_transsys] = NULL;
   return (tlist);
 }
 
@@ -408,7 +430,7 @@ int other_symbol_instance_index(const LSYS_STRING_CONTACT_EDGE *edge, int si_ind
   {
     return (edge->i1);
   }
-  fprintf(stderr, "other_symbol_instance_index: called with illegal symbol instance index\n");
+  fprintf(stderr, "other_symbol_instance_index: illegal symbol index %d: not in {%d, %d}\n", si_index, edge->i1, edge->i2);
   return (-1);
 }
 
@@ -451,7 +473,7 @@ static NEIGHBOURHOOD *get_neighbourhood(const LSYS_STRING *lstr, int symbol_inde
   neighbourhood->num_neighbours = 0;
   for (i = 0; i < si->num_contact_edges; i++)
   {
-    other_index = other_symbol_instance_index(si->contact_edge[i], i);
+    other_index = other_symbol_instance_index(si->contact_edge[i], symbol_index);
     if (lstr->symbol[other_index].transsys_instance.transsys == transsys)
     {
       neighbourhood->num_neighbours++;
@@ -494,7 +516,7 @@ static NEIGHBOURHOOD *get_neighbourhood(const LSYS_STRING *lstr, int symbol_inde
   n = 0;
   for (i = 0; i < si->num_contact_edges; i++)
   {
-    other_index = other_symbol_instance_index(si->contact_edge[i], i);
+    other_index = other_symbol_instance_index(si->contact_edge[i], symbol_index);
     if (lstr->symbol[other_index].transsys_instance.transsys == transsys)
     {
       neighbourhood->neighbour_index[n] = other_index;
@@ -591,10 +613,11 @@ int lsys_string_diffusion(LSYS_STRING *lstr)
 	  free_neighbourhood(neighbourhood);
 	}
       }
+      /* fprintf(stderr, "lsys_string_diffusion: diffusing #%d along edges\n", f); */
       diffuse_along_contact_edges(lstr, f);
     }
   }
-  free(tlist);
+  free_lsys_string_transsys_list(tlist);
   return (0);
 }
 
@@ -616,6 +639,7 @@ LSYS_STRING_CONTACT_GRAPH *group_contact_graph(const LSYS_STRING *lstr)
     fprintf(stderr, "group_contact_graph: malloc failed\n");
     return (NULL);
   }
+  init_lsys_string_contact_graph_components(gcgraph);
   return_value = alloc_lsys_string_contact_graph_components(gcgraph, lstr->contact_graph.num_edges);
   if (return_value != 0)
   {
@@ -674,11 +698,29 @@ static int compute_contact_graph(LSYS_STRING *lstr, const LSYS_STRING *predecess
   gcgraph = group_contact_graph(predecessor);
   if (gcgraph == NULL)
   {
-    fprintf(stderr, "compute_contact_graph: malloc failed\n");
+    fprintf(stderr, "compute_contact_graph: group_contact_graph failed\n");
     return (-1);
   }
   /* FIXME: loop is repeatedly done for finding number of edges and for adding edges */
   n = 0;
+  /* edges between symbols with same predecessors */
+  i = 0;
+  while (i < predecessor->num_symbols)
+  {
+    if (predecessor->symbol[i].lhs_group_length == 0)
+    {
+      fprintf(stderr, "compute_contact_graph: lhs group info corrupted\n");
+    }
+    else
+    {
+      if (predecessor->symbol[i].num_successors > 0)
+      {
+	n += predecessor->symbol[i].num_successors * (predecessor->symbol[i].num_successors - 1) / 2;
+      }
+      i += predecessor->symbol[i].lhs_group_length;
+    }
+  }
+  /* edges between symbols with different predecessors */
   for (e = 0; e < gcgraph->num_edges; e++)
   {
     p_i1 = gcgraph->edge[e].i1;
@@ -704,6 +746,28 @@ static int compute_contact_graph(LSYS_STRING *lstr, const LSYS_STRING *predecess
     free_lsys_string_contact_graph(gcgraph);
     return (-1);
   }
+  /* edges between symbols with same predecessors */
+  i = 0;
+  while (i < predecessor->num_symbols)
+  {
+    if (predecessor->symbol[i].lhs_group_length == 0)
+    {
+      fprintf(stderr, "compute_contact_graph: lhs group info corrupted\n");
+    }
+    else
+    {
+      if (predecessor->symbol[i].num_successors > 0)
+      {
+	if (connect_symbol_group(lstr, predecessor->symbol[i].successor_index, predecessor->symbol[i].num_successors) != 0)
+	{
+	  /* FIXME: should bail out here */
+	  fprintf(stderr, "compute_contact_graph: connect_symbol_group failed\n");
+	}
+      }
+      i += predecessor->symbol[i].lhs_group_length;
+    }
+  }
+  /* edges between symbols with different predecessors */
   for (e = 0; e < gcgraph->num_edges; e++)
   {
     p_i1 = gcgraph->edge[e].i1;
@@ -736,7 +800,7 @@ static int compute_contact_graph(LSYS_STRING *lstr, const LSYS_STRING *predecess
 LSYS_STRING *derived_string(LSYS_STRING *lstr)
 {
   LSYS_STRING *dstr;
-  SYMBOL_INSTANCE *target_tail = NULL, *target_symbol;
+  SYMBOL_INSTANCE *target_tail = NULL, *target_symbol, *s;
   const RULE_ELEMENT *rule;
   const TRANSSYS_INSTANCE **ti_list;
   int si_index, i, lhs_length;
@@ -772,47 +836,46 @@ LSYS_STRING *derived_string(LSYS_STRING *lstr)
       if (ti_list == NULL)
       {
 	fprintf(stderr, "derived_string: transsys_instance_list failed\n");
+	free_lsys_string(dstr);
+	return (NULL);
       }
+      lhs_length = rule->lhs->num_symbols;
       target_symbol = evaluate_production_list(dstr, rule->rhs->production_list, ti_list);
       free_transsys_instance_list(ti_list);
-      lhs_length = rule->lhs->num_symbols;
-      lstr->symbol[si_index].lhs_group_length = lhs_length;
-      for (i = 1; i < rule->lhs->num_symbols; i++)
+      if (target_symbol == NULL)
       {
-	lstr->symbol[si_index + i].lhs_group_length = -1;
-	lstr->symbol[si_index + i].lhs_group_start = si_index;
+	fprintf(stderr, "derived_string: failed to produce target symbol\n");
+	free_lsys_string(dstr);
+	return (NULL);
+      }
+      target_symbol->lhs_group_length = lhs_length;
+      for (s = target_symbol->next; s; s = s->next)
+      {
+	/* an lhs group length of 0 indicates that this symbol is not the first one in an lhs group */
+	s->lhs_group_length = 0;
+	s->lhs_group_start = si_index;
       }
     }
     else
     {
       lhs_length = 1;
       target_symbol = clone_symbol_instance(lstr->symbol + si_index, dstr, si_index);
-      lstr->symbol[si_index].lhs_group_length = 1;
+      target_symbol->lhs_group_length = 1;
     }
-    lstr->symbol[si_index].lhs_group_start = si_index;
-    if (target_symbol)
+    target_symbol->lhs_group_start = si_index;
+    if (target_tail == NULL)
     {
-      if (target_tail == NULL)
-      {
-	dstr->symbol = target_symbol;
-      }
-      else
-      {
-	target_tail->next = target_symbol;
-      }
+      dstr->symbol = target_symbol;
     }
     else
     {
-      if ((rule != NULL) && (rule->rhs->num_production_elements > 0))
-      {
-	/* FIXME: should bail out here */
-	fprintf(stderr, "derived_string: failed to produce target symbol\n");
-      }
+      target_tail->next = target_symbol;
     }
     num_successors = 0;
     /* advance target_tail to new tail and count number of successors in the process */
     if (target_symbol != NULL)
     {
+      num_successors = 1;
       for (target_tail = target_symbol; target_tail->next; target_tail = target_tail->next)
       {
 	num_successors++;
@@ -834,9 +897,18 @@ LSYS_STRING *derived_string(LSYS_STRING *lstr)
     }
     successor_index += num_successors;
   }
-  /* FIXME: should return NULL if problems occur here */
-  arrange_lsys_string_arrays(dstr);
-  compute_contact_graph(dstr, lstr);
+  if (arrange_lsys_string_arrays(dstr) != 0)
+  {
+    fprintf(stderr, "derived_string: arrange_lsys_string_arrays failed\n");
+    free_lsys_string(dstr);
+    return (NULL);
+  }
+  if (compute_contact_graph(dstr, lstr) != 0)
+  {
+    fprintf(stderr, "derived_string: compute_contact_graph failed\n");
+    free_lsys_string(dstr);
+    return (NULL);
+  }
   /* fprint_lsys_string(stderr, dstr, "***\n"); */
   return (dstr);
 }
