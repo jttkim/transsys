@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.14  2005/05/17 21:09:52  jtk
+ * hashing for group_contact_graph
+ *
  * Revision 1.13  2005/05/17 12:11:30  jtk
  * contact graph works
  *
@@ -639,14 +642,126 @@ int lsys_string_diffusion(LSYS_STRING *lstr)
  */
 
 
+typedef struct tag_edge_list_element
+{
+  struct tag_edge_list_element *next;
+  int i1, i2, edge_index;
+} EDGE_LIST_ELEMENT;
+
+
+typedef struct
+{
+  size_t num_elements;
+  EDGE_LIST_ELEMENT **table;
+} EDGE_HASH;
+
+
+static int edge_hashvalue(int hashvalue_max, int i1, int i2)
+{
+  double g = 1.6180339887498948; /* the golden mean */
+
+  return((int) floor(hashvalue_max * fmod(g * (i1 * hashvalue_max + i2), 1.0)));
+}
+
+
+static void free_edge_hash(EDGE_HASH *hash)
+{
+  int i;
+  EDGE_LIST_ELEMENT *e, *e_next;
+
+  for (i = 0; i < hash->num_elements; i++)
+  {
+    e = hash->table[i];
+    while (e)
+    {
+      e_next = e->next;
+      free(e);
+      e = e_next;
+    }
+  }
+  free(hash->table);
+  free(hash);
+}
+
+
+static EDGE_HASH *new_edge_hash(int num_elements)
+{
+  EDGE_HASH *hash = (EDGE_HASH *) malloc(sizeof(EDGE_HASH));
+  int i;
+
+
+  if (hash == NULL)
+  {
+    fprintf(stderr, "new_edge_hash: malloc failed\n");
+    return (NULL);
+  }
+  hash->table = (EDGE_LIST_ELEMENT **) malloc(num_elements * sizeof(EDGE_LIST_ELEMENT *));
+  if (hash->table == NULL)
+  {
+    fprintf(stderr, "new_edge_hash: malloc for table failed\n");
+    free(hash);
+    return (NULL);
+  }
+  hash->num_elements = num_elements;
+  for (i = 0; i < hash->num_elements; i++)
+  {
+    hash->table[i] = NULL;
+  }
+  return (hash);
+}
+
+
+static int edge_hash_add_element(EDGE_HASH *hash, int i1, int i2, int edge_index)
+{
+  EDGE_LIST_ELEMENT *e = (EDGE_LIST_ELEMENT *) malloc(sizeof(EDGE_LIST_ELEMENT));
+  int h = edge_hashvalue(hash->num_elements, i1, i2);
+
+  if (e == NULL)
+  {
+    fprintf(stderr, "edge_hash_add: malloc failed\n");
+    return (-1);
+  }
+  e->i1 = i1;
+  e->i2 = i2;
+  e->edge_index = edge_index;
+  e->next = hash->table[h];
+  hash->table[h] = e;
+  return (0);
+}
+
+
+static int edge_hash_find_index(const EDGE_HASH *hash, int i1, int i2)
+{
+  EDGE_LIST_ELEMENT *e;
+
+  for (e = hash->table[edge_hashvalue(hash->num_elements, i1, i2)]; e; e = e->next)
+  {
+    if ((e->i1 == i1) && (e->i2 == i2))
+    {
+      return (e->edge_index);
+    }
+  }
+  return (-1);
+}
+
+
 LSYS_STRING_CONTACT_GRAPH *group_contact_graph(const LSYS_STRING *lstr)
 {
-  LSYS_STRING_CONTACT_GRAPH *gcgraph = (LSYS_STRING_CONTACT_GRAPH *) malloc(sizeof(LSYS_STRING_CONTACT_GRAPH));
-  int e, ge, i1, i2, return_value, ls1, ls2, ltmp;
+  LSYS_STRING_CONTACT_GRAPH *gcgraph;
+  int e, edge_index, i1, i2, return_value, ls1, ls2;
+  EDGE_HASH *hash;
 
+  gcgraph = (LSYS_STRING_CONTACT_GRAPH *) malloc(sizeof(LSYS_STRING_CONTACT_GRAPH));
   if (gcgraph == NULL)
   {
     fprintf(stderr, "group_contact_graph: malloc failed\n");
+    return (NULL);
+  }
+  hash = new_edge_hash(lstr->num_symbols);
+  if (hash == NULL)
+  {
+    fprintf(stderr, "group_contact_graph: new_edge_hash failed\n");
+    free(gcgraph);
     return (NULL);
   }
   init_lsys_string_contact_graph_components(gcgraph);
@@ -663,36 +778,36 @@ LSYS_STRING_CONTACT_GRAPH *group_contact_graph(const LSYS_STRING *lstr)
     i2 = lstr->contact_graph.edge[e].i2;
     ls1 = lstr->symbol[i1].lhs_group_start;
     ls2 = lstr->symbol[i2].lhs_group_start;
-    /* always have l1 < l2 in group contact graph helps to control time complexity */
+    /* always have l1 < l2 in group ascertains uniqueness required for hasing */
     if (ls1 > ls2)
     {
-      l_tmp = ls1;
+      int l_tmp = ls1;
       ls1 = ls2;
       ls2 = l_tmp;
     }
-    /* FIXME: this linear search is a major time burner */
-    for (ge = 0; ge < gcgraph->num_edges; ge++)
-    {
-      if ((gcgraph->edge[ge].i1 == ls1) && (gcgraph->edge[ge].i2 == ls2))
-      {
-	break;
-      }
-    }
-    if (ge == gcgraph->num_edges)
+    edge_index = edge_hash_find_index(hash, ls1, ls2);
+    if (edge_index == -1)
     {
       if (add_lsys_string_contact_edge(gcgraph, ls1, ls2, lstr->contact_graph.edge[e].distance) != 0)
       {
+	/* FIXME: should bail out here */
 	fprintf(stderr, "group_contact_graph: add_lsys_string_contact_edge failed\n");
+      }
+      if (edge_hash_add_element(hash, ls1, ls2, gcgraph->num_edges - 1) != 0)
+      {
+	/* FIXME: should bail out here */
+	fprintf(stderr, "group_contact_graph: edge_hash_add_element failed\n");
       }
     }
     else
     {
-      if (gcgraph->edge[ge].distance > lstr->contact_graph.edge[e].distance)
+      if (gcgraph->edge[edge_index].distance > lstr->contact_graph.edge[e].distance)
       {
-	gcgraph->edge[ge].distance = lstr->contact_graph.edge[e].distance;
+	gcgraph->edge[edge_index].distance = lstr->contact_graph.edge[e].distance;
       }
     }
   }
+  free_edge_hash(hash);
   return (gcgraph);
 }
 
