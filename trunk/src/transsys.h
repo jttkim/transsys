@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.8  2005/05/17 12:11:30  jtk
+ * contact graph works
+ *
  * Revision 1.7  2005/05/16 12:02:10  jtk
  * in transition from distance matrices to contact graphs
  *
@@ -130,7 +133,7 @@ extern CELL *new_cells(int num_cells, const TRANSSYS *transsys);
 extern void free_symbol_instance_components(SYMBOL_INSTANCE *si);
 extern void free_symbol_instance_list(SYMBOL_INSTANCE *slist);
 extern SYMBOL_INSTANCE *new_symbol_instance(const LSYS_STRING *lsys_string, int symbol_index);
-extern SYMBOL_INSTANCE *clone_symbol_instance(const SYMBOL_INSTANCE *source, const LSYS_STRING *lsys_string, int predecessor_index);
+extern SYMBOL_INSTANCE *clone_symbol_instance(const SYMBOL_INSTANCE *source, const LSYS_STRING *lsys_string);
 extern void init_lsys_string_contact_graph_components(LSYS_STRING_CONTACT_GRAPH *g);
 extern void free_lsys_string_contact_graph_components(LSYS_STRING_CONTACT_GRAPH *g);
 extern void free_lsys_string_contact_graph(LSYS_STRING_CONTACT_GRAPH *g);
