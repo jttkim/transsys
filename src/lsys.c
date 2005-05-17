@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.13  2005/05/17 12:11:30  jtk
+ * contact graph works
+ *
  * Revision 1.12  2005/05/16 21:03:27  jtk
  * contact graph implementation still buggy
  *
@@ -196,7 +199,7 @@ static int connect_symbol_group(LSYS_STRING *lstr, int group_start, int group_le
 
   for (i = group_start; i < group_end; i++)
   {
-    for (j = 0; j < i; j++)
+    for (j = group_start; j < i; j++)
     {
       if (connect_lsys_string_symbols(lstr, i, j, 1) != 0)
       {
@@ -532,7 +535,7 @@ static NEIGHBOURHOOD *get_neighbourhood(const LSYS_STRING *lstr, int symbol_inde
 }
 
 
-static int diffuse_along_contact_edges(LSYS_STRING *lstr, int factor_index)
+static int diffuse_along_contact_edges(LSYS_STRING *lstr, const TRANSSYS *transsys, int factor_index)
 {
   int e;
   SYMBOL_INSTANCE *s1, *s2;
@@ -541,8 +544,11 @@ static int diffuse_along_contact_edges(LSYS_STRING *lstr, int factor_index)
   {
     s1 = lstr->symbol + lstr->contact_graph.edge[e].i1;
     s2 = lstr->symbol + lstr->contact_graph.edge[e].i2;
-    s1->transsys_instance.factor_concentration[factor_index] += lstr->contact_graph.edge[e].amount_diffused;
-    s2->transsys_instance.factor_concentration[factor_index] -= lstr->contact_graph.edge[e].amount_diffused;
+    if ((s1->transsys_instance.transsys == transsys) && (s2->transsys_instance.transsys == transsys))
+    {
+      s1->transsys_instance.factor_concentration[factor_index] += lstr->contact_graph.edge[e].amount_diffused;
+      s2->transsys_instance.factor_concentration[factor_index] -= lstr->contact_graph.edge[e].amount_diffused;
+    }
   }
   return (0);
 }
@@ -600,7 +606,11 @@ int lsys_string_diffusion(LSYS_STRING *lstr)
 	    {
 	      if (si->transsys_instance.factor_concentration[f] != neighbourhood->mean_concentration)
 	      {
-		fprintf(stderr, "lsys_string_diffusion: gradient sum 0 but local mean != local concentration\n");
+		double relative_error = (neighbourhood->mean_concentration - si->transsys_instance.factor_concentration[f]) / (neighbourhood->mean_concentration + si->transsys_instance.factor_concentration[f]) * 0.5;
+		if (relative_error > 1e-15)
+		{
+		  fprintf(stderr, "lsys_string_diffusion: gradient sum 0 but local mean - local concentration = %g, ratio = %g\n", neighbourhood->mean_concentration - si->transsys_instance.factor_concentration[f], relative_error);
+		}
 	      }
 	      d = diffusibility;
 	    }
@@ -614,7 +624,7 @@ int lsys_string_diffusion(LSYS_STRING *lstr)
 	}
       }
       /* fprintf(stderr, "lsys_string_diffusion: diffusing #%d along edges\n", f); */
-      diffuse_along_contact_edges(lstr, f);
+      diffuse_along_contact_edges(lstr, tlist[t], f);
     }
   }
   free_lsys_string_transsys_list(tlist);
@@ -632,7 +642,7 @@ int lsys_string_diffusion(LSYS_STRING *lstr)
 LSYS_STRING_CONTACT_GRAPH *group_contact_graph(const LSYS_STRING *lstr)
 {
   LSYS_STRING_CONTACT_GRAPH *gcgraph = (LSYS_STRING_CONTACT_GRAPH *) malloc(sizeof(LSYS_STRING_CONTACT_GRAPH));
-  int e, ge, i1, i2, return_value, ls1, ls2;
+  int e, ge, i1, i2, return_value, ls1, ls2, ltmp;
 
   if (gcgraph == NULL)
   {
@@ -653,9 +663,17 @@ LSYS_STRING_CONTACT_GRAPH *group_contact_graph(const LSYS_STRING *lstr)
     i2 = lstr->contact_graph.edge[e].i2;
     ls1 = lstr->symbol[i1].lhs_group_start;
     ls2 = lstr->symbol[i2].lhs_group_start;
+    /* always have l1 < l2 in group contact graph helps to control time complexity */
+    if (ls1 > ls2)
+    {
+      l_tmp = ls1;
+      ls1 = ls2;
+      ls2 = l_tmp;
+    }
+    /* FIXME: this linear search is a major time burner */
     for (ge = 0; ge < gcgraph->num_edges; ge++)
     {
-      if (((gcgraph->edge[ge].i1 == ls1) && (gcgraph->edge[ge].i2 == ls2)) || ((gcgraph->edge[ge].i1 == ls2) && (gcgraph->edge[ge].i2 == ls1)))
+      if ((gcgraph->edge[ge].i1 == ls1) && (gcgraph->edge[ge].i2 == ls2))
       {
 	break;
       }
@@ -800,7 +818,7 @@ static int compute_contact_graph(LSYS_STRING *lstr, const LSYS_STRING *predecess
 LSYS_STRING *derived_string(LSYS_STRING *lstr)
 {
   LSYS_STRING *dstr;
-  SYMBOL_INSTANCE *target_tail = NULL, *target_symbol, *s;
+  SYMBOL_INSTANCE *target_tail = NULL, *target_symbol;
   const RULE_ELEMENT *rule;
   const TRANSSYS_INSTANCE **ti_list;
   int si_index, i, lhs_length;
@@ -848,21 +866,20 @@ LSYS_STRING *derived_string(LSYS_STRING *lstr)
 	free_lsys_string(dstr);
 	return (NULL);
       }
-      target_symbol->lhs_group_length = lhs_length;
-      for (s = target_symbol->next; s; s = s->next)
-      {
-	/* an lhs group length of 0 indicates that this symbol is not the first one in an lhs group */
-	s->lhs_group_length = 0;
-	s->lhs_group_start = si_index;
-      }
     }
     else
     {
+      target_symbol = clone_symbol_instance(lstr->symbol + si_index, dstr);
       lhs_length = 1;
-      target_symbol = clone_symbol_instance(lstr->symbol + si_index, dstr, si_index);
-      target_symbol->lhs_group_length = 1;
     }
-    target_symbol->lhs_group_start = si_index;
+    lstr->symbol[si_index].lhs_group_length = lhs_length;
+    lstr->symbol[si_index].lhs_group_start = si_index;
+    for (i = 1; i < lhs_length; i++)
+    {
+      /* an lhs group length of 0 indicates that this symbol is not the first one in an lhs group */
+      lstr->symbol[si_index + i].lhs_group_length = 0;
+      lstr->symbol[si_index + i].lhs_group_start = si_index;
+    }
     if (target_tail == NULL)
     {
       dstr->symbol = target_symbol;

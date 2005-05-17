@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.8  2005/05/17 12:11:30  jtk
+ * contact graph works
+ *
  * Revision 1.7  2005/05/16 12:02:10  jtk
  * in transition from distance matrices to contact graphs
  *
@@ -1457,7 +1460,7 @@ SYMBOL_INSTANCE *new_symbol_instance(const LSYS_STRING *lsys_string, int symbol_
 }
 
 
-SYMBOL_INSTANCE *clone_symbol_instance(const SYMBOL_INSTANCE *source, const LSYS_STRING *lsys_string, int predecessor_index)
+SYMBOL_INSTANCE *clone_symbol_instance(const SYMBOL_INSTANCE *source, const LSYS_STRING *lsys_string)
 {
   SYMBOL_INSTANCE *si;
   int i;
@@ -1503,7 +1506,7 @@ void init_lsys_string_contact_graph_components(LSYS_STRING_CONTACT_GRAPH *g)
 
 void free_lsys_string_contact_graph_components(LSYS_STRING_CONTACT_GRAPH *g)
 {
-  if (g->num_edges > 0)
+  if (g->array_size > 0)
   {
     free(g->edge);
   }
@@ -1524,6 +1527,11 @@ int alloc_lsys_string_contact_graph_components(LSYS_STRING_CONTACT_GRAPH *g, siz
   {
     fprintf(stderr, "alloc_lsys_string_contact_graph_components: array already present\n");
     return (-1);
+  }
+  if (array_size == 0)
+  {
+    free_lsys_string_contact_graph_components(g);
+    return (0);
   }
   g->edge = (LSYS_STRING_CONTACT_EDGE *) malloc(array_size * sizeof(LSYS_STRING_CONTACT_EDGE));
   if (g->edge == NULL)
