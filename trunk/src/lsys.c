@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.15  2005/05/18 09:42:37  jtk
+ * performance improvements to diffusion code (neighbourhood computation)
+ *
  * Revision 1.14  2005/05/17 21:09:52  jtk
  * hashing for group_contact_graph
  *
@@ -336,17 +339,14 @@ static void diffusion_init_new_concentration(LSYS_STRING *lstr)
 }
 
 
-static void diffusion_init_contact_edges(LSYS_STRING *lstr)
+static void diffusion_init_contact_edges(LSYS_STRING_CONTACT_EDGE **edge)
 {
-  size_t i, j;
+  LSYS_STRING_CONTACT_EDGE **e;
 
-  for (i = 0; i < lstr->num_symbols; i++)
+  for (e = edge; *e; e++)
   {
-    for (j = 0; j < lstr->symbol[i].num_contact_edges; j++)
-    {
-      lstr->symbol[i].contact_edge[j]->amount_diffused = 0.0;
-      lstr->symbol[i].contact_edge[j]->amount_valid = 0;
-    }
+    (*e)->amount_diffused = 0.0;
+    (*e)->amount_valid = 0;
   }
 }
 
@@ -452,108 +452,172 @@ typedef struct
 } NEIGHBOURHOOD;
 
 
-static void free_neighbourhood(NEIGHBOURHOOD *neighbourhood)
+static void free_neighbourhood(int num_symbols, NEIGHBOURHOOD *neighbourhood)
 {
-  if (neighbourhood->num_neighbours > 0)
+  int i;
+
+  for (i = 0; i < num_symbols; i++)
   {
-    free(neighbourhood->neighbour_index);
-    free(neighbourhood->edge_index);
-    free(neighbourhood->gradient);
+    if (neighbourhood[i].num_neighbours > 0)
+    {
+      if (neighbourhood[i].neighbour_index)
+      {
+	free(neighbourhood[i].neighbour_index);
+      }
+      if (neighbourhood[i].edge_index)
+      {
+	free(neighbourhood[i].edge_index);
+      }
+      if (neighbourhood[i].gradient)
+      {
+	free(neighbourhood[i].gradient);
+      }
+    }
   }
   free(neighbourhood);
 }
 
 
-static NEIGHBOURHOOD *get_neighbourhood(const LSYS_STRING *lstr, int symbol_index, int factor_index)
+static void get_neighbourhood_factor_data(const LSYS_STRING *lstr, int factor_index, NEIGHBOURHOOD *neighbourhood)
 {
-  NEIGHBOURHOOD *neighbourhood = (NEIGHBOURHOOD *) malloc(sizeof(NEIGHBOURHOOD));
-  int i, n, other_index;
-  const SYMBOL_INSTANCE *si = lstr->symbol + symbol_index;
-  const TRANSSYS *transsys = si->transsys_instance.transsys;
+  int symbol_index, n;
+  SYMBOL_INSTANCE *si;
+
+  for (symbol_index = 0; symbol_index < lstr->num_symbols; symbol_index++)
+  {
+    if (neighbourhood[symbol_index].num_neighbours > 0)
+    {
+      si = lstr->symbol + symbol_index;
+      neighbourhood[symbol_index].mean_concentration = si->transsys_instance.factor_concentration[factor_index];
+      neighbourhood[symbol_index].gradient_sum = 0.0;
+      for (n = 0; n < neighbourhood[symbol_index].num_neighbours; n++)
+      {
+	neighbourhood[symbol_index].gradient[n] = lstr->symbol[neighbourhood[symbol_index].neighbour_index[n]].transsys_instance.factor_concentration[factor_index] - si->transsys_instance.factor_concentration[factor_index];
+	neighbourhood[symbol_index].gradient_sum += neighbourhood[symbol_index].gradient[n];
+	neighbourhood[symbol_index].mean_concentration += lstr->symbol[neighbourhood[symbol_index].neighbour_index[n]].transsys_instance.factor_concentration[factor_index];
+      }
+      neighbourhood[symbol_index].mean_concentration /= (neighbourhood[symbol_index].num_neighbours + 1);
+    }
+  }
+}
+
+
+static NEIGHBOURHOOD *get_neighbourhood(const LSYS_STRING *lstr, const TRANSSYS *transsys)
+{
+  NEIGHBOURHOOD *neighbourhood = (NEIGHBOURHOOD *) malloc(lstr->num_symbols * sizeof(NEIGHBOURHOOD));
+  int symbol_index, i, n, other_index;
+  const SYMBOL_INSTANCE *si;
 
   if (neighbourhood == NULL)
   {
     fprintf(stderr, "get_neighbourhood: malloc failed\n");
     return (NULL);
   }
-  neighbourhood->num_neighbours = 0;
-  for (i = 0; i < si->num_contact_edges; i++)
+  /* set num_neighbours components to 0 first, so we can use free_neighbourhood
+   * upon bailing out */
+  for (symbol_index = 0; symbol_index < lstr->num_symbols; symbol_index++)
   {
-    other_index = other_symbol_instance_index(si->contact_edge[i], symbol_index);
-    if (lstr->symbol[other_index].transsys_instance.transsys == transsys)
+    neighbourhood[symbol_index].num_neighbours = 0;
+    neighbourhood[symbol_index].neighbour_index = NULL;
+    neighbourhood[symbol_index].edge_index = NULL;
+    neighbourhood[symbol_index].gradient = NULL;
+    neighbourhood[symbol_index].mean_concentration = 0.0;
+    neighbourhood[symbol_index].gradient_sum = 0.0;
+  }
+  for (symbol_index = 0; symbol_index < lstr->num_symbols; symbol_index++)
+  {
+    si = lstr->symbol + symbol_index;
+    if (transsys == si->transsys_instance.transsys)
     {
-      neighbourhood->num_neighbours++;
+      for (i = 0; i < si->num_contact_edges; i++)
+      {
+	other_index = other_symbol_instance_index(si->contact_edge[i], symbol_index);
+	if (lstr->symbol[other_index].transsys_instance.transsys == transsys)
+	{
+	  neighbourhood[symbol_index].num_neighbours++;
+	}
+      }
+      if (neighbourhood[symbol_index].num_neighbours > 0)
+      {
+	neighbourhood[symbol_index].neighbour_index = (int *) malloc(neighbourhood[symbol_index].num_neighbours * sizeof(int));
+	if (neighbourhood[symbol_index].neighbour_index == NULL)
+	{
+	  fprintf(stderr, "get_neighbourhood: malloc for neighbour_index failed\n");
+	  free_neighbourhood(lstr->num_symbols, neighbourhood);
+	  return (NULL);
+	}
+	neighbourhood[symbol_index].edge_index = (int *) malloc(neighbourhood[symbol_index].num_neighbours * sizeof(int));
+	if (neighbourhood[symbol_index].neighbour_index == NULL)
+	{
+	  fprintf(stderr, "get_neighbourhood: malloc for neighbour_index failed\n");
+	  free_neighbourhood(lstr->num_symbols, neighbourhood);
+	  return (NULL);
+	}
+	neighbourhood[symbol_index].gradient = (double *) malloc(neighbourhood[symbol_index].num_neighbours * sizeof(double));
+	if (neighbourhood[symbol_index].gradient == NULL)
+	{
+	  fprintf(stderr, "get_neighbourhood: malloc for gradient failed\n");
+	  free_neighbourhood(lstr->num_symbols, neighbourhood);
+	  return (NULL);
+	}
+      }
+      n = 0;
+      for (i = 0; i < si->num_contact_edges; i++)
+      {
+	other_index = other_symbol_instance_index(si->contact_edge[i], symbol_index);
+	if (lstr->symbol[other_index].transsys_instance.transsys == transsys)
+	{
+	  neighbourhood[symbol_index].neighbour_index[n] = other_index;
+	  neighbourhood[symbol_index].edge_index[n] = i;
+	  neighbourhood[symbol_index].gradient[n] = 0.0;
+	  n++;
+	}
+      }
     }
   }
-  if (neighbourhood->num_neighbours == 0)
-  {
-    neighbourhood->neighbour_index = NULL;
-    neighbourhood->edge_index = NULL;
-    neighbourhood->gradient = NULL;
-    neighbourhood->mean_concentration = si->transsys_instance.factor_concentration[factor_index];
-    return (neighbourhood);
-  }
-  neighbourhood->neighbour_index = (int *) malloc(neighbourhood->num_neighbours * sizeof(int));
-  if (neighbourhood->neighbour_index == NULL)
-  {
-    fprintf(stderr, "get_neighbourhood: malloc for neighbour_index failed\n");
-    free(neighbourhood);
-    return (NULL);
-  }
-  neighbourhood->edge_index = (int *) malloc(neighbourhood->num_neighbours * sizeof(int));
-  if (neighbourhood->neighbour_index == NULL)
-  {
-    fprintf(stderr, "get_neighbourhood: malloc for neighbour_index failed\n");
-    free(neighbourhood->neighbour_index);
-    free(neighbourhood);
-    return (NULL);
-  }
-  neighbourhood->gradient = (double *) malloc(neighbourhood->num_neighbours * sizeof(double));
-  if (neighbourhood->gradient == NULL)
-  {
-    fprintf(stderr, "get_neighbourhood: malloc for gradient failed\n");
-    free(neighbourhood->neighbour_index);
-    free(neighbourhood->edge_index);
-    free(neighbourhood);
-    return (NULL);
-  }
-  neighbourhood->mean_concentration = si->transsys_instance.factor_concentration[factor_index];
-  neighbourhood->gradient_sum = 0.0;
-  n = 0;
-  for (i = 0; i < si->num_contact_edges; i++)
-  {
-    other_index = other_symbol_instance_index(si->contact_edge[i], symbol_index);
-    if (lstr->symbol[other_index].transsys_instance.transsys == transsys)
-    {
-      neighbourhood->neighbour_index[n] = other_index;
-      neighbourhood->edge_index[n] = i;
-      neighbourhood->gradient[n] = lstr->symbol[other_index].transsys_instance.factor_concentration[factor_index] - si->transsys_instance.factor_concentration[factor_index];
-      neighbourhood->gradient_sum += neighbourhood->gradient[n];
-      neighbourhood->mean_concentration += lstr->symbol[other_index].transsys_instance.factor_concentration[factor_index];
-      n++;
-    }
-  }
-  neighbourhood->mean_concentration /= (neighbourhood->num_neighbours + 1);
   return (neighbourhood);
 }
 
 
-static int diffuse_along_contact_edges(LSYS_STRING *lstr, const TRANSSYS *transsys, int factor_index)
+static int diffuse_along_contact_edges(const LSYS_STRING *lstr, LSYS_STRING_CONTACT_EDGE **edge, int factor_index)
 {
-  int e;
+  LSYS_STRING_CONTACT_EDGE **e;
   SYMBOL_INSTANCE *s1, *s2;
 
-  for (e = 0; e < lstr->contact_graph.num_edges; e++)
+  for (e = edge; *e; e++)
   {
-    s1 = lstr->symbol + lstr->contact_graph.edge[e].i1;
-    s2 = lstr->symbol + lstr->contact_graph.edge[e].i2;
-    if ((s1->transsys_instance.transsys == transsys) && (s2->transsys_instance.transsys == transsys))
-    {
-      s1->transsys_instance.factor_concentration[factor_index] += lstr->contact_graph.edge[e].amount_diffused;
-      s2->transsys_instance.factor_concentration[factor_index] -= lstr->contact_graph.edge[e].amount_diffused;
-    }
+    s1 = lstr->symbol + (*e)->i1;
+    s2 = lstr->symbol + (*e)->i2;
+    s1->transsys_instance.factor_concentration[factor_index] += (*e)->amount_diffused;
+    s2->transsys_instance.factor_concentration[factor_index] -= (*e)->amount_diffused;
   }
   return (0);
+}
+
+
+/* FIXME: this should perhaps be merged with get_neighbourhood ... with a proper neighbourhood struct */
+static LSYS_STRING_CONTACT_EDGE **diffusion_edge_list(const LSYS_STRING *lstr, const TRANSSYS *transsys)
+{
+  /* FIXME? this wastes space but saves the time for counting the number of edges actually required */
+  LSYS_STRING_CONTACT_EDGE **diffusion_edge = (LSYS_STRING_CONTACT_EDGE **) malloc((lstr->contact_graph.num_edges + 1) * sizeof(LSYS_STRING_CONTACT_EDGE *));
+  int e, n;
+
+  if (diffusion_edge == NULL)
+  {
+    fprintf(stderr, "diffusion_contact_graph: malloc failed\n");
+    return (NULL);
+  }
+  n = 0;
+  for (e = 0; e < lstr->contact_graph.num_edges; e++)
+  {
+    if ((lstr->symbol[lstr->contact_graph.edge[e].i1].transsys_instance.transsys == transsys)
+	&& (lstr->symbol[lstr->contact_graph.edge[e].i2].transsys_instance.transsys == transsys))
+    {
+      diffusion_edge[n++] = lstr->contact_graph.edge + e;
+    }
+  }
+  diffusion_edge[n] = NULL;
+  return (diffusion_edge);
 }
 
 
@@ -571,6 +635,7 @@ int lsys_string_diffusion(LSYS_STRING *lstr)
   const TRANSSYS_INSTANCE *ti;
   SYMBOL_INSTANCE *si;
   NEIGHBOURHOOD *neighbourhood;
+  LSYS_STRING_CONTACT_EDGE **diffusion_edge;
 
   if (!lstr->arrayed)
   {
@@ -585,50 +650,60 @@ int lsys_string_diffusion(LSYS_STRING *lstr)
   diffusion_init_new_concentration(lstr);
   for (t = 0; tlist[t]; t++)
   {
+    neighbourhood = get_neighbourhood(lstr, tlist[t]);
+    if (neighbourhood == NULL)
+    {
+      fprintf(stderr, "lsys_string_diffusion: get_neighbourhood failed\n");
+      return (-1);
+    }
+    diffusion_edge = diffusion_edge_list(lstr, tlist[t]);
+    if (diffusion_edge == NULL)
+    {
+      fprintf(stderr, "lsys_string_diffusion: diffusion_contact_graph failed\n");
+      free_neighbourhood(lstr->num_symbols, neighbourhood);
+      return (-1);
+    }
     for (f = 0; f < tlist[t]->num_factors; f++)
     {
-      diffusion_init_contact_edges(lstr);
+      diffusion_init_contact_edges(diffusion_edge);
+      get_neighbourhood_factor_data(lstr, f, neighbourhood);
       for (i = 0; i < lstr->num_symbols; i++)
       {
-	si = lstr->symbol + i;
-	ti = &(si->transsys_instance);
-	transsys = ti->transsys;
-	if (transsys == tlist[t])
+	if (neighbourhood[i].num_neighbours > 0)
 	{
-	  neighbourhood = get_neighbourhood(lstr, i, f);
-	  if (neighbourhood == NULL)
-	  {
-	    return (-1);
-	  }
+	  si = lstr->symbol + i;
+	  ti = &(si->transsys_instance);
+	  transsys = ti->transsys;
 	  /* FIXME (?) should diffusibility be clipped to [0, 1] ?? Warning? */
 	  diffusibility = evaluate_expression(transsys->factor_list[f].diffusibility_expression, &ti);
-	  for (j = 0; j < neighbourhood->num_neighbours; j++)
+	  for (j = 0; j < neighbourhood[i].num_neighbours; j++)
 	  {
 	    /* FIXME: this is numerically very unstable. Some more maths may help fixing this... */
-	    if (neighbourhood->gradient_sum == 0.0)
+	    if (neighbourhood[i].gradient_sum == 0.0)
 	    {
-	      if (si->transsys_instance.factor_concentration[f] != neighbourhood->mean_concentration)
+	      if (si->transsys_instance.factor_concentration[f] != neighbourhood[i].mean_concentration)
 	      {
-		double relative_error = (neighbourhood->mean_concentration - si->transsys_instance.factor_concentration[f]) / (neighbourhood->mean_concentration + si->transsys_instance.factor_concentration[f]) * 0.5;
+		double relative_error = (neighbourhood[i].mean_concentration - si->transsys_instance.factor_concentration[f]) / (neighbourhood[i].mean_concentration + si->transsys_instance.factor_concentration[f]) * 0.5;
 		if (relative_error > 1e-15)
 		{
-		  fprintf(stderr, "lsys_string_diffusion: gradient sum 0 but local mean - local concentration = %g, ratio = %g\n", neighbourhood->mean_concentration - si->transsys_instance.factor_concentration[f], relative_error);
+		  fprintf(stderr, "lsys_string_diffusion: gradient sum 0 but local mean - local concentration = %g, ratio = %g\n", neighbourhood[i].mean_concentration - si->transsys_instance.factor_concentration[f], relative_error);
 		}
 	      }
 	      d = diffusibility;
 	    }
 	    else
 	    {
-	      d = (neighbourhood->mean_concentration - si->transsys_instance.factor_concentration[f]) / neighbourhood->gradient_sum * diffusibility;
+	      d = (neighbourhood[i].mean_concentration - si->transsys_instance.factor_concentration[f]) / neighbourhood[i].gradient_sum * diffusibility;
 	    }
-	    diffusion_set_transferred_amount(si->contact_edge[neighbourhood->edge_index[j]], i, d * neighbourhood->gradient[j]);
+	    diffusion_set_transferred_amount(si->contact_edge[neighbourhood[i].edge_index[j]], i, d * neighbourhood[i].gradient[j]);
 	  }
-	  free_neighbourhood(neighbourhood);
 	}
       }
       /* fprintf(stderr, "lsys_string_diffusion: diffusing #%d along edges\n", f); */
-      diffuse_along_contact_edges(lstr, tlist[t], f);
+      diffuse_along_contact_edges(lstr, diffusion_edge, f);
     }
+    free_neighbourhood(lstr->num_symbols, neighbourhood);
+    free(diffusion_edge);
   }
   free_lsys_string_transsys_list(tlist);
   return (0);
@@ -745,7 +820,7 @@ static int edge_hash_find_index(const EDGE_HASH *hash, int i1, int i2)
 }
 
 
-LSYS_STRING_CONTACT_GRAPH *group_contact_graph(const LSYS_STRING *lstr)
+static LSYS_STRING_CONTACT_GRAPH *group_contact_graph(const LSYS_STRING *lstr)
 {
   LSYS_STRING_CONTACT_GRAPH *gcgraph;
   int e, edge_index, i1, i2, return_value, ls1, ls2;
