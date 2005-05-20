@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.9  2005/05/20 10:40:15  jtk
+ * differentiated entropy recording for lsys, expression and diffusion phase
+ *
  * Revision 1.8  2005/04/14 20:43:15  jtk
  * entropy bugfix: log(2) -> 1.0 / log(2), changed entropy plot command to lines
  *
@@ -203,51 +206,36 @@ static void fprint_expression_header(FILE *f, const TRANSSYS *transsys, const LS
  * the record format.
  */
 
-int fprint_expression_record(FILE *outfile, TRANSSYS_INSTANCE **ti, size_t n, unsigned long t)
+int fprint_expression_record(FILE *outfile, TRANSSYS_INSTANCE **ti, unsigned long t)
 {
-  size_t i, f;
+  size_t i, f, n;
   double d, *average, *stddev, *entropy;
-  double log2 = 1.0 / log(2.0);
   const TRANSSYS *transsys = ti[0]->transsys;
 
-  average = (double *) malloc(3 * transsys->num_factors * sizeof(double));
+  average = (double *) malloc(2 * transsys->num_factors * sizeof(double));
   if (average == NULL)
   {
     fprintf(stderr, "fprint_expression_record: malloc failed\n");
     return (-1);
   }
   stddev = average + transsys->num_factors;
-  entropy = average + 2 * transsys->num_factors;
+  entropy = transsys_collection_factor_entropy(ti);
+  if (entropy == NULL)
+  {
+    fprintf(stderr, "fprint_expression_record: transsys_collection_factor_entropy failed\n");
+    free(average);
+    return (-1);
+  }
   for (i = 0; i < transsys->num_factors; i++)
   {
     average[i] = 0.0;
     stddev[i] = 0.0;
-    entropy[i] = 0.0;
   }
-  for (i = 0; i < n; i++)
+  for (n = 0; ti[n]; n++)
   {
     for (f = 0; f < transsys->num_factors; f++)
     {
-      average[f] += ti[i]->factor_concentration[f];
-    }
-  }
-  /*
-   * some abuse: average really contains the sums of factor concentration
-   * at this point, we use that for calculating relative concentrations in
-   * entropy calculation before computing the actual average.
-   */
-  if (n > 1)
-  {
-    for (i = 0; i < n; i++)
-    {
-      for (f = 0; f < transsys->num_factors; f++)
-      {
-	d = ti[i]->factor_concentration[f] / average[f];
-	if (d > 0.0)
-	{
-	  entropy[f] -= d * log(d) * log2;
-	}
-      }
+      average[f] += ti[n]->factor_concentration[f];
     }
   }
   for (f = 0; f < transsys->num_factors; f++)
@@ -276,15 +264,16 @@ int fprint_expression_record(FILE *outfile, TRANSSYS_INSTANCE **ti, size_t n, un
   }
   fprintf(outfile, "\n");
   free(average);
+  free(entropy);
   return (0);
 }
 
 
-void free_ti_array(TRANSSYS_INSTANCE **ti, size_t n)
+void free_ti_array(TRANSSYS_INSTANCE **ti)
 {
   size_t i;
 
-  for (i = 0; i < n; i++)
+  for (i = 0; ti[i]; i++)
   {
     free_transsys_instance_components(ti[i]);
   }
@@ -298,7 +287,7 @@ TRANSSYS_INSTANCE **alloc_ti_array(const TRANSSYS *transsys, size_t n)
   TRANSSYS_INSTANCE **ti;
   size_t i, j;
 
-  ti = (TRANSSYS_INSTANCE **) malloc(n * sizeof(TRANSSYS_INSTANCE *));
+  ti = (TRANSSYS_INSTANCE **) malloc((n + 1) * sizeof(TRANSSYS_INSTANCE *));
   if (ti == NULL)
   {
     return (NULL);
@@ -324,15 +313,16 @@ TRANSSYS_INSTANCE **alloc_ti_array(const TRANSSYS *transsys, size_t n)
       }
     }
   }
+  ti[n] = NULL;
   return (ti);
 }
 
 
-int init_ti_array(TRANSSYS_INSTANCE **ti, size_t n, double factorconc_init, const char *factorconc_init_string)
+int init_ti_array(TRANSSYS_INSTANCE **ti, double factorconc_init, const char *factorconc_init_string)
 {
   size_t r, f;
 
-  for (r = 0; r < n; r++)
+  for (r = 0; ti[r]; r++)
   {
     for (f = 0; f < ti[r]->transsys->num_factors; f++)
     {
@@ -341,7 +331,7 @@ int init_ti_array(TRANSSYS_INSTANCE **ti, size_t n, double factorconc_init, cons
   }
   if (factorconc_init_string)
   {
-    for (r = 0; r < n; r++)
+    for (r = 0; ti[r]; r++)
     {
       if (factor_concentrations_from_string(ti[r], factorconc_init_string))
       {
@@ -373,9 +363,9 @@ static int transexpr(FILE *outfile, const TRANSSYS *transsys, unsigned int rndse
     fprintf(stderr, "transexpr: alloc_ti_array failed\n");
     return (-1);
   }
-  if (init_ti_array(ti, num_repeats, factorconc_init, factorconc_init_string) != 0)
+  if (init_ti_array(ti, factorconc_init, factorconc_init_string) != 0)
   {
-    free_ti_array(ti, num_repeats);
+    free_ti_array(ti);
     return (-1);
   }
   if (plotcmdfile)
@@ -387,7 +377,7 @@ static int transexpr(FILE *outfile, const TRANSSYS *transsys, unsigned int rndse
   {
     if ((t % output_period) == 0)
     {
-      fprint_expression_record(outfile, ti, num_repeats, t);
+      fprint_expression_record(outfile, ti, t);
     }
     for (r = 0; r < num_repeats; r++)
     {
@@ -395,17 +385,55 @@ static int transexpr(FILE *outfile, const TRANSSYS *transsys, unsigned int rndse
     }
   }
   /* fprint_transsys_instance(stderr, &ti); */
-  free_ti_array(ti, num_repeats);
+  free_ti_array(ti);
   return (0);
 }
 
 
-static int transexpr_lsys(FILE *outfile, const LSYS *lsys, const TRANSSYS *transsys, const char *symbol_name, unsigned int rndseed, unsigned long num_timesteps, unsigned long output_period, FILE *plotcmdfile, const char *outfile_name, int plot_extensiveness)
+/*
+ * compute a NULL-terminated array of pointers to transsys instances
+ * in an lsys string. All transsys instances are instances of transsys.
+ * if symbol_index is non-negative, only instances of symbol specified
+ * by symbol_index are included.
+ */
+
+static TRANSSYS_INSTANCE **lsys_transsys_instance_array(const LSYS_STRING *lstr, const TRANSSYS *transsys, int symbol_index)
+{
+  TRANSSYS_INSTANCE **ti;
+  size_t n, i;
+
+  /* FIXME: allocating this large an array may be inefficient*/
+  /* ... but with the perspective to require all symbols to have the same
+     transsys instance, it's not that bad after all... */
+  ti = (TRANSSYS_INSTANCE **) malloc((lstr->num_symbols + 1) * sizeof(TRANSSYS_INSTANCE *));
+  if (ti == NULL)
+  {
+    fprintf(stderr, "lsys_transsys_instance_list: malloc failed\n");
+    return (NULL);
+  }
+  n = 0;
+  for (i = 0; i < lstr->num_symbols; i++)
+  {
+    if (lstr->symbol[i].transsys_instance.transsys == transsys)
+    {
+      if ((symbol_index < 0) || (lstr->symbol[i].symbol_index == symbol_index))
+      {
+	ti[n++] = &(lstr->symbol[i].transsys_instance);
+      }
+    }
+  }
+  ti[n] = NULL;
+  return (ti);
+}
+
+
+static int transexpr_lsys(FILE *outfile, FILE *entropyfile, const LSYS *lsys, const TRANSSYS *transsys, const char *symbol_name, unsigned int rndseed, unsigned long num_timesteps, unsigned long output_period, FILE *plotcmdfile, const char *outfile_name, int plot_extensiveness)
 {
   LSYS_STRING *lstr, *dstr;
-  TRANSSYS_INSTANCE **ti;
+  TRANSSYS_INSTANCE **ti = NULL;
+  double *entropy_lsys = NULL, *entropy_expression = NULL, *entropy_diffusion = NULL;
   unsigned long t;
-  size_t n, i;
+  size_t n, i, f;
   int symbol_index = -2;  /* initialiser pacifies -Wall */
   int return_value;
 
@@ -429,13 +457,10 @@ static int transexpr_lsys(FILE *outfile, const LSYS *lsys, const TRANSSYS *trans
   {
     if ((t % output_period) == 0)
     {
-      /* FIXME: allocating this large an array may be inefficient*/
-      /* ... but with the perspective to require all symbols to have the same
-         transsys instance, it's not that bad after all... */
-      ti = (TRANSSYS_INSTANCE **) malloc(lstr->num_symbols * sizeof(TRANSSYS_INSTANCE *));
+      ti = lsys_transsys_instance_array(lstr, transsys, symbol_index);
       if (ti == NULL)
       {
-	fprintf(stderr, "transexpr_lsys: malloc failed\n");
+	fprintf(stderr, "transexpr_lsys: lsys_transsys_instance_list failed\n");
 	free_lsys_string(lstr);
 	return (-1);
       }
@@ -453,28 +478,68 @@ static int transexpr_lsys(FILE *outfile, const LSYS *lsys, const TRANSSYS *trans
       }
       if (n > 0)
       {
-	fprint_expression_record(outfile, ti, n, t);
+	fprint_expression_record(outfile, ti, t);
       }
       else
       {
 	fprint_null_expression_line(outfile, transsys, t);
       }
-      free(ti);
+      if (entropyfile)
+      {
+	entropy_lsys = transsys_collection_factor_entropy(ti);
+      }
     }
     return_value = lsys_string_expression(lstr);
     if (return_value != 0)
     {
+      if (entropy_lsys)
+      {
+	free(entropy_lsys);
+      }
       free_lsys_string(lstr);
       return (-1);
+    }
+    if (entropyfile && (t % output_period) == 0)
+    {
+      entropy_expression = transsys_collection_factor_entropy(ti);
     }
     return_value = lsys_string_diffusion(lstr);
     if (return_value != 0)
     {
+      if (entropy_lsys)
+      {
+	free(entropy_lsys);
+      }
+      if (entropy_expression)
+      {
+	free(entropy_expression);
+      }
       free_lsys_string(lstr);
       return (-1);
     } 
+    if (entropyfile && (t % output_period) == 0)
+    {
+      entropy_diffusion = transsys_collection_factor_entropy(ti);
+      fprintf(entropyfile, "%lu", t);
+      for (f = 0; f < transsys->num_factors; f++)
+      {
+	fprintf(entropyfile, " %g %g %g", entropy_lsys[f], entropy_expression[f], entropy_diffusion[f]);
+      }
+      fprintf(entropyfile, "\n");
+      free(entropy_lsys);
+      entropy_lsys = NULL;
+      free(entropy_expression);
+      entropy_expression = NULL;
+      free(entropy_diffusion);
+      entropy_diffusion = NULL;
+    }
     dstr = derived_string(lstr);
     free_lsys_string(lstr);
+    if (ti)
+    {
+      free(ti);
+      ti = NULL;
+    }
     lstr = dstr;
   }
   return (0);
@@ -486,8 +551,8 @@ int main(int argc, char **argv)
   int oc;
   extern char *optarg;
   extern int optind;
-  char *outfile_name = NULL, *plotcmdfile_name = NULL;
-  FILE *outfile = NULL, *plotcmdfile = NULL;
+  char *outfile_name = NULL, *plotcmdfile_name = NULL, *entropyfile_name = NULL;
+  FILE *outfile = NULL, *plotcmdfile = NULL, *entropyfile = NULL;
   int yyreturn;
   unsigned long num_timesteps = 100, output_period = 1;
   const TRANSSYS *tr;
@@ -501,7 +566,7 @@ int main(int argc, char **argv)
   int num_repeats = 1;
   const char *symbol_name = NULL;
 
-  while ((oc = getopt(argc, argv, "c:d:F:f:n:t:s:r:y:lh")) != -1)
+  while ((oc = getopt(argc, argv, "c:e:d:F:f:n:t:s:r:y:lh")) != -1)
   {
     switch(oc)
     {
@@ -510,6 +575,9 @@ int main(int argc, char **argv)
       break;
     case 'c':
       plotcmdfile_name = optarg;
+      break;
+    case 'e':
+      entropyfile_name = optarg;
       break;
     case 'd':
       output_period = strtoul(optarg, NULL, 10);
@@ -582,6 +650,26 @@ int main(int argc, char **argv)
     outfile = stdout;
     outfile_name = "stdout";
   }
+  if (entropyfile_name)
+  {
+    if (lsys_mode)
+    {
+      entropyfile = fopen(entropyfile_name, "w");
+      if (entropyfile == NULL)
+      {
+	fprintf(stderr, "failed to open entropy file \"%s\" -- exit\n", entropyfile_name);
+	if (yyin != stdin)
+	  fclose(yyin);
+	if (outfile != stdout)
+	  fclose(outfile);
+	exit(EXIT_FAILURE);
+      }
+    }
+    else
+    {
+      fprintf(stderr, "Not running in lsys mode: detailed entropy tracing (-e) ignored\n");
+    }
+  }
   if (plotcmdfile_name)
   {
     plotcmdfile = fopen(plotcmdfile_name, "w");
@@ -592,6 +680,8 @@ int main(int argc, char **argv)
 	fclose(yyin);
       if (outfile != stdout)
 	fclose(outfile);
+      if (entropyfile)
+	fclose(entropyfile);
       exit(EXIT_FAILURE);
     }
   }
@@ -615,7 +705,7 @@ int main(int argc, char **argv)
       {
 	for (lsys = parsed_lsys; lsys; lsys = lsys->next)
 	{
-	  return_value = transexpr_lsys(outfile, lsys, tr, symbol_name, rndseed, num_timesteps, output_period, plotcmdfile, outfile_name, plot_extensiveness);
+	  return_value = transexpr_lsys(outfile, entropyfile, lsys, tr, symbol_name, rndseed, num_timesteps, output_period, plotcmdfile, outfile_name, plot_extensiveness);
 	  if (return_value != 0)
 	  {
 	    break;
@@ -667,6 +757,8 @@ int main(int argc, char **argv)
     fclose(yyin);
   if (outfile != stdout)
     fclose(outfile);
+  if (entropyfile)
+    fclose(entropyfile);
   if (return_value != 0)
   {
     exit(EXIT_FAILURE);
