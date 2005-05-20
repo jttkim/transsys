@@ -10,6 +10,9 @@
 
 # $Id$
 # $Log$
+# Revision 1.3  2005/05/20 10:40:15  jtk
+# differentiated entropy recording for lsys, expression and diffusion phase
+#
 # Revision 1.2  2005/03/29 17:33:02  jtk
 # introduced arrayed lsys string, with symbol distance matrix.
 #
@@ -40,7 +43,7 @@ bin_PROGRAMS = transps transdot transcheck transexpr transscatter ltrcheck ltran
 lib_LIBRARIES = libtrans.a
 include_HEADERS = transsys.h trconfig.h trtypes.h
 noinst_HEADERS = trbison.h
-libtrans_a_SOURCES = trlex.l trbison.y mem.c save.c urandom.c expr.c express.c pscript.c dot.c cell.c lsys.c transsys.h trconfig.h trtypes.h
+libtrans_a_SOURCES = trlex.l trbison.y mem.c save.c urandom.c expr.c express.c pscript.c dot.c cell.c lsys.c entropy.c transsys.h trconfig.h trtypes.h
 transcheck_SOURCES = transcheck.c
 transdiscr_SOURCES = transdiscr.c
 transps_SOURCES = transps.c

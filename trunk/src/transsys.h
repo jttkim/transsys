@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.9  2005/05/20 10:40:15  jtk
+ * differentiated entropy recording for lsys, expression and diffusion phase
+ *
  * Revision 1.8  2005/05/17 12:11:30  jtk
  * contact graph works
  *
@@ -183,6 +186,9 @@ extern int postscript_symbol_string(FILE *f, const SYMBOL_INSTANCE *symbol_strin
 extern int postscript_lsys_prolog(FILE *f, const LSYS *lsys, const POSTSCRIPT_STYLE *style);
 
 extern int dot_transsys(FILE *f, const TRANSSYS *transsys);
+
+extern double *transsys_collection_factor_entropy(TRANSSYS_INSTANCE **ti);
+extern double *transsys_collection_factor_information(TRANSSYS_INSTANCE **ti);
 
 extern char *prgname;
 extern char *yyin_name;
