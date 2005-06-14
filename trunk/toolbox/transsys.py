@@ -3,6 +3,9 @@
 # $Id$
 
 # $Log$
+# Revision 1.11  2005/06/14 09:57:17  jtk
+# added some safeguards against bad types in __init__ functions
+#
 # Revision 1.10  2005/04/14 18:50:17  jtk
 # added entropy computation, introduced magic line for transexpr
 #
@@ -129,7 +132,7 @@ class ExpressionNode :
 class ExpressionNodeValue(ExpressionNode) :
 
   def __init__(self, v) :
-    self.value = v
+    self.value = float(v)
 
 
   def __str__(self) :
@@ -181,6 +184,10 @@ instances (in a L-transsys context)"""
 class BinaryExpressionNode(ExpressionNode) :
 
   def __init__(self, op1, op2, operator_sym = None) :
+    if not isinstance(op1, ExpressionNode) :
+      raise StandardError, 'BinaryExpressionNode::__init__: bad type of op1'
+    if not isinstance(op2, ExpressionNode) :
+      raise StandardError, 'BinaryExpressionNode::__init__: bad type of op2'
     self.operand1 = op1
     self.operand2 = op2
     self.operator_sym = operator_sym
@@ -303,8 +310,10 @@ class ExpressionNodeUnequal(BinaryExpressionNode) :
 
 class ExpressionNodeNot(ExpressionNode) :
 
-  def __init__(self, op) :
-    self.operand = op
+  def __init__(self, operand) :
+    if not isinstance(operand, ExpressionNode) :
+      raise StandardError, 'ExpressionNodeNot::__init__: bad type of operand'
+    self.operand = operand
 
 
   def __str__(self) :
@@ -347,6 +356,8 @@ class ExpressionNodeOr(BinaryExpressionNode) :
 class FunctionExpressionNode(ExpressionNode) :
 
   def __init__(self, operand, funcname = 'undefined_function') :
+    if not isinstance(operand, ExpressionNode) :
+      raise StandardError, 'ExpressionNodeNot::__init__: bad type of operand'
     self.operand = operand
     self.funcname = funcname
 
@@ -410,6 +421,8 @@ class PromoterElement :
 class PromoterElementConstitutive(PromoterElement) :
 
   def __init__(self, expr) :
+    if not isinstance(expr, ExpressionNode) :
+      raise StandardError, 'ExpressionNodeNot::__init__: bad type of expr'
     self.expression = expr
 
 
@@ -435,6 +448,10 @@ class PromoterElementLink(PromoterElement) :
 # expr1, expr2, ... should perhaps become a list at some stage...
   def __init__(self, expr1, expr2, factor_list, dot_attrs = None) :
     # print factor_list
+    if not isinstance(expr1, ExpressionNode) :
+      raise StandardError, 'ExpressionNodeNot::__init__: bad type of expr1'
+    if not isinstance(expr2, ExpressionNode) :
+      raise StandardError, 'ExpressionNodeNot::__init__: bad type of expr2'
     self.factor_list = factor_list[:]
     if dot_attrs is None :
       self.dot_attributes = {}
@@ -529,6 +546,10 @@ class PromoterElementRepress(PromoterElementLink) :
 class Factor :
 
   def __init__(self, name, decay_expr = None, diffusibility_expr = None, dot_attrs = None) :
+    if not isinstance(decay_expr, ExpressionNode) :
+      raise StandardError, 'Factor::__init__: bad decay_expr type'
+    if not isinstance(diffusibility_expr, ExpressionNode) :
+      raise StandardError, 'Factor::__init__: bad diffusibility_expr type'
     self.name = name
     self.decay_expression = decay_expr
     if decay_expr is None :
@@ -575,6 +596,9 @@ class Gene :
     if promoter is None :
       self.promoter = []
     else :
+      for p in promoter :
+        if not isinstance(p, PromoterElement) :
+          raise StandardError, 'Gene::__init__: bad element in promoter'
       self.promoter = copy.deepcopy(promoter)
     if dot_attrs is None :
       self.dot_attributes = {}
@@ -654,10 +678,18 @@ re-implement this method.
     if factor_list is None :
       self.factor_list = []
     else :
+      for f in factor_list :
+        if not isinstance(f, Factor) :
+          raise StandardError, 'TranssysProgram::__init__: unsuitable element in factor_list'
+      # FIXME: I don't think this deepcopy works usefully for a list of resolved factors
       self.factor_list = copy.deepcopy(factor_list)
     if gene_list is None :
       self.gene_list = []
     else :
+      for g in gene_list :
+        if not isinstance(g, Gene) :
+          raise StandardError, 'TranssysProgram::__init__: unsuitable element in gene_list'
+      # FIXME: same deepcopy problem as above
       self.gene_list = copy.deepcopy(gene_list)
     self.comments = []
     if resolve :
@@ -846,6 +878,8 @@ class TranssysInstance :
   magic = '# transsys expression records 1.0'
 
   def __init__(self, tp) :
+    if not isinstance(tp, TranssysProgram) :
+      raise StandardError, 'TranssysInstance::__init__: unsuitable type of tp (no TranssysProgram)'
     self.transsys_program = tp
     self.factor_concentration = [0.0] * self.transsys_program.num_factors()
     # FIXME (conceptual issue):
