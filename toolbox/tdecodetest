@@ -1,0 +1,66 @@
+#!/usr/bin/env python
+
+# $Id$
+
+# $Log$
+# Revision 1.1  2005/06/14 18:35:42  jtk
+# transdecode for decoding transsys programs from "DNA" sequences
+#
+
+import sys
+import getopt
+import random
+import string
+
+import transsys
+import transdecode
+
+
+def random_sequence(l, rng) :
+  s = []
+  for i in xrange(l) :
+    s.append('acgt'[rng.randrange(4)])
+  return string.join(s, '')
+
+
+dp = transdecode.TranssysDNADecodeParameters()
+dp.transsysName = 'tdecodetest'
+dp.factorNameTemplate = 'f%03d'
+dp.geneNameTemplate = 'g%03d'
+dp.polymeraseBindingWord = 'aa'
+dp.repressorAreaLength = 10
+dp.activatorAreaLength = 10
+dp.decay = 0.3
+dp.diffusibility = 0.1
+dp.a_spec = 0.2
+dp.a_max = 1.0
+dp.constitutive = 0.333
+# dnaseq = 'tttttttttttaaggggggggggacgtacgtccccccccc'
+dnaseq = None
+seq_length = 100
+rndseed = 1
+
+options, args = getopt.getopt(sys.argv[1:], 'a:l:p:s:h')
+for opt in options :
+  if opt[0] == '-h' :
+    print 'help...'
+    sys.exit()
+  elif opt[0] == '-p' :
+    dp.polymeraseBindingWord = opt[1]
+  elif opt[0] == '-a' :
+    dp.repressorAreaLength = int(opt[1])
+    dp.activatorAreaLength = int(opt[1])
+  elif opt[0] == '-s' :
+    rndseed = int(opt[1])
+  elif opt[0] == '-l' :
+    seq_length = int(opt[1])
+  else :
+    raise StandardError, 'option %s not implemented' % opt[0]
+if len(args) > 0 :
+  dnaseq = args[0]
+else :
+  rng = random.Random(rndseed)
+  dnaseq = random_sequence(seq_length, rng)
+
+print transdecode.decode_transsys(dnaseq, dp)
+
