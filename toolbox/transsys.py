@@ -3,6 +3,9 @@
 # $Id$
 
 # $Log$
+# Revision 1.12  2005/06/14 18:33:37  jtk
+# added comments to factors and genes
+#
 # Revision 1.11  2005/06/14 09:57:17  jtk
 # added some safeguards against bad types in __init__ functions
 #
@@ -111,6 +114,13 @@ def dot_attribute_string(d) :
   for k in d.keys() :
     s = s + '%s%s="%s"' % (glue, k, d[k])
     glue = ' '
+  return s
+
+
+def comment_lines(clines, prefix = '') :
+  s = ''
+  for l in clines :
+    s = s + prefix + '// ' + l + '\n'
   return s
 
 
@@ -557,6 +567,7 @@ class Factor :
     self.diffusibility_expression = diffusibility_expr
     if diffusibility_expr is None :
       self.diffusibility_expression = ExpressionNodeValue(1.0)
+    self.comments = []
     if dot_attrs is None :
       self.dot_attributes = {}
     else :
@@ -566,10 +577,10 @@ class Factor :
   def __str__(self) :
     return """  factor %s
   {
-    decay: %s;
+%s    decay: %s;
     diffusibility: %s;
   }
-""" % (self.name, str(self.decay_expression), str(self.diffusibility_expression))
+""" % (self.name, comment_lines(self.comments, '    '), str(self.decay_expression), str(self.diffusibility_expression))
 
 
   def resolve(self, tp) :
@@ -600,6 +611,7 @@ class Gene :
         if not isinstance(p, PromoterElement) :
           raise StandardError, 'Gene::__init__: bad element in promoter'
       self.promoter = copy.deepcopy(promoter)
+    self.comments = []
     if dot_attrs is None :
       self.dot_attributes = {}
     else :
@@ -609,6 +621,7 @@ class Gene :
   def __str__(self) :
     s = '  gene %s\n' % self.name
     s = s + '  {\n'
+    s = s + comment_lines(self.comments, '    ')
     s = s + '    promoter\n'
     s = s + '    {\n'
     for p in self.promoter :
@@ -698,8 +711,7 @@ re-implement this method.
 
   def __str__(self) :
     s = 'transsys %s\n' % self.name
-    for c in self.comments :
-      s = s + '// %s\n' % c
+    s = s + comment_lines(self.comments)
     s = s + '{\n'
     glue = ''
     for f in self.factor_list :
