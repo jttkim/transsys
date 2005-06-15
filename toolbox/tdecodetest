@@ -3,6 +3,9 @@
 # $Id$
 
 # $Log$
+# Revision 1.2  2005/06/15 10:56:12  jtk
+# changed gene structure, introduced regexp use for start/end finding
+#
 # Revision 1.1  2005/06/14 18:35:42  jtk
 # transdecode for decoding transsys programs from "DNA" sequences
 #
@@ -23,33 +26,36 @@ def random_sequence(l, rng) :
   return string.join(s, '')
 
 
-dp = transdecode.TranssysDNADecodeParameters()
-dp.transsysName = 'tdecodetest'
-dp.factorNameTemplate = 'f%03d'
-dp.geneNameTemplate = 'g%03d'
-dp.polymeraseBindingWord = 'aa'
-dp.repressorAreaLength = 10
-dp.activatorAreaLength = 10
-dp.decay = 0.3
-dp.diffusibility = 0.1
-dp.a_spec = 0.2
-dp.a_max = 1.0
-dp.constitutive = 0.333
+decoder = transdecode.TranssysDNADecoder()
+decoder.transsysName = 'tdecodetest'
+decoder.factorNameTemplate = 'f%03d'
+decoder.geneNameTemplate = 'g%03d'
+decoder.setGeneStartRE('aa')
+decoder.setGeneEndRE('ttt')
+decoder.repressorAreaLength = 10
+decoder.activatorAreaLength = 10
+decoder.decay = 0.3
+decoder.diffusibility = 0.1
+decoder.a_spec = 0.2
+decoder.a_max = 1.0
+decoder.constitutive = 0.333
 # dnaseq = 'tttttttttttaaggggggggggacgtacgtccccccccc'
 dnaseq = None
 seq_length = 100
 rndseed = 1
 
-options, args = getopt.getopt(sys.argv[1:], 'a:l:p:s:h')
+options, args = getopt.getopt(sys.argv[1:], 'a:l:p:s:t:h')
 for opt in options :
   if opt[0] == '-h' :
     print 'help...'
     sys.exit()
   elif opt[0] == '-p' :
-    dp.polymeraseBindingWord = opt[1]
+    decoder.setGeneStartRE(opt[1])
+  elif opt[0] == '-t' :
+    decoder.setGeneEndRE(opt[1])
   elif opt[0] == '-a' :
-    dp.repressorAreaLength = int(opt[1])
-    dp.activatorAreaLength = int(opt[1])
+    decoder.repressorAreaLength = int(opt[1])
+    decoder.activatorAreaLength = int(opt[1])
   elif opt[0] == '-s' :
     rndseed = int(opt[1])
   elif opt[0] == '-l' :
@@ -62,5 +68,5 @@ else :
   rng = random.Random(rndseed)
   dnaseq = random_sequence(seq_length, rng)
 
-print transdecode.decode_transsys(dnaseq, dp)
+print decoder.decode_transsys(dnaseq)
 
