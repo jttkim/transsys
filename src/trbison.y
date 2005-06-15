@@ -6,6 +6,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.5  2005/06/15 22:17:13  jtk
+ * counting number of transsys programs in lsys (deprecating multiples)
+ *
  * Revision 1.4  2005/04/14 18:44:46  jtk
  * fixed parser slipthrough of symbols declared with nonexistent transsys programs
  *
@@ -866,8 +869,10 @@ static LSYS *add_lsys(LSYS *lsyslist, LSYS *ls)
     fprint_lsys(stderr, 4, lsyslist);
 */
   if (return_value != 0)
+  {
     yyerror("add_lsys: arrange_lsys_arrays() returned %d\n", return_value);
-  fprintf(stderr, "add_lsys: added lsys \"%s\"\n", ls->name);
+  }
+  /* fprintf(stderr, "add_lsys: added lsys \"%s\"\n", ls->name); */
   ls->next = NULL;
   if (lsyslist == NULL)
     lsyslist = ls;

@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.9  2005/06/15 22:17:13  jtk
+ * counting number of transsys programs in lsys (deprecating multiples)
+ *
  * Revision 1.8  2005/05/16 21:03:27  jtk
  * contact graph implementation still buggy
  *
@@ -518,6 +521,8 @@ void fprint_lsys(FILE *f, int indent_depth, const LSYS *lsys)
 {
   const SYMBOL_ELEMENT *se;
   const RULE_ELEMENT *re;
+  char *glue;
+  int i;
 
   if (!lsys->arrayed)
   {
@@ -527,7 +532,18 @@ void fprint_lsys(FILE *f, int indent_depth, const LSYS *lsys)
   fprint_indented(f, indent_depth, "lsys %s\n", lsys->name);
   fprint_indented(f, indent_depth, "{\n");
   for (se = lsys->symbol_list; se; se = se->next)
+  {
     fprint_symbol(f, indent_depth + 2, se);
+  }
+/*
+  fprint_indented(f, indent_depth + 2, "// list of transsys programs used:");
+  glue = "";
+  for (i = 0; i < lsys->num_transsys; i++)
+  {
+    fprintf(f, "%s %s", glue, lsys->transsys_list[i]->name);
+    glue = ",";
+  }
+*/
   for(re = lsys->rule_list; re; re = re->next)
   {
     fprintf(f, "\n");

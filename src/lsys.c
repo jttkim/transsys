@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.16  2005/06/15 22:17:12  jtk
+ * counting number of transsys programs in lsys (deprecating multiples)
+ *
  * Revision 1.15  2005/05/18 09:42:37  jtk
  * performance improvements to diffusion code (neighbourhood computation)
  *
@@ -659,7 +662,7 @@ int lsys_string_diffusion(LSYS_STRING *lstr)
     diffusion_edge = diffusion_edge_list(lstr, tlist[t]);
     if (diffusion_edge == NULL)
     {
-      fprintf(stderr, "lsys_string_diffusion: diffusion_contact_graph failed\n");
+      fprintf(stderr, "lsys_string_diffusion: diffusion_edge_list failed\n");
       free_neighbourhood(lstr->num_symbols, neighbourhood);
       return (-1);
     }
@@ -1119,4 +1122,3 @@ LSYS_STRING *derived_string(LSYS_STRING *lstr)
   /* fprint_lsys_string(stderr, dstr, "***\n"); */
   return (dstr);
 }
-

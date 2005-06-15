@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.6  2005/06/15 22:17:13  jtk
+ * counting number of transsys programs in lsys (deprecating multiples)
+ *
  * Revision 1.5  2005/05/16 12:02:10  jtk
  * in transition from distance matrices to contact graphs
  *
@@ -288,10 +291,11 @@ typedef struct tag_lsys
   char name[IDENTIFIER_MAX];
   int arrayed;
   int diffusion_range;
-  int num_symbols, num_rules;
+  int num_symbols, num_rules, num_transsys;
   SYMBOL_ELEMENT *symbol_list;
   SYMBOL_PRODUCTION *axiom;
   RULE_ELEMENT *rule_list;
+  const TRANSSYS **transsys_list;
 } LSYS;
 
 

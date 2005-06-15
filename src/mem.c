@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.9  2005/06/15 22:17:13  jtk
+ * counting number of transsys programs in lsys (deprecating multiples)
+ *
  * Revision 1.8  2005/05/17 12:11:30  jtk
  * contact graph works
  *
@@ -1123,17 +1126,35 @@ void free_lsys_components(LSYS *lsys)
 
   if (lsys->arrayed)
   {
-    for (i = 0; i < lsys->num_rules; i++)
-      free_rule_element_components(lsys->rule_list + i);
-    free(lsys->rule_list);
-    for (i = 0; i < lsys->num_symbols; i++)
-      free_symbol_element_components(lsys->symbol_list + i);
-    free(lsys->symbol_list);
+    if (lsys->num_rules > 0)
+    {
+      for (i = 0; i < lsys->num_rules; i++)
+      {
+	free_rule_element_components(lsys->rule_list + i);
+      }
+      free(lsys->rule_list);
+    }
+    if (lsys->num_symbols > 0)
+    {
+      for (i = 0; i < lsys->num_symbols; i++)
+      {
+	free_symbol_element_components(lsys->symbol_list + i);
+      }
+      free(lsys->symbol_list);
+    }
+    if (lsys->num_transsys > 0)
+    {
+      free(lsys->transsys_list);
+    }
   }
   else
   {
     free_rule_element_list(lsys->rule_list);
     free_symbol_element_list(lsys->symbol_list);
+    if (lsys->transsys_list)
+    {
+      free(lsys->transsys_list);
+    }
   }
   if (lsys->axiom)
   {
@@ -1171,9 +1192,61 @@ LSYS *new_lsys(const char *name)
   lsys->axiom = NULL;
   lsys->num_rules = 0;
   lsys->rule_list = NULL;
+  lsys->num_transsys = 0;
+  lsys->transsys_list = NULL;
   strncpy(lsys->name, name, IDENTIFIER_MAX);
   lsys->name[IDENTIFIER_MAX - 1] = '\0';
   return (lsys);
+}
+
+
+static int set_lsys_transsys_list(LSYS *lsys)
+{
+  int i, j;
+  const TRANSSYS **tl;
+
+  lsys->num_transsys = 0;
+  for (i = 0; i < lsys->num_symbols; i++)
+  {
+    if (lsys->symbol_list[i].transsys != NULL)
+    {
+      for (j = 0; j < lsys->num_transsys; j++)
+      {
+	if (lsys->transsys_list[j] == lsys->symbol_list[i].transsys)
+	{
+	  break;
+	}
+      }
+      if (j == lsys->num_transsys)
+      {
+	if (lsys->num_transsys == 0)
+	{
+	  lsys->transsys_list = (const TRANSSYS **) malloc(sizeof(TRANSSYS *));
+	  if (lsys->transsys_list == NULL)
+	  {
+	    fprintf(stderr, "set_lsys_transsys_list: malloc failed\n");
+	    return (-1);
+	  }
+	}
+	else
+	{
+	  tl = (const TRANSSYS **) realloc(lsys->transsys_list, (lsys->num_transsys + 1) * sizeof(const TRANSSYS *));
+	  if (tl == NULL)
+	  {
+	    fprintf(stderr, "set_lsys_transsys_list: realloc failed\n");
+	    return(-1);
+	  }
+	  lsys->transsys_list = tl;
+	}
+	lsys->transsys_list[lsys->num_transsys++] = lsys->symbol_list[i].transsys;
+      }
+    }
+  }
+  if (lsys->num_transsys > 1)
+  {
+    fprintf(stderr, "warning: lsys %s comprises multiple (%d) transsys programs, this is deprecated\n", lsys->name, lsys->num_transsys);
+  }
+  return (0);
 }
 
 
@@ -1220,7 +1293,9 @@ int arrange_lsys_arrays(LSYS *lsys)
     }
     lsys->symbol_list = se_arr;
     for (i = 1; i < num_symbols; i++)
+    {
       lsys->symbol_list[i - 1].next = lsys->symbol_list + i;
+    }
     lsys->symbol_list[i - 1].next = NULL;
   }
   lsys->num_rules = num_rules;
@@ -1242,6 +1317,10 @@ int arrange_lsys_arrays(LSYS *lsys)
     lsys->rule_list[i - 1].next = NULL;
   }
   lsys->arrayed = 1;
+  if (set_lsys_transsys_list(lsys) != 0)
+  {
+    return (-1);
+  }
   return (0);
 }
 
