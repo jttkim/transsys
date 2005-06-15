@@ -1,10 +1,14 @@
 # $Id$
 
 # $Log$
+# Revision 1.2  2005/06/15 10:56:12  jtk
+# changed gene structure, introduced regexp use for start/end finding
+#
 # Revision 1.1  2005/06/14 18:35:42  jtk
 # transdecode for decoding transsys programs from "DNA" sequences
 #
 
+import re
 
 import transsys
 
@@ -14,16 +18,6 @@ def baseToInt(b) :
   if i == -1 :
     raise StandardError, 'bad base "%s"' % b
   return i
-
-
-def gene_index_list(genome, gene_refpoint_tag) :
-  # print 'gene_index_list(%s, %s)' % (genome, gene_refpoint_tag)
-  l = []
-  i = genome.find(gene_refpoint_tag)
-  while i > -1 :
-    l.append(i)
-    i = genome.find(gene_refpoint_tag, i + 1)
-  return l
 
 
 class BindingSite :
@@ -51,7 +45,7 @@ class DNABinder :
         i = i + 4
         break
       self.matrix.append(c)
-      self.threshold = self.threshold + baseToInt(dna[i + 4])
+      self.threshold = self.threshold + baseToInt(dna[i + 4]) + 1.0
       i = i + 5
     self.encoding_sequence = dna[:i]
 
@@ -80,11 +74,16 @@ class DNABinder :
 
 
   def bindingSite(self, seq, position = 0) :
+    if len(self.matrix) == 0 :
+      return None
     e = self.bindingEnergy(seq[position:])
-    if e <= self.threshold :
+    if e < self.threshold :
       return None
     else :
-      strength = e / self.threshold
+      if self.threshold > 0.0 :
+        strength = e / self.threshold
+      else :
+        strength = 1.0
       return BindingSite(self, position, strength)
 
 
@@ -98,14 +97,35 @@ def find_binding_sites(proteome, seq) :
   return blist
 
 
-class TranssysDNADecodeParameters :
+class RawDNAGene :
+
+  def __init__(self, position, gene_name, product_name, geneStart, geneEnd, activatorArea, repressorArea, structuralArea) :
+    self.position = position
+    self.gene_name = gene_name
+    self.product_name = product_name
+    self.activatorArea = activatorArea
+    self.repressorArea = repressorArea
+    self.structuralArea = structuralArea
+    self.geneStart = geneStart
+    self.geneEnd = geneEnd
+
+
+  def promoterArea(self) :
+    return self.activatorArea + self.repressorArea
+
+
+  def rawSequence(self) :
+    return self.geneStart + self.promoterArea() + self.structuralArea + self.geneEnd
+
+
+class TranssysDNADecoder :
 
   def __init__(self) :
     self.transsysName = None
     self.factorNameTemplate = None
     self.geneNameTemplate = None
-    self.polymeraseBindingWord = None
-    self.polymeraseTerminator = None
+    self.geneStartRE = None
+    self.geneEndRE = None
     self.repressorAreaLength = None
     self.activatorAreaLength = None
     self.decay = None
@@ -115,54 +135,85 @@ class TranssysDNADecodeParameters :
     self.constitutive = None
 
 
-def decode_transsys(genome, dp) :
-  gi_list = gene_index_list(genome, dp.polymeraseBindingWord)
-  proteome = []
-  factor_list = []
-  for i in gi_list :
-    factor_name = dp.factorNameTemplate % i
-    structArea = genome[i + dp.repressorAreaLength:]
-    # print genome
-    # print i + dp.repressorAreaLength
-    p = DNABinder(factor_name, structArea)
-    proteome.append(p)
-    decay_expr = transsys.ExpressionNodeValue(dp.decay)
-    diffusibility_expr = transsys.ExpressionNodeValue(dp.diffusibility)
-    factor = transsys.Factor(factor_name, decay_expr, diffusibility_expr)
-    factor.comments.append('decoded to DNABinder:')
-    for l in str(p).split('\n') :
-      factor.comments.append(l)
-    factor_list.append(factor)
-    # print '%d: struct. area = "%s"' % (i, structArea)
-    # print p
-  gene_list = []
-  for i in gi_list :
-    gene_name = dp.geneNameTemplate % i
-    product_name = dp.factorNameTemplate % i
-    promoterArea = genome[max(0, i - dp.activatorAreaLength):i + len(dp.polymeraseBindingWord) + dp.repressorAreaLength]
-    activatorArea = genome[max(0, i - dp.activatorAreaLength):i]
-    repressorArea = genome[i + len(dp.polymeraseBindingWord):i + len(dp.polymeraseBindingWord) + dp.repressorAreaLength]
-    # print 'gene %s: act. area = "%s", rep. area = "%s"' % (gene_name, activatorArea, repressorArea)
-    activators = find_binding_sites(proteome, activatorArea)
-    repressors = find_binding_sites(proteome, repressorArea)
-    promoter = [transsys.PromoterElementConstitutive(transsys.ExpressionNodeValue(dp.constitutive))]
-    for a in activators :
-      a_spec = transsys.ExpressionNodeValue(dp.a_spec)
-      a_max = transsys.ExpressionNodeValue(dp.a_max)
-      promoter.append(transsys.PromoterElementActivate(a_spec, a_max, [a.protein.name]))
-    for r in repressors :
-      r_spec = transsys.ExpressionNodeValue(dp.a_spec)
-      r_max = transsys.ExpressionNodeValue(dp.a_max)
-      promoter.append(transsys.PromoterElementRepress(r_spec, r_max, [r.protein.name]))
-    gene = transsys.Gene(gene_name, product_name, promoter)
-    gene.comments.append('promoter area: %s' % promoterArea)
-    gene.comments.append('activator area:')
-    gene.comments.append(activatorArea)
-    for a in activators :
-      gene.comments.append(a.arrowLine())
-    gene.comments.append('repressor area:')
-    gene.comments.append(repressorArea)
-    for r in repressors :
-      gene.comments.append(r.arrowLine())
-    gene_list.append(gene)
-  return transsys.TranssysProgram(dp.transsysName, factor_list, gene_list, resolve = True)
+  def setGeneStartRE(self, r) :
+    self.geneStartRE = re.compile(r)
+
+
+  def setGeneEndRE(self, r) :
+    self.geneEndRE = re.compile(r)
+
+
+  def rawDNAGenes(self, genome) :
+    # print 'gene_index_list(%s, %s)' % (genome, gene_refpoint_tag)
+    raw_gene_list = []
+    m = self.geneStartRE.search(genome)
+    while m :
+      position = m.start()
+      geneStart = m.group()
+      a_start = position + len(geneStart)
+      a_end = a_start + self.activatorAreaLength
+      r_start = a_end
+      r_end = r_start + self.repressorAreaLength
+      s_start = r_end
+      m = self.geneEndRE.search(genome, s_start)
+      if m :
+        s_end = m.start()
+        geneEnd = m.group()
+      else :
+        s_end = len(genome)
+        geneEnd = '*'
+      activatorArea = genome[a_start:a_end]
+      repressorArea = genome[r_start:r_end]
+      structuralArea = genome[s_start:s_end]
+      gene_name = self.geneNameTemplate % position
+      product_name = self.factorNameTemplate % position
+      raw_gene = RawDNAGene(position, gene_name, product_name, geneStart, geneEnd, activatorArea, repressorArea, structuralArea)
+      raw_gene_list.append(raw_gene)
+      m = self.geneStartRE.search(genome, position + 1)
+    return raw_gene_list
+
+
+  def decode_transsys(self, genome) :
+    raw_gene_list = self.rawDNAGenes(genome)
+    proteome = []
+    factor_list = []
+    for rg in raw_gene_list :
+      p = DNABinder(rg.product_name, rg.structuralArea)
+      proteome.append(p)
+      decay_expr = transsys.ExpressionNodeValue(self.decay)
+      diffusibility_expr = transsys.ExpressionNodeValue(self.diffusibility)
+      factor = transsys.Factor(rg.product_name, decay_expr, diffusibility_expr)
+      factor.comments.append('decoded to DNABinder:')
+      for l in str(p).split('\n') :
+        factor.comments.append(l)
+      factor_list.append(factor)
+      # print '%d: struct. area = "%s"' % (i, structArea)
+      # print p
+    gene_list = []
+    for rg in raw_gene_list :
+      activators = find_binding_sites(proteome, rg.activatorArea)
+      repressors = find_binding_sites(proteome, rg.repressorArea)
+      promoter = [transsys.PromoterElementConstitutive(transsys.ExpressionNodeValue(self.constitutive))]
+      for a in activators :
+        a_spec = transsys.ExpressionNodeValue(self.a_spec)
+        a_max = transsys.ExpressionNodeValue(self.a_max)
+        promoter.append(transsys.PromoterElementActivate(a_spec, a_max, [a.protein.name]))
+      for r in repressors :
+        r_spec = transsys.ExpressionNodeValue(self.a_spec)
+        r_max = transsys.ExpressionNodeValue(self.a_max)
+        promoter.append(transsys.PromoterElementRepress(r_spec, r_max, [r.protein.name]))
+      gene = transsys.Gene(rg.gene_name, rg.product_name, promoter)
+      gene.comments.append('gene:            %s' % rg.rawSequence())
+      gene.comments.append('promoter area:   %s' % (' ' * len(rg.geneStart)) + rg.promoterArea())
+      gene.comments.append('structural area: %s' % (' ' * (len(rg.geneStart) + len(rg.promoterArea())) + rg.structuralArea))
+      
+      gene.comments.append('activator area:')
+      gene.comments.append(rg.activatorArea)
+      for a in activators :
+        gene.comments.append(a.arrowLine())
+      gene.comments.append('repressor area:')
+      gene.comments.append(rg.repressorArea)
+      for r in repressors :
+        gene.comments.append(r.arrowLine())
+      gene_list.append(gene)
+    return transsys.TranssysProgram(self.transsysName, factor_list, gene_list, resolve = True)
