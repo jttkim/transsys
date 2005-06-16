@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.10  2005/06/16 09:36:26  jtk
+ * implemented rule statistics gathering
+ *
  * Revision 1.9  2005/06/15 22:17:13  jtk
  * counting number of transsys programs in lsys (deprecating multiples)
  *
@@ -198,7 +201,7 @@ EXPRESSION_NODE *new_expression_node(EXPR_NODE_TYPE type, ...)
     node->content.value = va_arg(arglist, double);
     break;
   case NT_IDENTIFIER:
-    node->content.identifier.lhs_symbol_index = -1; /*preliminary */
+    node->content.identifier.lhs_symbol_index = NO_INDEX; /*preliminary */
     node->content.identifier.factor_index = va_arg(arglist, int);
     break;
   case NT_RAW_IDENTIFIER:
@@ -1524,8 +1527,9 @@ SYMBOL_INSTANCE *new_symbol_instance(const LSYS_STRING *lsys_string, int symbol_
   si->next = NULL;
   si->lsys_string = lsys_string;
   si->symbol_index = symbol_index;
+  si->rule_index = NO_INDEX;
   si->num_successors = 0;
-  si->successor_index = -1;
+  si->successor_index = NO_INDEX;
   si->successor_distance = -1;
   si->num_contact_edges = 0;
   si->contact_edge = NULL;
@@ -1551,7 +1555,7 @@ SYMBOL_INSTANCE *clone_symbol_instance(const SYMBOL_INSTANCE *source, const LSYS
   si->lsys_string = lsys_string;
   si->symbol_index = source->symbol_index;
   si->num_successors = 0;
-  si->successor_index = -1;
+  si->successor_index = -NO_INDEX;
   si->successor_distance = -1;
   si->num_contact_edges = 0;    /* contact graph must be established by caller */
   si->contact_edge = NULL;

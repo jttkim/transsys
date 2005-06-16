@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.10  2005/06/16 09:36:26  jtk
+ * implemented rule statistics gathering
+ *
  * Revision 1.9  2005/05/20 10:40:15  jtk
  * differentiated entropy recording for lsys, expression and diffusion phase
  *
@@ -169,6 +172,7 @@ void fprint_transsys_as_discretenet(FILE *f, const TRANSSYS *transsys);
 
 extern void fprint_lsys(FILE *f, int indent_depth, const LSYS *lsys);
 extern void fprint_transsys_instance(FILE *f, const TRANSSYS_INSTANCE *ti);
+extern void fprint_transsys_instance_values(FILE *f, const TRANSSYS_INSTANCE *ti);
 extern void fprint_cell(FILE *f, const CELL *cell);
 extern void fprint_symbol_instance(FILE *f, const SYMBOL_INSTANCE *si);
 extern void fprint_symbol_instance_list(FILE *f, const SYMBOL_INSTANCE *si, const char *sep);

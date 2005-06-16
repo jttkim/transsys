@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.7  2005/06/16 09:36:26  jtk
+ * implemented rule statistics gathering
+ *
  * Revision 1.6  2005/06/15 22:17:13  jtk
  * counting number of transsys programs in lsys (deprecating multiples)
  *
@@ -87,6 +90,8 @@ typedef enum
   EC_SINGLE_TRANSSYS,
   EC_MULTI_TRANSSYS
 } EXPRESSION_CONTEXT_TYPE;
+
+#define NO_INDEX -1
 
 
 struct tag_transsys;
@@ -309,6 +314,7 @@ typedef struct tag_symbol_instance
   struct tag_symbol_instance *next;
   const LSYS_STRING *lsys_string;
   int symbol_index;
+  int rule_index;
   int lhs_group_start, lhs_group_length;
   int successor_distance;
   int num_successors, successor_index;
