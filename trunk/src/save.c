@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.10  2005/06/16 09:36:26  jtk
+ * implemented rule statistics gathering
+ *
  * Revision 1.9  2005/06/15 22:17:13  jtk
  * counting number of transsys programs in lsys (deprecating multiples)
  *
@@ -653,7 +656,20 @@ void fprint_transsys_instance(FILE *f, const TRANSSYS_INSTANCE *ti)
 
   fprintf(f, "instance of transsys \"%s\"\n", ti->transsys->name);
   for (i = 0; i < ti->transsys->num_factors; i++)
+  {
     fprintf(f, "[%s] = %g\n", ti->transsys->factor_list[i].name, ti->factor_concentration[i]);
+  }
+}
+
+
+void fprint_transsys_instance_values(FILE *f, const TRANSSYS_INSTANCE *ti)
+{
+  int i;
+
+  for (i = 0; i < ti->transsys->num_factors; i++)
+  {
+    fprintf(f, " %1.12e", ti->factor_concentration[i]);
+  }
 }
 
 

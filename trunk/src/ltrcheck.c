@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.6  2005/06/16 09:36:26  jtk
+ * implemented rule statistics gathering
+ *
  * Revision 1.5  2005/04/04 09:39:54  jtk
  * added lsys capabilities to transexpr, various small changes
  *
@@ -40,13 +43,43 @@
 extern int yydebug;
 
 
+static int fprint_rulestats(FILE *f, int n, const LSYS_STRING *lstr)
+{
+  int i;
+
+  for (i = 0; i < lstr->num_symbols; i++)
+  {
+    if (lstr->lsys->symbol_list[lstr->symbol[i].symbol_index].transsys)
+    {
+      fprintf(f, "%d %s", n, lstr->lsys->symbol_list[lstr->symbol[i].symbol_index].name);
+      if (lstr->symbol[i].rule_index == NO_INDEX)
+      {
+	fprintf(f, " clone-rule");
+      }
+      else
+      {
+	fprintf(f, " %s", lstr->lsys->rule_list[lstr->symbol[i].rule_index].name);
+      }
+      fprintf(f, " %s", lstr->lsys->symbol_list[lstr->symbol[i].symbol_index].transsys->name);
+      fprint_transsys_instance_values(f, &(lstr->symbol[i].transsys_instance));
+      fprintf(f, "\n");
+    }
+    else
+    {
+      fprintf(f, "# bare symbol %s\n", lstr->lsys->symbol_list[lstr->symbol[i].symbol_index].name);
+    }
+  }
+  return (0);
+}
+
+
 int main(int argc, char **argv)
 {
   int oc;
   extern char *optarg;
   extern int optind;
-  char *outfile_name = NULL;
-  FILE *outfile;
+  char *outfile_name = NULL, *rulestatsfile_name = NULL;
+  FILE *outfile, *rulestatsfile = NULL;
   int yyreturn;
   int num_derivations = 10, i;
   int process_transsys = 1, process_diffusion = 1;
@@ -54,7 +87,7 @@ int main(int argc, char **argv)
   LSYS_STRING *lstr, *dstring;
   LSYS *ls;
 
-  while ((oc = getopt(argc, argv, "s:d:DXh")) != -1)
+  while ((oc = getopt(argc, argv, "s:d:r:DXh")) != -1)
   {
     switch(oc)
     {
@@ -67,11 +100,16 @@ int main(int argc, char **argv)
     case 'd':
       num_derivations = strtol(optarg, NULL, 10);
       break;
+    case 'r':
+      rulestatsfile_name = optarg;
+      break;
     case 's':
       rndseed = strtoul(optarg, NULL, 10);
       break;
     case 'h':
       printf("-d <num>: set number of derivations\n");
+      printf("-s <num>: set random seed\n");
+      printf("-r <filename>: specify rule stats file\n");
       printf("-X: suppress gene expression (and factor decay) between derivations\n");
       printf("-D: suppress diffusion of factors between derivations\n");
       printf("-h: print this help and exit\n");
@@ -101,7 +139,9 @@ int main(int argc, char **argv)
     {
       fprintf(stderr, "Failed to open \"%s\" for output -- exit\n", outfile_name);
       if (yyin != stdin)
+      {
         fclose(yyin);
+      }
       exit(EXIT_FAILURE);
     }
   }
@@ -109,6 +149,23 @@ int main(int argc, char **argv)
   {
     outfile = stdout;
     outfile_name = "stdout";
+  }
+  if (rulestatsfile_name)
+  {
+    rulestatsfile = fopen(rulestatsfile_name, "w");
+    if (rulestatsfile == NULL)
+    {
+      fprintf(stderr, "Failed to open \"%s\" for rule stats -- exit\n", rulestatsfile_name);
+      if (outfile != stdout)
+      {
+	fclose(outfile);
+      }
+      if (yyin != stdin)
+      {
+        fclose(yyin);
+      }
+      exit(EXIT_FAILURE);
+    }
   }
   yyreturn = yyparse();
   if (yyreturn)
@@ -140,6 +197,10 @@ int main(int argc, char **argv)
 	if (process_diffusion)
 	  lsys_string_diffusion(lstr);
 	dstring = derived_string(lstr);
+	if (rulestatsfile)
+	{
+	  fprint_rulestats(rulestatsfile, i, lstr);
+	}
 	free_lsys_string(lstr);
 	lstr = dstring;
 	if (dstring == NULL)
@@ -160,10 +221,18 @@ int main(int argc, char **argv)
   }
   free_lsys_list(parsed_lsys);
   free_transsys_list(parsed_transsys);
+  if (rulestatsfile)
+  {
+    fclose(rulestatsfile);
+  }
   if (yyin != stdin)
+  {
     fclose(yyin);
+  }
   if (outfile != stdout)
+  {
     fclose(outfile);
+  }
   return (EXIT_SUCCESS);
 }
 

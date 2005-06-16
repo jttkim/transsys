@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.17  2005/06/16 09:36:26  jtk
+ * implemented rule statistics gathering
+ *
  * Revision 1.16  2005/06/15 22:17:12  jtk
  * counting number of transsys programs in lsys (deprecating multiples)
  *
@@ -1014,7 +1017,7 @@ LSYS_STRING *derived_string(LSYS_STRING *lstr)
   SYMBOL_INSTANCE *target_tail = NULL, *target_symbol;
   const RULE_ELEMENT *rule;
   const TRANSSYS_INSTANCE **ti_list;
-  int si_index, i, lhs_length;
+  int si_index, rule_index, i, lhs_length;
   int num_successors, successor_index;
 
   if (!lstr->arrayed)
@@ -1032,6 +1035,7 @@ LSYS_STRING *derived_string(LSYS_STRING *lstr)
   si_index = 0;
   while (si_index < lstr->num_symbols)
   {
+    rule_index = 0;
     for (rule = lstr->lsys->rule_list; rule; rule = rule->next)
     {
       if (rule_match(lstr->symbol + si_index, rule))
@@ -1039,6 +1043,7 @@ LSYS_STRING *derived_string(LSYS_STRING *lstr)
 	/* fprintf(stderr, "derived_string: applying rule \"%s\"\n", rule->name); */
 	break;
       }
+      rule_index++;
     }
     if (rule)
     {
@@ -1062,13 +1067,16 @@ LSYS_STRING *derived_string(LSYS_STRING *lstr)
     }
     else
     {
+      rule_index = NO_INDEX;
       target_symbol = clone_symbol_instance(lstr->symbol + si_index, dstr);
       lhs_length = 1;
     }
+    lstr->symbol[si_index].rule_index = rule_index;
     lstr->symbol[si_index].lhs_group_length = lhs_length;
     lstr->symbol[si_index].lhs_group_start = si_index;
     for (i = 1; i < lhs_length; i++)
     {
+      lstr->symbol[si_index + i].rule_index = rule_index;
       /* an lhs group length of 0 indicates that this symbol is not the first one in an lhs group */
       lstr->symbol[si_index + i].lhs_group_length = 0;
       lstr->symbol[si_index + i].lhs_group_start = si_index;

@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.10  2005/06/16 09:36:26  jtk
+ * implemented rule statistics gathering
+ *
  * Revision 1.9  2005/05/20 10:40:15  jtk
  * differentiated entropy recording for lsys, expression and diffusion phase
  *
@@ -90,7 +93,7 @@ static int find_symbol_index_by_name(const LSYS *lsys, const char *symname)
       return (s);
     }
   }
-  return (-1);
+  return (NO_INDEX);
 }
 
 
@@ -440,7 +443,7 @@ static int transexpr_lsys(FILE *outfile, FILE *entropyfile, const LSYS *lsys, co
   if (symbol_name)
   {
     symbol_index = find_symbol_index_by_name(lsys, symbol_name);
-    if (symbol_index == -1)
+    if (symbol_index == NO_INDEX)
     {
       fprintf(stderr, "no symbol \"%s\" in lsys \"%s\"\n", symbol_name, lsys->name);
       return (-1);
