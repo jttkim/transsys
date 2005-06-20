@@ -3,6 +3,9 @@
 # $Id$
 
 # $Log$
+# Revision 1.13  2005/06/20 21:10:03  jtk
+# in process of implementing lsys parsing capability
+#
 # Revision 1.12  2005/06/14 18:33:37  jtk
 # added comments to factors and genes
 #
@@ -366,8 +369,9 @@ class ExpressionNodeOr(BinaryExpressionNode) :
 class FunctionExpressionNode(ExpressionNode) :
 
   def __init__(self, operand, funcname = 'undefined_function') :
-    if not isinstance(operand, ExpressionNode) :
-      raise StandardError, 'ExpressionNodeNot::__init__: bad type of operand'
+    for op in operand :
+      if not isinstance(op, ExpressionNode) :
+        raise StandardError, 'FunctionExpressionNode::__init__: bad type of operand'
     self.operand = operand
     self.funcname = funcname
 
@@ -385,6 +389,7 @@ class FunctionExpressionNode(ExpressionNode) :
   def evaluate(self, transsys_instance) :
     raise StandardError, 'cannot evaluate undefined function'
 
+
   def resolve(self, tp) :
     for op in self.operand :
       op.resolve(tp)
@@ -399,8 +404,8 @@ class FunctionExpressionNode(ExpressionNode) :
 
 class ExpressionNodeUniformRandom(FunctionExpressionNode) :
 
-  def __init__(self, operand) :
-    FunctionExpressionNode.__init__(self, operand, 'random')
+  def __init__(self, op1, op2) :
+    FunctionExpressionNode.__init__(self, [op1, op2], 'random')
 
 
   def evaluate(self, transsys_instance) :
@@ -415,7 +420,7 @@ class ExpressionNodeUniformRandom(FunctionExpressionNode) :
 class ExpressionNodeGaussianRandom(FunctionExpressionNode) :
 
   def __init__(self, op1, op2) :
-    FunctionExpressionNode.__init__(self, operand, 'gauss')
+    FunctionExpressionNode.__init__(self, [op1, op2], 'gauss')
 
 
   def evaluate(self, transsys_instance) :
@@ -878,6 +883,160 @@ gene names and factor names can be altered without changing the network."""
       else :
         print 'gene %s already present -- skipping' % g.name
     self.comments.append('merged with transsys %s' % other.name)
+
+
+class GraphicsPrimitive :
+
+  def __init__(self) :
+    pass
+
+
+class GraphicsPrimitiveMove(GraphicsPrimitive) :
+
+  def __init__(self, expression) :
+    self.expression = expression
+
+
+  def __str__(self) :
+    return 'move(%s);' % str(self.expression)
+
+
+class GraphicsPrimitivePush(GraphicsPrimitive) :
+
+  def __init__(self) :
+    pass
+
+
+  def __str__(self) :
+    return 'push();'
+
+
+class GraphicsPrimitivePop(GraphicsPrimitive) :
+
+  def __init__(self) :
+    pass
+
+
+  def __str__(self) :
+    return 'pop();'
+
+
+class GraphicsPrimitiveTurn(GraphicsPrimitive) :
+
+  def __init__(self, expression) :
+    self.expression = expression
+
+
+  def __str__(self) :
+    return 'turn(%s);' % str(self.expression)
+    
+
+class GraphicsPrimitiveRoll(GraphicsPrimitive) :
+
+  def __init__(self, expression) :
+    self.expression = expression
+
+
+  def __str__(self) :
+    return 'roll(%s);' % str(self.expression)
+    
+
+class GraphicsPrimitiveBank(GraphicsPrimitive) :
+
+  def __init__(self, expression) :
+    self.expression = expression
+
+
+  def __str__(self) :
+    return 'bank(%s);' % str(self.expression)
+
+
+class GraphicsPrimitiveSphere(GraphicsPrimitive) :
+
+  def __init__(self, expression) :
+    self.expression = expression
+
+
+  def __str__(self) :
+    return 'sphere(%s);' % str(self.expression)
+
+
+class GraphicsPrimitiveCylinder(GraphicsPrimitive) :
+
+  def __init__(self, diameterExpression, lengthExpression) :
+    self.diameterExpression = diameterExpression
+    self.lengthExpression = lengthExpression
+
+
+  def __str__(self) :
+    return 'cylinder(%s, %s);' % (str(self.diameterExpression), str(self.lengthExpression))
+
+
+class GraphicsPrimitiveBox(GraphicsPrimitive) :
+
+  def __init__(self, xExpression, yExpression, zExpression) :
+    self.xExpression = xExpression
+    self.yExpression = yExpression
+    self.zExpression = zExpression
+
+
+  def __str__(self) :
+    return 'box(%s, %s, %s);' % (str(self.xExpression), str(self.yExpression), str(self.zExpression))
+
+
+class GraphicsPrimitiveColor(GraphicsPrimitive) :
+
+  def __init__(self, redExpression, greenExpression, blueExpression) :
+    self.redExpression = redExpression
+    self.greenExpression = greenExpression
+    self.blueExpression = blueExpression
+
+
+  def __str__(self) :
+    return 'color(%s, %s, %s);' % (str(self.redExpression), str(self.greenExpression), str(self.blueExpression))
+
+
+class Symbol :
+
+  def __init__(self, name, transsys, gpl = None) :
+    self.name = name
+    self.transsys = transsys
+    self.graphicsPrimitiveList = gpl
+
+
+  def __str__(self) :
+    if self.transsys is None :
+      return 'symbol %s' % self.name
+    else :
+      return 'symbol %s(%s)' % (self.name, self.transsys)
+
+
+class Assignment :
+
+  def __init__(self) :
+    pass
+
+
+class ProductionElement :
+
+  def __init__(self) :
+    pass
+
+
+class Rule :
+
+  def __init__(self) :
+    pass
+
+
+class LsysProgram :
+
+  def __init__(self, symbols = None, axiom = None, diffusionrange = 0, rules = None, graphics = None) :
+    self.symbols = symbols
+    self.axiom = axiom
+    self.diffusionrange = diffusionrange
+    self.rules = rules
+    self.graphics = graphics
 
 
 class TranssysInstance :
@@ -1459,7 +1618,7 @@ class TranssysProgramScanner :
     self.infile = f
     self.buffer = ''
     self.lineno = 0
-    self.keywords = ['factor', 'gene', 'promoter', 'product', 'constitutive', 'activate', 'repress', 'default', 'gauss', 'random', 'transsys', 'decay', 'diffusibility', 'lsys', 'symbol', 'axiom', 'rule', '-->', 'graphics', 'move', 'sphere', 'cylinder', 'box', 'turn', 'roll', 'bank', 'color', 'push', 'pop', '<=', '>=', '==', '!=', '&&', '||']
+    self.keywords = ['factor', 'gene', 'promoter', 'product', 'constitutive', 'activate', 'repress', 'default', 'gauss', 'random', 'transsys', 'decay', 'diffusibility', 'lsys', 'symbol', 'axiom', 'rule', 'diffusionrange', '-->', 'graphics', 'move', 'sphere', 'cylinder', 'box', 'turn', 'roll', 'bank', 'color', 'push', 'pop', '<=', '>=', '==', '!=', '&&', '||']
     self.identifier_re = re.compile('[A-Za-z_][A-Za-z0-9_]*')
     self.realvalue_re = re.compile('[+-]?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))([Ee][+-]?[0-9]+)?')
     self.next_token = self.get_token()
@@ -1579,7 +1738,7 @@ class TranssysProgramParser :
     arglist = self.parse_argument_list()
     if len(arglist) != 2 :
       raise StandardError, 'line %d: gauss() takes 2 parameters, but got %d' % (self.scanner.lineno, len(arglist))
-    return ExpressionNodeGaussianRandom([arglist[0], arglist[1]])
+    return ExpressionNodeGaussianRandom(arglist[0], arglist[1])
 
 
   def parse_random_expr(self) :
@@ -1587,7 +1746,7 @@ class TranssysProgramParser :
     arglist = self.parse_argument_list()
     if len(arglist) != 2 :
       raise StandardError, 'line %d: gauss() takes 2 parameters, but got %d' % (self.scanner.lineno, len(arglist))
-    return ExpressionNodeUniformRandom([arglist[0], arglist[1]])
+    return ExpressionNodeUniformRandom(arglist[0], arglist[1])
 
 
   def parse_value_expr(self) :
@@ -1818,13 +1977,91 @@ class TranssysProgramParser :
 
 
   def parse_transsys(self) :
-    self.expect_token('transsys')
+    t, v = self.scanner.token()
+    if t is None :
+      return None
     transsys_name = self.expect_token('identifier')
     self.expect_token('{')
     factors, genes = self.parse_transsys_elements()
     self.expect_token('}')
     return TranssysProgram(transsys_name, factors, genes)
 
+
+  def parse_diffusionrange(self) :
+    self.expect_token('diffusionrange')
+    self.expect_token(':')
+    e = self.parse_expr()
+    self.expect_token(';')
+    return e
+
+
+  def parse_symbol(self) :
+    transsys_name = None
+    self.expect_token('symbol')
+    symbol_name = self.expect_token('identifier')
+    if self.scanner.lookahead() == '(' :
+      self.expect_token('(')
+      transsys_name = self.expect_token('identifier')
+      self.expect_token(')')
+    self.expect_token(';')
+    return Symbol(symbol_name, transsys_name)
+
+
+  def parse_axiom(self) :
+    self.expect_token('axiom')
+    symbol_name = self.expect_token('identifier')
+    if self.scanner.lookahead() == '(' :
+      self.expect_token('(')
+      self.expect_token(')')
+    self.expect_token(';')
+    return axiom
+
+
+  def parse_lsys_elements(self) :
+    lsys_elements = ['symbol', 'axiom', 'diffusionrange', 'rule', 'graphics']
+    symbols = []
+    axiom = None
+    diffusionrange = None
+    rules = []
+    l = self.scanner.lookahead()
+    while l in lsys_elements :
+      if l == 'symbol' :
+        symbols.append(self.parse_symbol())
+      elif l == 'axiom' :
+        if axiom is not None :
+          raise StandardError, 'multiple axioms'
+        axiom = self.parse_axiom()
+      elif l == 'diffusionrange' :
+        if diffusionrange is not None :
+          raise StandardError, 'multiple diffusionrange specs'
+        diffusionrange = self.parse_diffusionrange()
+      elif l == 'rule' :
+        rules.append(self.parse_rule())
+      elif l == 'graphics' :
+        self.parse_graphics(symbols)
+      l = self.scanner.lookahead()
+    return symbols, axiom, diffusionrange, rules
+
+
+  def parse_lsys(self) :
+    self.expect_token('lsys')
+    lsys_name = self.expect_token('identifier')
+    self.expect_token('{')
+    symbols, axiom, diffusionrange, rules = self.parse_lsys_elements()
+    self.expect_token('}')
+    return Lsys(symbols, axiom, diffusionrange, rules)
+
+
+  def parse(self) :
+    t = self.scanner.lookahead()
+    if t is None :
+      return None
+    elif t == 'transsys' :
+      return self.parse_transsys()
+    elif t == 'lsys' :
+      return self.parse_lsys()
+    else :
+      raise StandardError, 'line %d: expected transsys or lsys, got %s' % (self.scanner.lineno, t)
 
   # kludges for handling lsys code in lists of lines
 
