@@ -3,6 +3,9 @@
 # $Id$
 
 # $Log$
+# Revision 1.15  2005/06/21 16:38:04  jtk
+# initial success with lsys parser (no serious debugging yet)
+#
 # Revision 1.14  2005/06/21 09:34:04  jtk
 # lsys parser accepts syntax (of one file), semantics still to be implemented
 #
@@ -1017,6 +1020,14 @@ class Symbol :
         return 'symbol %s(%s)' % (self.name, self.transsys)
 
 
+  def graphics_string(self) :
+    s = ''
+    for g in self.graphicsPrimitiveList :
+      s = s + '      %s\n' % str(g)
+    return s
+      
+
+
 class Assignment :
 
   def __init__(self, transsys, factor, value) :
@@ -1063,24 +1074,62 @@ class ProductionElement :
     if tl != '' or as != '' :
       return '%s(%s%s)' % (self.symbol.name, tl, as)
     else :
-      return self.symbol_name
+      return self.symbol.name
 
 
 class Rule :
 
-  def __init__(self) :
-    pass
+  def __init__(self, name, lhs, condition, rhs) :
+    self.name = name
+    self.lhs = lhs
+    self.condition = condition
+    self.rhs = rhs
 
+
+  def __str__(self) :
+    s = '  rule %s\n' % self.name
+    s = s + '  {\n'
+    s = s + '    '
+    for l in self.lhs :
+      s = s + ' %s' % str(l)
+    if self.condition is not None :
+      s = s + ':\n'
+      s = s + '    %s' % str(self.condition)
+    s = s + '\n'
+    s = s + '    -->\n'
+    for r in self.rhs :
+      s = s + '    %s\n' % str(r)
+    s = s + '  }\n'
+    return s
 
 class LsysProgram :
 
-  def __init__(self, symbols = None, axiom = None, diffusionrange = 0, rules = None, graphics = None) :
+  def __init__(self, name, symbols, axiom, diffusionrange, rules) :
+    self.name = name
     self.symbols = symbols
     self.axiom = axiom
     self.diffusionrange = diffusionrange
     self.rules = rules
-    self.graphics = graphics
 
+
+  def __str__(self) :
+    s = 'lsys %s\n' % self.name
+    s = s + '{\n'
+    s = s + '  diffusionrange: %d;\n' % self.diffusionrange
+    for sym in self.symbols :
+      s = s + '  %s;\n' % str(sym)
+    s = s + '  axiom'
+    for a in self.axiom :
+      s = s + ' %s;\n' % str(a)
+    for rule in self.rules :
+      s = s + str(rule)
+    s = s + '  graphics\n'
+    s = s + '  {\n'
+    for sym in self.symbols :
+      s = s + sym.graphics_string()
+    s = s + '  }\n'
+    s = s + '}\n'
+    return s
 
 class TranssysInstance :
 
@@ -2038,9 +2087,9 @@ class TranssysProgramParser :
   def parse_diffusionrange(self) :
     self.expect_token('diffusionrange')
     self.expect_token(':')
-    e = self.parse_expr([])
+    d = self.expect_token('realvalue')
     self.expect_token(';')
-    return e
+    return int(d)
 
 
   def parse_symbol(self) :
@@ -2133,10 +2182,12 @@ class TranssysProgramParser :
     transsys_label_list = map(lambda x: x.transsys_name, lhs)
     if self.consume_if_found(':') :
       condition = self.parse_expr(transsys_label_list)
+    else :
+      condition = None
     self.expect_token('-->')
     rhs = self.parse_rhs(symbol_dict, transsys_label_list)
     self.expect_token('}')
-    return Rule()
+    return Rule(rule_name, lhs, condition, rhs)
 
 
   def parse_axiom(self, symbol_dict) :
@@ -2260,7 +2311,9 @@ class TranssysProgramParser :
       plist.append(p)
       l = self.scanner.lookahead()
     self.expect_token('}')
-    symbol.graphics = plist
+    if symbol.graphicsPrimitiveList is not None :
+      sys.stderr.write('symbol "%s": superseding graphics\n' % symbol_name)
+    symbol.graphicsPrimitiveList = plist
 
 
   def parse_graphics(self, symbol_dict) :
@@ -2306,7 +2359,7 @@ class TranssysProgramParser :
     self.expect_token('{')
     symbols, axiom, diffusionrange, rules = self.parse_lsys_elements()
     self.expect_token('}')
-    return LsysProgram(symbols, axiom, diffusionrange, rules)
+    return LsysProgram(lsys_name, symbols, axiom, diffusionrange, rules)
 
 
   def parse(self) :
