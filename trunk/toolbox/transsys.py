@@ -3,6 +3,9 @@
 # $Id$
 
 # $Log$
+# Revision 1.14  2005/06/21 09:34:04  jtk
+# lsys parser accepts syntax (of one file), semantics still to be implemented
+#
 # Revision 1.13  2005/06/20 21:10:03  jtk
 # in process of implementing lsys parsing capability
 #
@@ -1008,19 +1011,59 @@ class Symbol :
     if self.transsys is None :
       return 'symbol %s' % self.name
     else :
-      return 'symbol %s(%s)' % (self.name, self.transsys)
+      if isinstance(self.transsys, TranssysProgram) :
+        return 'symbol %s(%s)' % (self.name, self.transsys.name)
+      elif type(self.transsys) is types.StringType :
+        return 'symbol %s(%s)' % (self.name, self.transsys)
 
 
 class Assignment :
 
-  def __init__(self) :
-    pass
+  def __init__(self, transsys, factor, value) :
+    self.transsys = transsys
+    self.factor = factor
+    self.value = value
+
+
+  def __str__(self) :
+    return '%s = %s' % (self.factor, str(self.value))
+
+
+class LhsSymbol :
+
+  def __init__(self, symbol, transsys_name) :
+    self.symbol = symbol
+    self.transsys_name = transsys_name
+
+
+  def __str__(self) :
+    if self.transsys_name :
+      return '%s(%s)' % (self.symbol.name, self.transsys_name)
+    else :
+      return self.symbol_name
 
 
 class ProductionElement :
 
-  def __init__(self) :
-    pass
+  def __init__(self, symbol, template_label, assignments) :
+    self.symbol = symbol
+    self.template_label = template_label
+    self.assignments = assignments
+
+
+  def __str__(self) :
+    tl = ''
+    if self.template_label is not None :
+      tl = 'transsys %s: ' % self.template_label
+    as = ''
+    glue = ''
+    for a in self.assignments :
+      as = as + glue + str(a)
+      glue = ', '
+    if tl != '' or as != '' :
+      return '%s(%s%s)' % (self.symbol.name, tl, as)
+    else :
+      return self.symbol_name
 
 
 class Rule :
@@ -1635,6 +1678,7 @@ class TranssysProgramScanner :
 
 
   def get_token(self) :
+    # FIXME: lineno reflects line of lookahead token
     if len(self.buffer) > 0 :
       if self.buffer[0] == '#' or self.buffer[0:2] == '//' :
         self.buffer = ''
@@ -1705,163 +1749,171 @@ class TranssysProgramParser :
     return v
 
 
+  def consume_if_found(self, expected_token) :
+    if self.scanner.lookahead() == expected_token :
+      self.expect_token(expected_token)
+      return True
+    else :
+      return False
+
+
   def parse_realvalue_expr(self) :
     v = self.expect_token('realvalue')
     return ExpressionNodeValue(v)
 
 
-  def parse_identifier_expr(self) :
+  def parse_identifier_expr(self, transsys_label_list) :
     id = self.expect_token('identifier')
-    if self.scanner.lookahead() == '.' :
+    if self.consume_if_found('.') :
+      if id not in transsys_label_list :
+        raise StandardError, 'unknown transsys label "%s"' % id
       transsys_id = id
-      self.expect_token('.')
       id = self.expect_token('identifier')
     else :
       transsys_id = None
     return ExpressionNodeIdentifier(id, transsys_id)
 
 
-  def parse_argument_list(self) :
+  def parse_argument_list(self, transsys_label_list) :
     arglist = []
     self.expect_token('(')
+    if self.consume_if_found(')') :
+      return arglist
     sep = ','
     while sep == ',' :
-      arglist.append(self.parse_expr())
+      arglist.append(self.parse_expr(transsys_label_list))
       sep, v = self.scanner.token()
       if sep != ',' and sep != ')' :
         raise StandardError, 'line %d: expected token "," or ")" in arglist but got "%s"' % (self.scanner.lineno, sep)
     return arglist
 
 
-  def parse_gauss_expr(self) :
+  def parse_gauss_expr(self, transsys_label_list) :
     self.expect_token('gauss')
-    arglist = self.parse_argument_list()
+    arglist = self.parse_argument_list(transsys_label_list)
     if len(arglist) != 2 :
       raise StandardError, 'line %d: gauss() takes 2 parameters, but got %d' % (self.scanner.lineno, len(arglist))
     return ExpressionNodeGaussianRandom(arglist[0], arglist[1])
 
 
-  def parse_random_expr(self) :
+  def parse_random_expr(self, transsys_label_list) :
     self.expect_token('random')
-    arglist = self.parse_argument_list()
+    arglist = self.parse_argument_list(transsys_label_list)
     if len(arglist) != 2 :
       raise StandardError, 'line %d: gauss() takes 2 parameters, but got %d' % (self.scanner.lineno, len(arglist))
     return ExpressionNodeUniformRandom(arglist[0], arglist[1])
 
 
-  def parse_value_expr(self) :
+  def parse_value_expr(self, transsys_label_list) :
     l = self.scanner.lookahead()
     if l == 'realvalue' :
       return self.parse_realvalue_expr()
     elif l == 'identifier' :
-      return self.parse_identifier_expr()
+      return self.parse_identifier_expr(transsys_label_list)
     elif l == 'random' :
-      return self.parse_random_expr()
+      return self.parse_random_expr(transsys_label_list)
     elif l == 'gauss' :
-      return self.parse_gauss_expr()
+      return self.parse_gauss_expr(transsys_label_list)
     elif l == '(' :
       self.expect_token('(')
-      expr = self.parse_expr()
+      expr = self.parse_expr(transsys_label_list)
       self.expect_token(')')
       return expr
     else :
       raise StandardError, 'line %d: got token "%s", but value must be either <realvalue>, <identifier>, "random" or "gauss"' % (self.scanner.lineno, l)
 
 
-  def parse_term_expr(self) :
-    expr1 = self.parse_value_expr()
+  def parse_term_expr(self, transsys_label_list) :
+    expr1 = self.parse_value_expr(transsys_label_list)
     while 1:
       l = self.scanner.lookahead()
       if l == '*' :
         self.expect_token('*')
-        expr2 = self.parse_value_expr()
+        expr2 = self.parse_value_expr(transsys_label_list)
         expr1 = ExpressionNodeMult(expr1, expr2)
       elif l == '/' :
         self.expect_token('/')
-        expr2 = self.parse_value_expr()
+        expr2 = self.parse_value_expr(transsys_label_list)
         expr1 = ExpressionNodeDiv(expr1, expr2)
       else :
         break
     return expr1
 
 
-  def parse_arithmetic_expr(self) :
-    expr1 = self.parse_term_expr()
+  def parse_arithmetic_expr(self, transsys_label_list) :
+    expr1 = self.parse_term_expr(transsys_label_list)
     while 1:
       l = self.scanner.lookahead()
       if l == '+' :
         self.expect_token('+')
-        expr2 = self.parse_term_expr()
+        expr2 = self.parse_term_expr(transsys_label_list)
         expr1 = ExpressionNodeAdd(expr1, expr2)
       elif l == '-' :
         self.expect_token('-')
-        expr2 = self.parse_term_expr()
+        expr2 = self.parse_term_expr(transsys_label_list)
         expr1 = ExpressionNodeSubtract(expr1, expr2)
       else :
         break
     return expr1
 
 
-  def parse_cmp_expr(self) :
-    expr1 = self.parse_arithmetic_expr()
+  def parse_cmp_expr(self, transsys_label_list) :
+    expr1 = self.parse_arithmetic_expr(transsys_label_list)
     while 1 :
       l = self.scanner.lookahead()
       if l == '<' :
         self.expect_token('<')
-        expr2 = self.parse_arithmetic_expr()
+        expr2 = self.parse_arithmetic_expr(transsys_label_list)
         expr1 = ExpressionNodeLower(expr1, expr2)
       elif l == '<=' :
         self.expect_token('<=')
-        expr2 = self.parse_arithmetic_expr()
+        expr2 = self.parse_arithmetic_expr(transsys_label_list)
         expr1 = ExpressionNodeLowerEqual(expr1, expr2)
       elif l == '>' :
         self.expect_token('>')
-        expr2 = self.parse_arithmetic_expr()
+        expr2 = self.parse_arithmetic_expr(transsys_label_list)
         expr1 = ExpressionNodeGreater(expr1, expr2)
       elif l == '>=' :
         self.expect_token('?=')
-        expr2 = self.parse_arithmetic_expr()
+        expr2 = self.parse_arithmetic_expr(transsys_label_list)
         expr1 = ExpressionNodeGreaterEqual(expr1, expr2)
       elif l == '==' :
         self.expect_token('==')
-        expr2 = self.parse_arithmetic_expr()
+        expr2 = self.parse_arithmetic_expr(transsys_label_list)
         expr1 = ExpressionNodeEqual(expr1, expr2)
       elif l == '!=' :
         self.expect_token('==')
-        expr2 = self.parse_arithmetic_expr()
+        expr2 = self.parse_arithmetic_expr(transsys_label_list)
         expr1 = ExpressionNodeUnequal(expr1, expr2)
       else :
         break
     return expr1
 
 
-  def parse_not_expr(self) :
-    if self.scanner.lookahead() == '!' :
-      self.expect_token('!')
-      expr = self.parse_cmp_expr()
+  def parse_not_expr(self, transsys_label_list) :
+    if self.consume_if_found('!') :
+      expr = self.parse_cmp_expr(transsys_label_list)
       return ExpressionNodeNot(expr)
     else :
-      return self.parse_cmp_expr()
+      return self.parse_cmp_expr(transsys_label_list)
 
 
-  def parse_and_expr(self) :
-    expr1 = self.parse_not_expr()
+  def parse_and_expr(self, transsys_label_list) :
+    expr1 = self.parse_not_expr(transsys_label_list)
     while 1 :
-      if self.scanner.lookahead() == '&&' :
-        self.expect_token('&&')
-        expr2 = self.parse_not_expr()
+      if self.consume_if_found('&&') :
+        expr2 = self.parse_not_expr(transsys_label_list)
         expr1 = ExpressionNodeAnd(expr1, expr2)
       else :
         break
     return expr1
 
 
-  def parse_expr(self) :
-    expr1 = self.parse_and_expr()
+  def parse_expr(self, transsys_label_list) :
+    expr1 = self.parse_and_expr(transsys_label_list)
     while 1 :
-      if self.scanner.lookahead() == '||' :
-        self.expect_token('||')
-        expr2 = self.parse_and_expr()
+      if self.consume_if_found('||') :
+        expr2 = self.parse_and_expr(transsys_label_list)
         expr1 = ExpressionNodeOr(expr1, expr2)
       else :
         break
@@ -1886,31 +1938,27 @@ class TranssysProgramParser :
 
   def parse_factor_combination(self) :
     fc = [self.expect_token('identifier')]
-    while self.scanner.lookahead() == '+' :
-      self.expect_token('+')
+    while self.consume_if_found('+') :
       fc.append(self.expect_token('identifier'))
     return fc
 
 
   def parse_promoter_statement(self) :
-    if self.scanner.lookahead() == 'constitutive' :
-      self.expect_token('constitutive')
+    if self.consume_if_found('constitutive') :
       self.expect_token(':')
-      expr = self.parse_expr()
+      expr = self.parse_expr([])
       self.expect_token(';')
       return PromoterElementConstitutive(expr)
     fc = self.parse_factor_combination()
     self.expect_token(':')
-    if self.scanner.lookahead() == 'activate' :
-      self.expect_token('activate')
-      arglist = self.parse_argument_list()
+    if self.consume_if_found('activate') :
+      arglist = self.parse_argument_list([])
       if len(arglist) != 2 :
         raise StandardError, 'line %d: activate() takes exactly 2 parameters, got %d' % (self.scanner.lineno, len(arglist))
       self.expect_token(';')
       return PromoterElementActivate(arglist[0], arglist[1], fc)
-    elif self.scanner.lookahead() == 'repress' :
-      self.expect_token('repress')
-      arglist = self.parse_argument_list()
+    elif self.consume_if_found('repress') :
+      arglist = self.parse_argument_list([])
       if len(arglist) != 2 :
         raise StandardError, 'line %d: repress() takes exactly 2 parameters, got %d' % (self.scanner.lineno, len(arglist))
       self.expect_token(';')
@@ -1939,11 +1987,11 @@ class TranssysProgramParser :
       if l == 'decay' :
         self.expect_token('decay')
         self.expect_token(':')
-        decay_expr = self.parse_expr()
+        decay_expr = self.parse_expr([])
       elif l == 'diffusibility' :
         self.expect_token('diffusibility')
         self.expect_token(':')
-        diffusibility_expr = self.parse_expr()
+        diffusibility_expr = self.parse_expr([])
       if self.scanner.lookahead() == ';' :
         self.expect_token(';')
       else :
@@ -1990,7 +2038,7 @@ class TranssysProgramParser :
   def parse_diffusionrange(self) :
     self.expect_token('diffusionrange')
     self.expect_token(':')
-    e = self.parse_expr()
+    e = self.parse_expr([])
     self.expect_token(';')
     return e
 
@@ -2007,38 +2055,247 @@ class TranssysProgramParser :
     return Symbol(symbol_name, transsys_name)
 
 
-  def parse_axiom(self) :
-    self.expect_token('axiom')
+  def parse_assignment(self, transsys, transsys_label_list) :
+    factor = self.expect_token('identifier')
+    self.expect_token('=')
+    value = self.parse_expr(transsys_label_list)
+    a = Assignment(transsys, factor, value)
+    print str(a)
+    return a
+
+
+  def parse_assignment_list(self, transsys, transsys_label_list) :
+    alist = []
+    while self.scanner.lookahead() == 'identifier' :
+      alist.append(self.parse_assignment(transsys, transsys_label_list))
+    return alist
+
+
+  def parse_lhs_symbol(self, symbol_dict) :
     symbol_name = self.expect_token('identifier')
+    if symbol_name not in symbol_dict.keys() :
+      raise StandardError, 'unknown symbol "%s"' % symbol_name
+    symbol = symbol_dict[symbol_name]
     if self.scanner.lookahead() == '(' :
       self.expect_token('(')
+      transsys_name = self.expect_token('identifier')
       self.expect_token(')')
+    else :
+      transsys_name = None
+    return LhsSymbol(symbol, transsys_name)
+
+
+  def parse_lhs(self, symbol_dict) :
+    lhs = [self.parse_lhs_symbol(symbol_dict)]
+    l = self.scanner.lookahead()
+    while l != ':' and l != '-->' :
+      lhs.append(self.parse_lhs_symbol(symbol_dict))
+      l = self.scanner.lookahead()
+    return lhs
+
+
+  def parse_transsys_initializer(self, transsys, transsys_label_list) :
+    if self.consume_if_found('transsys') :
+      template_label = self.expect_token('identifier')
+      self.expect_token(':')
+    else :
+      template_label = None
+    assignments = self.parse_assignment_list(transsys, transsys_label_list)
+    return template_label, assignments
+      
+
+  def parse_production_element(self, symbol_dict, transsys_label_list) :
+    symbol_name = self.expect_token('identifier')
+    if symbol_name not in symbol_dict.keys() :
+      raise StandardError, 'unknown symbol "%s"' % symbol_name
+    symbol = symbol_dict[symbol_name]
+    if self.consume_if_found('(') :
+      template_label, assignments = self.parse_transsys_initializer(symbol.transsys, transsys_label_list)
+      self.expect_token(')')
+    else :
+      template_label = None
+      assignments = []
+    return ProductionElement(symbol, template_label, assignments)
+
+
+  def parse_rhs(self, symbol_dict, transsys_label_list) :
+    rhs = []
+    while self.scanner.lookahead() == 'identifier' :
+      rhs.append(self.parse_production_element(symbol_dict, transsys_label_list))
+    return rhs
+
+
+  def parse_rule(self, symbol_dict) :
+    self.expect_token('rule')
+    rule_name = self.expect_token('identifier')
+    self.expect_token('{')
+    lhs = self.parse_lhs(symbol_dict)
+    transsys_label_list = map(lambda x: x.transsys_name, lhs)
+    if self.consume_if_found(':') :
+      condition = self.parse_expr(transsys_label_list)
+    self.expect_token('-->')
+    rhs = self.parse_rhs(symbol_dict, transsys_label_list)
+    self.expect_token('}')
+    return Rule()
+
+
+  def parse_axiom(self, symbol_dict) :
+    self.expect_token('axiom')
+    axiom = self.parse_rhs(symbol_dict, [])
     self.expect_token(';')
     return axiom
+
+
+  def parse_move(self, symbol) :
+    self.expect_token('move')
+    arglist = self.parse_argument_list([])
+    if len(arglist) != 1 :
+      raise StandardError, 'move takes 1 argument, got %d' % len(arglist)
+    return GraphicsPrimitiveMove(arglist[0])
+
+
+  def parse_push(self, symbol) :
+    self.expect_token('push')
+    arglist = self.parse_argument_list([])
+    if len(arglist) != 0 :
+      raise StandardError, 'push does not take arguments, got %d' % len(arglist)
+    return GraphicsPrimitivePush()
+
+
+  def parse_pop(self, symbol) :
+    self.expect_token('pop')
+    arglist = self.parse_argument_list([])
+    if len(arglist) != 0 :
+      raise StandardError, 'pop does not take arguments, got %d' % len(arglist)
+    return GraphicsPrimitivePop()
+
+
+  def parse_turn(self, symbol) :
+    self.expect_token('turn')
+    arglist = self.parse_argument_list([])
+    if len(arglist) != 1 :
+      raise StandardError, 'turn takes 1 argument, got %d' % len(arglist)
+    return GraphicsPrimitiveTurn(arglist[0])
+
+
+  def parse_bank(self, symbol) :
+    self.expect_token('bank')
+    arglist = self.parse_argument_list([])
+    if len(arglist) != 1 :
+      raise StandardError, 'bank takes 1 argument, got %d' % len(arglist)
+    return GraphicsPrimitiveBank(arglist[0])
+
+
+  def parse_roll(self, symbol) :
+    self.expect_token('roll')
+    arglist = self.parse_argument_list([])
+    if len(arglist) != 1 :
+      raise StandardError, 'roll takes 1 argument, got %d' % len(arglist)
+    return GraphicsPrimitiveRoll(arglist[0])
+
+
+  def parse_sphere(self, symbol) :
+    self.expect_token('sphere')
+    arglist = self.parse_argument_list([])
+    if len(arglist) != 1 :
+      raise StandardError, 'sphere takes 1 argument, got %d' % len(arglist)
+    return GraphicsPrimitiveSphere(arglist[0])
+
+
+  def parse_cylinder(self, symbol) :
+    self.expect_token('cylinder')
+    arglist = self.parse_argument_list([])
+    if len(arglist) != 2 :
+      raise StandardError, 'cylinder takes 2 argument, got %d' % len(arglist)
+    return GraphicsPrimitiveCylinder(arglist[0], arglist[1])
+
+
+  def parse_box(self, symbol) :
+    self.expect_token('box')
+    arglist = self.parse_argument_list([])
+    if len(arglist) != 3 :
+      raise StandardError, 'box takes 3 argument, got %d' % len(arglist)
+    return GraphicsPrimitiveBox(arglist[0], arglist[1], arglist[2])
+
+
+  def parse_color(self, symbol) :
+    self.expect_token('color')
+    arglist = self.parse_argument_list([])
+    if len(arglist) != 3 :
+      raise StandardError, 'color takes 3 argument, got %d' % len(arglist)
+    return GraphicsPrimitiveColor(arglist[0], arglist[1], arglist[2])
+
+
+  def parse_symbol_graphics(self, symbol_dict) :
+    graphics_primitives = ['move', 'push', 'pop', 'turn', 'bank', 'roll', 'sphere', 'cylinder', 'box', 'color']
+    symbol_name = self.expect_token('identifier')
+    if symbol_name not in symbol_dict.keys() :
+      raise StandardError, 'unknown symbol "%s"' % symbol_name
+    symbol = symbol_dict[symbol_name]
+    self.expect_token('{')
+    plist = []
+    l = self.scanner.lookahead()
+    while l in graphics_primitives :
+      if l == 'move' :
+        p = self.parse_move(symbol)
+      elif l == 'push' :
+        p = self.parse_push(symbol)
+      elif l == 'pop' :
+        p = self.parse_pop(symbol)
+      elif l == 'turn' :
+        p = self.parse_turn(symbol)
+      elif l == 'bank' :
+        p = self.parse_bank(symbol)
+      elif l == 'roll' :
+        p = self.parse_roll(symbol)
+      elif l == 'sphere' :
+        p = self.parse_sphere(symbol)
+      elif l == 'cylinder' :
+        p = self.parse_cylinder(symbol)
+      elif l == 'box' :
+        p = self.parse_box(symbol)
+      elif l == 'color' :
+        p = self.parse_color(symbol)
+      self.expect_token(';')
+      plist.append(p)
+      l = self.scanner.lookahead()
+    self.expect_token('}')
+    symbol.graphics = plist
+
+
+  def parse_graphics(self, symbol_dict) :
+    self.expect_token('graphics')
+    self.expect_token('{')
+    while self.scanner.lookahead() == 'identifier' :
+      self.parse_symbol_graphics(symbol_dict)
+    self.expect_token('}')
 
 
   def parse_lsys_elements(self) :
     lsys_elements = ['symbol', 'axiom', 'diffusionrange', 'rule', 'graphics']
     symbols = []
+    symbol_dict = {}
     axiom = None
     diffusionrange = None
     rules = []
     l = self.scanner.lookahead()
     while l in lsys_elements :
       if l == 'symbol' :
-        symbols.append(self.parse_symbol())
+        symbol = self.parse_symbol()
+        symbols.append(symbol)
+        symbol_dict[symbol.name] = symbol
       elif l == 'axiom' :
         if axiom is not None :
           raise StandardError, 'multiple axioms'
-        axiom = self.parse_axiom()
+        axiom = self.parse_axiom(symbol_dict)
       elif l == 'diffusionrange' :
         if diffusionrange is not None :
           raise StandardError, 'multiple diffusionrange specs'
         diffusionrange = self.parse_diffusionrange()
       elif l == 'rule' :
-        rules.append(self.parse_rule())
+        rules.append(self.parse_rule(symbol_dict))
       elif l == 'graphics' :
-        self.parse_graphics(symbols)
+        self.parse_graphics(symbol_dict)
       l = self.scanner.lookahead()
     return symbols, axiom, diffusionrange, rules
 
@@ -2049,7 +2306,7 @@ class TranssysProgramParser :
     self.expect_token('{')
     symbols, axiom, diffusionrange, rules = self.parse_lsys_elements()
     self.expect_token('}')
-    return Lsys(symbols, axiom, diffusionrange, rules)
+    return LsysProgram(symbols, axiom, diffusionrange, rules)
 
 
   def parse(self) :
