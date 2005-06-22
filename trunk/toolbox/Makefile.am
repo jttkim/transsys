@@ -13,6 +13,9 @@
 # $Id$
 
 # $Log$
+# Revision 1.4  2005/06/22 09:56:28  jtk
+# first introduction of checking
+#
 # Revision 1.3  2005/04/06 21:02:08  jtk
 # added transdisrupt.py to installation target
 #
@@ -68,6 +71,8 @@ bin_SCRIPTS	= $(PYTHONSCRIPTS)
 pylib_DATA	= $(PYTHONMODULES)
 
 EXTRA_DIST	= $(PYTHONSCRIPTS) $(PYTHONMODULES) $(RPACKAGE)
+
+TESTS		= test_transpython
 
 CLEANFILES	= *~ *.pyc
 
