@@ -6,6 +6,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.6  2005/06/22 09:58:36  jtk
+ * prevented unknown variables from resulting in core-dump eliciting parsing results
+ *
  * Revision 1.5  2005/06/15 22:17:13  jtk
  * counting number of transsys programs in lsys (deprecating multiples)
  *
@@ -44,6 +47,7 @@ typedef struct
 {
   ASSIGNMENT *assignment_list;
   int source_lhs_symbol_index;
+  int error;
 } ASSIGNMENT_RESOLUTION_RESULT;
 
 
@@ -456,7 +460,17 @@ static INTEGER_ARRAY *extend_factor_combination(INTEGER_ARRAY *ia, const char *n
 
   fi = find_factor_index(current_transsys, name);
   if (fi < 0)
-    return (ia);
+  {
+    if (ia)
+    {
+      if (ia->length)
+      {
+	free(ia->array);
+      }
+      free(ia);
+    }
+    return (NULL);
+  }
   ia = extend_integer_array(ia, fi);
   return (ia);
 }
@@ -620,7 +634,7 @@ static int find_lhs_symbol_by_transsys_label(const LHS_SYMBOL *symbol_list, cons
 
 static ASSIGNMENT_RESOLUTION_RESULT resolve_raw_assignments(const SYMBOL_ELEMENT *se, RAW_ASSIGNMENT *ra_list)
 {
-  ASSIGNMENT_RESOLUTION_RESULT a_result = { NULL, NO_INDEX };
+  ASSIGNMENT_RESOLUTION_RESULT a_result = { NULL, NO_INDEX, 0 };
   RAW_ASSIGNMENT *ra;
   ASSIGNMENT *a;
   int factor_index, lhs_symbol_index;
@@ -648,16 +662,23 @@ static ASSIGNMENT_RESOLUTION_RESULT resolve_raw_assignments(const SYMBOL_ELEMENT
 	}
 	else
 	{
+	  /* FIXME: is this really an yyerror? */
 	  yyerror("resolve_raw_assignments: new_assignment() failed");
 	  free_expression_tree(ra->value);
 	}
       }
       else
       {
+	a_result.error = 1;
 	if (se->transsys)
+	{
+	  /* FIXME: this should be an error resulting in termination of parsing */
 	  fprintf(stderr, "resolve_raw_assignments: symbol \"%s\": no factor \"%s\" in transsys \"%s\"\n", se->name, ra->identifier, se->transsys->name);
+	}
 	else
+	{
 	  fprintf(stderr, "resolve_raw_assignments: symbol \"%s\": no transsys, no factor \"%s\"\n", se->name, ra->identifier);
+	}
       }
     }
     else if (ra->transsys_label[0])
@@ -705,9 +726,16 @@ static PRODUCTION_ELEMENT *create_production_element(const char *symbol_name, RA
   if (se == NULL)
     return (NULL);
   a_result = resolve_raw_assignments(se, ra_list);
+  if (a_result.error)
+  {
+    free_assignment_list(a_result.assignment_list);
+    return (NULL);
+  }
   sp = new_production_element(se->index, a_result.source_lhs_symbol_index, a_result.assignment_list);
   if (sp == NULL)
+  {
     fprintf(stderr, "create_production_element: new_production_element() failed");
+  }
   return (sp);
 }
 
@@ -821,7 +849,7 @@ static int setup_current_lsys(const char *name)
 }
 
 
-static void resolve_graphics_identifiers(GRAPHICS_PRIMITIVE *gp, const TRANSSYS *transsys)
+static int resolve_graphics_identifiers(GRAPHICS_PRIMITIVE *gp, const TRANSSYS *transsys)
 {
   int return_value, i;
 
@@ -830,9 +858,13 @@ static void resolve_graphics_identifiers(GRAPHICS_PRIMITIVE *gp, const TRANSSYS 
   {
     return_value = resolve_identifiers(gp->argument[i], transsys, NULL);
     if (return_value != 0)
+    {
       yyerror("resolve_graphics_identifiers: resolve_identifiers() returned %d", return_value);
+      return (-1);
+    }
   }
   /* fprintf(stderr, "resolve_graphics_identifiers: resolved %d expressions\n", i); */
+  return (0);
 }
 
 
@@ -842,6 +874,7 @@ static LSYS *add_lsys(LSYS *lsyslist, LSYS *ls)
   SYMBOL_ELEMENT *se;
   GRAPHICS_PRIMITIVE *gp;
   LSYS *ls1;
+  int error = 0;
 
 /*
   fprintf(stderr, "add_lsys: starting\n");
@@ -852,10 +885,24 @@ static LSYS *add_lsys(LSYS *lsyslist, LSYS *ls)
   {
     /* fprintf(stderr, "add_lsys: resolving graphics expressions for symbol \"%s\"\n", se->name); */
     for (gp = se->graphics_primitive_list; gp; gp = gp->next)
-      resolve_graphics_identifiers(gp, se->transsys);
+    {
+      return_value = resolve_graphics_identifiers(gp, se->transsys);
+      if (return_value != 0)
+      {
+	error = 1;
+      }
+    }
     return_value = arrange_symbol_element_arrays(se);
     if (return_value != 0)
+    {
       yyerror("add_lsys: arrange_symbol_element_arrays() returned %d\n", return_value);
+    }
+  }
+  if (error)
+  {
+    free_lsys_list(ls);
+    free_lsys_list(lsyslist);
+    return (NULL);
   }
 /*
   fprintf(stderr, "add_lsys: resolved graphics identifiers\n");
@@ -875,7 +922,9 @@ static LSYS *add_lsys(LSYS *lsyslist, LSYS *ls)
   /* fprintf(stderr, "add_lsys: added lsys \"%s\"\n", ls->name); */
   ls->next = NULL;
   if (lsyslist == NULL)
+  {
     lsyslist = ls;
+  }
   else
   {
     for (ls1 = lsyslist; ls1->next; ls1 = ls1->next)
@@ -1072,7 +1121,7 @@ static void add_graphics_to_symbol(LSYS *ls, const char *symbol_name, GRAPHICS_P
 
 ltrfile
 	: /* empty */
-	| ltrfile  lsys { parsed_lsys = add_lsys(parsed_lsys, current_lsys); }
+	| ltrfile  lsys { parsed_lsys = add_lsys(parsed_lsys, current_lsys); if (parsed_lsys == NULL) YYABORT; }
 	| ltrfile transsys  { parsed_transsys  = add_transsys(parsed_transsys, current_transsys); }
 	| error ';' { yyerrok; }
 	;
@@ -1259,8 +1308,8 @@ promoter_statement
 	;
 
 factor_combination
-	: IDENTIFIER { $$ = extend_factor_combination(NULL, $1); }
-	| factor_combination '+' IDENTIFIER { $$ = extend_factor_combination($1, $3); }
+	: IDENTIFIER { $$ = extend_factor_combination(NULL, $1); if ($$ == NULL) YYABORT; }
+	| factor_combination '+' IDENTIFIER { $$ = extend_factor_combination($1, $3); if ($$ == NULL) YYABORT; }
 	;
 
 product_statements
