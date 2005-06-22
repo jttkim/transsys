@@ -3,6 +3,9 @@
 # $Id$
 
 # $Log$
+# Revision 1.16  2005/06/22 09:56:44  jtk
+# lsys parsing approaching completion
+#
 # Revision 1.15  2005/06/21 16:38:04  jtk
 # initial success with lsys parser (no serious debugging yet)
 #
@@ -184,6 +187,8 @@ class ExpressionNodeIdentifier(ExpressionNode) :
 
 
   def resolve(self, tp) :
+    if isinstance(self.factor, Factor) :
+      raise StandardError, 'ExpressionNodeIdentifier::resolve: identifier is already resolved'
     self.factor = tp.find_factor(self.factor)
 
 
@@ -882,18 +887,26 @@ gene names and factor names can be altered without changing the network."""
       if self.find_factor_index(f.name) == -1 :
         self.factor_list.append(f)
       else :
-        print 'factor %s already present -- skipping' % f.name
+        sys.stderr.write('TranssysProgram::merge: factor %s already present -- skipping\n' % f.name)
     for g in other_unresolved.gene_list :
       if self.find_gene_index(g.name) == -1 :
         self.gene_list.append(g)
       else :
-        print 'gene %s already present -- skipping' % g.name
+        sys.stderr.write('TranssysProgram::merge: gene %s already present -- skipping\n' % g.name)
     self.comments.append('merged with transsys %s' % other.name)
 
 
 class GraphicsPrimitive :
 
   def __init__(self) :
+    pass
+
+
+  def dissociate_transsys(self) :
+    pass
+
+
+  def associate_transsys(self) :
     pass
 
 
@@ -907,21 +920,21 @@ class GraphicsPrimitiveMove(GraphicsPrimitive) :
     return 'move(%s);' % str(self.expression)
 
 
+  def dissociate_transsys(self) :
+    self.expression = self.expression.unresolved_copy()
+
+
+  def associate_transsys(self, tp) :
+    self.expression.resolve(tp)
+
+
 class GraphicsPrimitivePush(GraphicsPrimitive) :
-
-  def __init__(self) :
-    pass
-
 
   def __str__(self) :
     return 'push();'
 
 
 class GraphicsPrimitivePop(GraphicsPrimitive) :
-
-  def __init__(self) :
-    pass
-
 
   def __str__(self) :
     return 'pop();'
@@ -937,6 +950,14 @@ class GraphicsPrimitiveTurn(GraphicsPrimitive) :
     return 'turn(%s);' % str(self.expression)
     
 
+  def dissociate_transsys(self) :
+    self.expression = self.expression.unresolved_copy()
+
+
+  def associate_transsys(self, tp) :
+    self.expression.resolve(tp)
+
+
 class GraphicsPrimitiveRoll(GraphicsPrimitive) :
 
   def __init__(self, expression) :
@@ -947,6 +968,14 @@ class GraphicsPrimitiveRoll(GraphicsPrimitive) :
     return 'roll(%s);' % str(self.expression)
     
 
+  def dissociate_transsys(self) :
+    self.expression = self.expression.unresolved_copy()
+
+
+  def associate_transsys(self, tp) :
+    self.expression.resolve(tp)
+
+
 class GraphicsPrimitiveBank(GraphicsPrimitive) :
 
   def __init__(self, expression) :
@@ -955,6 +984,14 @@ class GraphicsPrimitiveBank(GraphicsPrimitive) :
 
   def __str__(self) :
     return 'bank(%s);' % str(self.expression)
+
+
+  def dissociate_transsys(self) :
+    self.expression = self.expression.unresolved_copy()
+
+
+  def associate_transsys(self, tp) :
+    self.expression.resolve(tp)
 
 
 class GraphicsPrimitiveSphere(GraphicsPrimitive) :
@@ -967,6 +1004,14 @@ class GraphicsPrimitiveSphere(GraphicsPrimitive) :
     return 'sphere(%s);' % str(self.expression)
 
 
+  def dissociate_transsys(self) :
+    self.expression = self.expression.unresolved_copy()
+
+
+  def associate_transsys(self, tp) :
+    self.expression.resolve(tp)
+
+
 class GraphicsPrimitiveCylinder(GraphicsPrimitive) :
 
   def __init__(self, diameterExpression, lengthExpression) :
@@ -976,6 +1021,16 @@ class GraphicsPrimitiveCylinder(GraphicsPrimitive) :
 
   def __str__(self) :
     return 'cylinder(%s, %s);' % (str(self.diameterExpression), str(self.lengthExpression))
+
+
+  def dissociate_transsys(self) :
+    self.diameterExpression = self.diameterExpression.unresolved_copy()
+    self.lengthExpression = self.lengthExpression.unresolved_copy()
+
+
+  def associate_transsys(self, tp) :
+    self.diameterExpression.resolve(tp)
+    self.lengthExpression.resolve(tp)
 
 
 class GraphicsPrimitiveBox(GraphicsPrimitive) :
@@ -990,6 +1045,18 @@ class GraphicsPrimitiveBox(GraphicsPrimitive) :
     return 'box(%s, %s, %s);' % (str(self.xExpression), str(self.yExpression), str(self.zExpression))
 
 
+  def dissociate_transsys(self) :
+    self.xExpression = self.xExpression.unresolved_copy()
+    self.yExpression = self.yExpression.unresolved_copy()
+    self.zExpression = self.zExpression.unresolved_copy()
+
+
+  def associate_transsys(self, tp) :
+    self.xExpression.resolve(tp)
+    self.yExpression.resolve(tp)
+    self.zExpression.resolve(tp)
+
+
 class GraphicsPrimitiveColor(GraphicsPrimitive) :
 
   def __init__(self, redExpression, greenExpression, blueExpression) :
@@ -1002,42 +1069,90 @@ class GraphicsPrimitiveColor(GraphicsPrimitive) :
     return 'color(%s, %s, %s);' % (str(self.redExpression), str(self.greenExpression), str(self.blueExpression))
 
 
+  def dissociate_transsys(self) :
+    self.redExpression = self.redExpression.unresolved_copy()
+    self.greenExpression = self.greenExpression.unresolved_copy()
+    self.blueExpression = self.blueExpression.unresolved_copy()
+
+
+  def associate_transsys(self, tp) :
+    self.redExpression.resolve(tp)
+    self.greenExpression.resolve(tp)
+    self.blueExpression.resolve(tp)
+
+
 class Symbol :
 
-  def __init__(self, name, transsys, gpl = None) :
+  def __init__(self, name, transsys, graphics = None) :
     self.name = name
     self.transsys = transsys
-    self.graphicsPrimitiveList = gpl
+    self.graphics = graphics
 
 
   def __str__(self) :
     if self.transsys is None :
       return 'symbol %s' % self.name
     else :
-      if isinstance(self.transsys, TranssysProgram) :
-        return 'symbol %s(%s)' % (self.name, self.transsys.name)
-      elif type(self.transsys) is types.StringType :
-        return 'symbol %s(%s)' % (self.name, self.transsys)
+      return 'symbol %s(%s)' % (self.name, self.transsys_name())
+
+
+  def transsys_name(self) :
+    if self.transsys is None :
+      return None
+    elif isinstance(self.transsys, TranssysProgram) :
+      return self.transsys.name
+    elif type(self.transsys) is types.StringType :
+      return self.transsys
+    else :
+      raise StandardError, 'Symbol::transsys_name: bad type %s of transsys member' % str(type(self.transsys))
+
+
+  def dissociate_transsys(self) :
+    if self.graphics is not None :
+      for g in self.graphics :
+        g.dissociate_transsys()
+    self.transsys = self.transsys_name()
+
+
+  def associate_transsys(transsys_list) :
+    self.dissociate_transsys()
+    for t in transsys_list :
+      if t.name == self.transsys :
+        if self.graphics is not None :
+          for g in self.graphics :
+            g.associate_transsys(t)
+        self.transsys = t
+        break
 
 
   def graphics_string(self) :
-    s = ''
-    for g in self.graphicsPrimitiveList :
+    s = '    %s\n' % self.name
+    s = s + '    {\n'
+    for g in self.graphics :
       s = s + '      %s\n' % str(g)
+    s = s + '    }\n'
     return s
       
 
 
 class Assignment :
 
-  def __init__(self, transsys, factor, value) :
+  def __init__(self, transsys, factor, expression) :
     self.transsys = transsys
     self.factor = factor
-    self.value = value
+    self.expression = expression
 
 
   def __str__(self) :
-    return '%s = %s' % (self.factor, str(self.value))
+    return '%s = %s' % (self.factor, str(self.expression))
+
+
+  def dissociate_transsys(self) :
+    self.expression = self.expression.unresolved_copy()
+
+
+  def associate_transsys(self, tp) :
+    self.expression.resolve(tp)
 
 
 class LhsSymbol :
@@ -1077,6 +1192,16 @@ class ProductionElement :
       return self.symbol.name
 
 
+  def dissociate_transsys(self) :
+    for a in self.assignments :
+      a.dissociate_transsys()
+
+
+  def associate_transsys(self, tp) :
+    for a in self.assignments :
+      a.associate_transsys(tp)
+
+
 class Rule :
 
   def __init__(self, name, lhs, condition, rhs) :
@@ -1102,6 +1227,17 @@ class Rule :
     s = s + '  }\n'
     return s
 
+
+  def dissociate_transsys(self) :
+    for r in self.rhs :
+      rhs.dissociate_transsys()
+
+
+  def associate_transsys(self, tp) :
+    for r in self.rhs :
+      rhs.associate_transsys(tp)
+
+
 class LsysProgram :
 
   def __init__(self, name, symbols, axiom, diffusionrange, rules) :
@@ -1116,13 +1252,17 @@ class LsysProgram :
     s = 'lsys %s\n' % self.name
     s = s + '{\n'
     s = s + '  diffusionrange: %d;\n' % self.diffusionrange
+    s = s + '\n'
     for sym in self.symbols :
       s = s + '  %s;\n' % str(sym)
+    s = s + '\n'
     s = s + '  axiom'
     for a in self.axiom :
       s = s + ' %s;\n' % str(a)
+    s = s + '\n'
     for rule in self.rules :
       s = s + str(rule)
+      s = s + '\n'
     s = s + '  graphics\n'
     s = s + '  {\n'
     for sym in self.symbols :
@@ -1130,6 +1270,21 @@ class LsysProgram :
     s = s + '  }\n'
     s = s + '}\n'
     return s
+
+
+  def dissociate_transsys(self) :
+    for s in self.symbols :
+      s.dissociate_transsys()
+    for r in self.rules :
+      r.dissociate_transsys()
+
+
+  def associate_transsys(self, tp) :
+    for s in self.symbols :
+      s.associate_transsys(tp)
+    for r in self.rules :
+      r.associate_transsys(tp)
+
 
 class TranssysInstance :
 
@@ -1479,7 +1634,7 @@ so it's best to require explicit specification of all parameters."""
             linklist[-1].append(int(x))
         line = f.readline()
         m = in_list_re.match(line)
-      print 'parsed topology linklist:', str(linklist)
+      # print 'parsed topology linklist:', str(linklist)
       self.topology_linklist = linklist
     else :
       raise StandardError, 'RandomTranssysParameters::parse: unknown topology type %s' % self.topology
@@ -2109,7 +2264,6 @@ class TranssysProgramParser :
     self.expect_token('=')
     value = self.parse_expr(transsys_label_list)
     a = Assignment(transsys, factor, value)
-    print str(a)
     return a
 
 
@@ -2311,9 +2465,9 @@ class TranssysProgramParser :
       plist.append(p)
       l = self.scanner.lookahead()
     self.expect_token('}')
-    if symbol.graphicsPrimitiveList is not None :
+    if symbol.graphics is not None :
       sys.stderr.write('symbol "%s": superseding graphics\n' % symbol_name)
-    symbol.graphicsPrimitiveList = plist
+    symbol.graphics = plist
 
 
   def parse_graphics(self, symbol_dict) :
