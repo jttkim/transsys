@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.11  2005/06/22 09:58:36  jtk
+ * prevented unknown variables from resulting in core-dump eliciting parsing results
+ *
  * Revision 1.10  2005/06/16 09:36:26  jtk
  * implemented rule statistics gathering
  *
@@ -534,6 +537,7 @@ void fprint_lsys(FILE *f, int indent_depth, const LSYS *lsys)
   }
   fprint_indented(f, indent_depth, "lsys %s\n", lsys->name);
   fprint_indented(f, indent_depth, "{\n");
+  fprint_indented(f, indent_depth + 2, "diffusionrange: %d;\n\n", lsys->diffusion_range);
   for (se = lsys->symbol_list; se; se = se->next)
   {
     fprint_symbol(f, indent_depth + 2, se);
@@ -547,12 +551,6 @@ void fprint_lsys(FILE *f, int indent_depth, const LSYS *lsys)
     glue = ",";
   }
 */
-  for(re = lsys->rule_list; re; re = re->next)
-  {
-    fprintf(f, "\n");
-    fprint_rule(f, indent_depth + 2, re, lsys->symbol_list);
-  }
-  fprint_indented(f, indent_depth + 2, "diffusionrange: %d;\n", lsys->diffusion_range);
   if (lsys->axiom)
   {
     fprintf(f, "\n");
@@ -562,6 +560,11 @@ void fprint_lsys(FILE *f, int indent_depth, const LSYS *lsys)
   }
   else
     fprint_indented(f, indent_depth, "# no axiom\n");
+  for(re = lsys->rule_list; re; re = re->next)
+  {
+    fprintf(f, "\n");
+    fprint_rule(f, indent_depth + 2, re, lsys->symbol_list);
+  }
   fprintf(f, "\n");
   fprint_indented(f, indent_depth + 2, "graphics\n");
   fprint_indented(f, indent_depth + 2, "{\n");

@@ -4,6 +4,9 @@
  * $Id$
  *
  * $Log$
+ * Revision 1.11  2005/06/22 09:58:36  jtk
+ * prevented unknown variables from resulting in core-dump eliciting parsing results
+ *
  * Revision 1.10  2005/06/16 09:36:26  jtk
  * implemented rule statistics gathering
  *
@@ -342,11 +345,17 @@ PROMOTER_ELEMENT *new_promoter_element(ACTIVATION_TYPE type, int num_binding_fac
   a->type = type;
   a->num_binding_factors = num_binding_factors;
   if (num_binding_factors)
+  {
     a->factor_index = factors;
+  }
   else
+  {
     a->factor_index = NULL;
+  }
   if (type == ACT_CONSTITUTIVE)
+  {
     a->expr1 = expr1;
+  }
   else
   {
     a->expr1 = expr1;
@@ -619,7 +628,7 @@ void free_graphics_primitive_list(GRAPHICS_PRIMITIVE *glist)
 {
   GRAPHICS_PRIMITIVE *gp;
 
-  fprintf(stderr, "free_graphics_primitive_list: start\n");
+  /* fprintf(stderr, "free_graphics_primitive_list: start\n"); */
   while (glist)
   {
     gp = glist;
@@ -937,7 +946,9 @@ void free_production_element_components(PRODUCTION_ELEMENT *sp)
     free(sp->assignment_list);
   }
   else
+  {
     free_assignment_list(sp->assignment_list);
+  }
 }
 
 

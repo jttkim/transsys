@@ -4,8 +4,11 @@
  * $Id$
  *
  * $Log$
- * Revision 1.1  2005/03/08 17:12:02  jtk
- * Initial revision
+ * Revision 1.2  2005/06/22 09:58:36  jtk
+ * prevented unknown variables from resulting in core-dump eliciting parsing results
+ *
+ * Revision 1.1.1.1  2005/03/08 17:12:02  jtk
+ * new cvs after loss at INB
  *
  * Revision 1.5  2003/03/05 13:58:35  kim
  * added missing error messages upon failure exit
@@ -124,10 +127,12 @@ int main(int argc, char **argv)
     if (discretenetfile)
       fprint_transsys_as_discretenet(discretenetfile, tr);
   }
+/*
   for (ls = parsed_lsys; ls; ls = ls->next)
   {
     fprintf(stderr, "lsys \"%s\"\n", ls->name);
   }
+*/
   for (ls = parsed_lsys; ls; ls = ls->next)
   {
     fprint_lsys(outfile, 0, ls);
