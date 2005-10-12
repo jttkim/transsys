@@ -13,6 +13,9 @@
 # $Id$
 
 # $Log$
+# Revision 1.5  2005/10/12 19:33:32  jtk
+# finished adding unit test (transparse)
+#
 # Revision 1.4  2005/06/22 09:56:28  jtk
 # first introduction of checking
 #
@@ -61,7 +64,7 @@
 #
 
 PYTHONMODULES	= transsys.py arrtool.py transrnd.py regstruct.py transdisrupt.py
-PYTHONSCRIPTS	= random_transsys random_transsys_lsys transarray regstruct_transsys regstruct_transarray mutant_transsys get_overlap
+PYTHONSCRIPTS	= random_transsys random_transsys_lsys transarray regstruct_transsys regstruct_transarray mutant_transsys get_overlap test_transparse
 RPACKAGE	= transarr
 
 pylibdir	= $(DESTDIR)/$(libdir)/python
@@ -72,7 +75,7 @@ pylib_DATA	= $(PYTHONMODULES)
 
 EXTRA_DIST	= $(PYTHONSCRIPTS) $(PYTHONMODULES) $(RPACKAGE)
 
-TESTS		= test_transpython
+TESTS		= test_transparse
 
 CLEANFILES	= *~ *.pyc
 
