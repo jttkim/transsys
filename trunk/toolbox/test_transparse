@@ -3,12 +3,93 @@
 # $Id$
 
 # $Log$
+# Revision 1.2  2005/10/13 08:58:35  jtk
+# added a first test to unit testing framework
+#
 # Revision 1.1  2005/10/12 19:32:14  jtk
 # parser test (nothing in here yet)
 #
 
 import sys
+import unittest
+
+import transsys
+
+class TestTranssysParser(unittest.TestCase) :
+
+  def setUp(self) :
+    pass
 
 
-sys.exit()
+  def testSingleTranssys(self) :
+    s = """transsys check
+{
+  factor noparam
+  {
+    decay: 1.0;
+    diffusibility: 1.0;
+  }
+
+  factor simple
+  {
+    decay: 0.1;
+    diffusibility: 0.3;
+  }
+
+  factor complex_expr
+  {
+    decay: ((noparam > 0.2) && (!((gauss((3.0 * simple), complex_expr) <= (simple + 2.1)))));
+    diffusibility: ((complex_expr + noparam) * (simple + 0.4));
+  }
+
+  gene noparam_gene
+  {
+    promoter
+    {
+      constitutive: 1.1;
+    }
+    product
+    {
+      default: noparam;
+    }
+  }
+
+  gene simple_gene
+  {
+    promoter
+    {
+      constitutive: 0.1;
+      noparam: activate(0.1, 1.0);
+    }
+    product
+    {
+      default: simple;
+    }
+  }
+
+  gene complex_gene
+  {
+    promoter
+    {
+      constitutive: ((0.3 * (!((random(simple, (simple + 0.2)) < complex_expr)))) + noparam);
+      simple: activate((complex_expr * 0.01), ((noparam / 0.7) + simple));
+    }
+    product
+    {
+      default: complex_expr;
+    }
+  }
+}
+"""
+    f = open('test.tra', 'w')
+    f.write(s)
+    f.close()
+    t = transsys.TranssysProgramParser(open('test.tra', 'r')).parse()
+    self.assertEqual(s, str(t))
+
+suite = unittest.TestSuite()
+suite.addTest(unittest.makeSuite(TestTranssysParser))
+unittest.TextTestRunner(verbosity =  2).run(suite)
+
+# unittest.main()
 
