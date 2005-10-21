@@ -1,0 +1,185 @@
+#!/usr/bin/env python
+
+# $Id$
+
+# $Log$
+# Revision 1.1  2005/10/21 11:58:05  jtk
+# ECAL 2005 script, initial addition
+#
+
+
+import sys
+import copy
+import os
+import getopt
+
+import transsys
+import transdisrupt
+
+
+def write_corrfile(fname, m_pathscore, m_logratio, m_knockconc, m_refconc) :
+  if m_pathscore.factor_list != m_logratio.factor_list :
+    raise StandardError, 'write_corrfile: matrix factor list mismatch'
+  f = open(fname, 'w')
+  for fi in m_pathscore.factor_list :
+    for fj in m_pathscore.factor_list :
+      p = m_pathscore.get_element(fi, fj)
+      l = m_logratio.get_element(fi, fj)
+      k = m_knockconc.get_element(fi, fj)
+      r = m_refconc.get_element(fi, fj)
+      if p is not None :
+        f.write('%d %e %e %e\n' % (p, l, k, r))
+      else :
+        f.write('+Inf %e %e %e\n' % (l, k, r))
+  f.close()
+
+
+def sgn_scorefunc(pe) :
+  if isinstance(pe, transsys.PromoterElementActivate) :
+    return -1
+  elif isinstance(pe, transsys.PromoterElementRepress) :
+    return 1
+  else :
+    return 0
+
+
+def sensspec(true_adj, reconst_adj) :
+  num_tp = 0
+  num_fp = 0
+  num_tn = 0
+  num_fn = 0
+  num_factors = len(true_adj.factor_list)
+  for fi in true_adj.factor_list :
+    for fj in true_adj.factor_list :
+      if fi != fj :
+        vt = true_adj.get_element(fi, fj)
+        vr = reconst_adj.get_element(fi, fj)
+        if vt == vr :
+          if vt != 0 :
+            num_tp = num_tp + 1
+          else :
+            num_tn = num_tn + 1
+        else :
+          if vr == 0 :
+            num_fn = num_fn + 1
+          else :
+            num_fp = num_fp + 1
+  num_edges = num_tp + num_fn
+  num_nonedges = num_tn + num_fp
+  sensitivity = float(num_tp) / float(num_edges)
+  specificity = float(num_tn) / float(num_nonedges)
+  return sensitivity, specificity
+
+
+def write_rocfile(fname, tp, m_logratio) :
+  f = open(fname, 'w')
+  tp_adj = transdisrupt.score_matrix(tp, sgn_scorefunc)
+  gamma_list = m_logratio.return_as_list()
+  gamma_list = map(abs, gamma_list)
+  gamma_list.sort()
+  gamma_prev = None
+  for gamma in gamma_list :
+    if gamma != gamma_prev :
+      reconst_adj = transdisrupt.reconstructed_adjacency_matrix(m_logratio, gamma, None)
+      sensitivity, specificity = sensspec(tp_adj, reconst_adj)
+      f.write('%e %e %e\n' % (gamma, sensitivity, specificity))
+    gamma_prev = gamma
+
+
+def read_lines(fname) :
+  f = open(fname, 'r')
+  lines = []
+  l = f.readline()
+  while l :
+    lines.append(l[:-1])
+    l = f.readline()
+  f.close()
+  return lines
+
+
+def read_transsys(fname) :
+  f = open(fname, 'r')
+  p = transsys.TranssysProgramParser(f)
+  tp = p.parse_transsys()
+  f.close()
+  return tp
+
+
+def dotgraph(basename, tp, dp) :
+  dotname = '%s.dot' % basename
+  psname = '%s.ps' % basename
+  f = open(dotname, 'w')
+  tp.write_dot(f, dp)
+  f.close()
+  cmd = 'neato -Tps -o %s %s' % (psname, dotname)
+  os.system(cmd)
+
+
+num_timesteps = None
+# gamma = 16.0
+lsys_fname = None
+me_fmt = '% 10.4g'
+
+options, args = getopt.getopt(sys.argv[1:], 'l:t:h')
+for opt in options :
+  if opt[0] == '-h' :
+    print 'help...'
+    sys.exit()
+  elif opt[0] == '-l' :
+    lsys_fname = opt[1]
+  elif opt[0] == '-t' :
+    num_timesteps = int(opt[1])
+  else :
+    raise StandardError, 'known but unimplemented option "%s"' % opt[0]
+if len(args) < 1 :
+  raise StandardError, 'no transsys infile given'
+if len(args) < 2 :
+  raise StandardError, 'no basename given'
+if lsys_fname is None :
+  raise StandardError, 'no lsys file given'
+if num_timesteps is None :
+  raise StandardError, 'no number of time steps given'
+transsys_fname = args[0]
+basename = args[1]
+corr_fname = '%s.plt' % basename
+roc_fname = '%s_roc.plt' % basename
+tp = read_transsys(transsys_fname)
+f = open(lsys_fname, 'r')
+p = transsys.TranssysProgramParser(f)
+lsys_tp = p.parse_transsys()
+lsys_lines = p.lsys_lines()
+
+pm = transdisrupt.pathscore_matrix(tp, transdisrupt.link_scorefunc, None)
+# print pm
+dp = transsys.DotParameters()
+dp.display_factors = 0
+tp.dot_positions_circle(10.0, 10.0, 5.0)
+# dotgraph(tname, tp, dp)
+refconc = transdisrupt.referencestate_concentration_matrix(copy.deepcopy(tp), num_timesteps)
+# print refconc.__str__(element_fmt = me_fmt)
+ktp = transdisrupt.KnockoutTranssysProgram(tp)
+knockconc = transdisrupt.knockout_concentration_matrix_lsys(ktp, lsys_tp, lsys_lines, num_timesteps)
+# print knockconc.__str__(element_fmt = me_fmt)
+logratio = transdisrupt.logratio_matrix(refconc, knockconc)
+# print logratio.__str__(element_fmt = me_fmt)
+write_corrfile(corr_fname, pm, logratio, knockconc, refconc)
+# write_rocfile(roc_fname, tp, logratio)
+sys.exit()
+
+reconst_adj = transdisrupt.reconstructed_adjacency_matrix(logratio, gamma, None)
+tp_rec = transdisrupt.create_disruption_network('%s_rec' % tname, reconst_adj, tp.gene_names(), 0.2, 0.1, 1.0, 0.4711)
+tp_rec.dot_positions_circle(10.0, 10.0, 5.0)
+shared, only_tp, only_rec = transdisrupt.overlaps(tp, tp_rec)
+dotgraph('%s_s' % tname, tp, dp)
+dotgraph('%s_rec_s' % tname, tp_rec, dp)
+n = tp.num_genes()
+num_shared_edges = len(shared)
+num_only_tp = len(only_tp)
+num_only_rec = len(only_rec)
+num_potential_edges = n * n
+num_edges = num_shared_edges + num_only_tp
+num_nonedges = num_potential_edges - num_shared_edges - num_only_tp
+sensitivity = float(num_shared_edges) / float(num_edges)
+specificity = float(num_nonedges - num_only_rec) / float(num_nonedges)
+print 'true: %d original edges, %d reconstructed, %d missed, %d false positives' % (num_edges, num_shared_edges, num_only_tp, num_only_rec)
+print 'sensitivity = %f, specificity = %f' % (sensitivity, specificity)
