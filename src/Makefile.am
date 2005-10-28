@@ -10,6 +10,9 @@
 
 # $Id$
 # $Log$
+# Revision 1.4  2005/10/28 19:07:50  jtk
+# added cellcone (for better or for worse...)
+#
 # Revision 1.3  2005/05/20 10:40:15  jtk
 # differentiated entropy recording for lsys, expression and diffusion phase
 #
@@ -39,7 +42,7 @@
 # Initial addition of files previously not CVS managed
 #
 
-bin_PROGRAMS = transps transdot transcheck transexpr transscatter ltrcheck ltransps ltransgl transdiscr
+bin_PROGRAMS = transps transdot transcheck transexpr transscatter ltrcheck ltransps ltransgl transdiscr cellcone
 lib_LIBRARIES = libtrans.a
 include_HEADERS = transsys.h trconfig.h trtypes.h
 noinst_HEADERS = trbison.h
