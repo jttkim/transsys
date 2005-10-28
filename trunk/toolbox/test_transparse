@@ -3,6 +3,9 @@
 # $Id$
 
 # $Log$
+# Revision 1.3  2005/10/28 19:06:40  jtk
+# added RandomTranssysParameter unit test
+#
 # Revision 1.2  2005/10/13 08:58:35  jtk
 # added a first test to unit testing framework
 #
@@ -11,6 +14,7 @@
 #
 
 import sys
+import os
 import unittest
 
 import transsys
@@ -18,11 +22,7 @@ import transsys
 class TestTranssysParser(unittest.TestCase) :
 
   def setUp(self) :
-    pass
-
-
-  def testSingleTranssys(self) :
-    s = """transsys check
+    self.tp_check = """transsys check
 {
   factor noparam
   {
@@ -81,15 +81,281 @@ class TestTranssysParser(unittest.TestCase) :
   }
 }
 """
+    self.tp_cycler = """transsys cycler
+{
+  factor A { decay: 0.1; }
+  factor R { decay: 0.1; }
+
+  gene agene
+  {
+    promoter
+    {
+      constitutive: 0.01;
+      A: activate(0.01, 1.0);
+      R: repress(0.1, 1.0);
+    }
+    product
+    {
+      default: A;
+    }
+  }
+
+  gene rgene
+  {
+    promoter
+    {
+      A: activate(1.0, 10.0);
+      R: repress(1.0, 1.0);
+    }
+    product
+    {
+      default: R;
+    }
+  }
+}
+"""
+
+    self.rtp = """RandomTranssysParameters-1.1
+topology: random_nk
+n: 8
+k: 2
+topology: end
+constitutive: 0.1
+km_activation: 0.1
+km_repression: 0.1
+vmax_activation: 1.0
+vmax_repression: 1.0
+decay: 0.2
+diffusibility: 0.0
+rndseed: 1
+"""
+
+  def testSingleTranssys(self) :
     f = open('test.tra', 'w')
-    f.write(s)
+    f.write(self.tp_check)
     f.close()
     t = transsys.TranssysProgramParser(open('test.tra', 'r')).parse()
-    self.assertEqual(s, str(t))
+    os.unlink('test.tra')
+    self.assertEqual(self.tp_check, str(t))
+
+
+  def testTimeSeries(self) :
+    f = open('test.tra', 'w')
+    f.write(self.tp_cycler)
+    f.close()
+    tp = transsys.TranssysProgramParser(open('test.tra', 'r')).parse()
+    os.unlink('test.tra')
+    ti = transsys.TranssysInstance(tp)
+    ts = ti.time_series(100)
+    for i in xrange(100) :
+      self.assertEqual(i, ts[i].timestep)
+    ti99 = """transsys instance of cycler
+timestep: 99
+  A: 4.16144e-05
+  R: 0.00406464
+"""
+    self.assertEqual(ti99, str(ts[99]))
+
+
+  def testRandomTranssysParameters(self) :
+    f = open('test.rtp', 'w')
+    f.write(self.rtp)
+    f.close()
+    rtp = transsys.RandomTranssysParameters()
+    rtp.parse(open('test.rtp', 'r'))
+    os.unlink('test.rtp')
+    tp = rtp.generate_transsys('test')
+    f = open('testexpect.tra', 'w')
+    f.write(str(tp))
+    f.close()
+    tp_expect = """transsys test
+// topology: random_nk
+// n: 8
+// k: 2
+// topology: end
+// constitutive: 0.1
+// km_activation: 0.1
+// km_repression: 0.1
+// vmax_activation: 1.0
+// vmax_repression: 1.0
+// decay: 0.2
+// diffusibility: 0.0
+// rndseed: 1
+// 
+// serial #1
+{
+  factor f0000
+  {
+    decay: 0.2;
+    diffusibility: 0.0;
+  }
+
+  factor f0001
+  {
+    decay: 0.2;
+    diffusibility: 0.0;
+  }
+
+  factor f0002
+  {
+    decay: 0.2;
+    diffusibility: 0.0;
+  }
+
+  factor f0003
+  {
+    decay: 0.2;
+    diffusibility: 0.0;
+  }
+
+  factor f0004
+  {
+    decay: 0.2;
+    diffusibility: 0.0;
+  }
+
+  factor f0005
+  {
+    decay: 0.2;
+    diffusibility: 0.0;
+  }
+
+  factor f0006
+  {
+    decay: 0.2;
+    diffusibility: 0.0;
+  }
+
+  factor f0007
+  {
+    decay: 0.2;
+    diffusibility: 0.0;
+  }
+
+  gene g0000
+  {
+    promoter
+    {
+      constitutive: 0.1;
+      f0004: repress(0.1, 1.0);
+      f0002: activate(0.1, 1.0);
+    }
+    product
+    {
+      default: f0000;
+    }
+  }
+
+  gene g0001
+  {
+    promoter
+    {
+      constitutive: 0.1;
+      f0006: activate(0.1, 1.0);
+      f0003: repress(0.1, 1.0);
+    }
+    product
+    {
+      default: f0001;
+    }
+  }
+
+  gene g0002
+  {
+    promoter
+    {
+      constitutive: 0.1;
+      f0001: repress(0.1, 1.0);
+      f0005: activate(0.1, 1.0);
+    }
+    product
+    {
+      default: f0002;
+    }
+  }
+
+  gene g0003
+  {
+    promoter
+    {
+      constitutive: 0.1;
+      f0002: activate(0.1, 1.0);
+      f0001: repress(0.1, 1.0);
+    }
+    product
+    {
+      default: f0003;
+    }
+  }
+
+  gene g0004
+  {
+    promoter
+    {
+      constitutive: 0.1;
+      f0001: activate(0.1, 1.0);
+      f0007: activate(0.1, 1.0);
+    }
+    product
+    {
+      default: f0004;
+    }
+  }
+
+  gene g0005
+  {
+    promoter
+    {
+      constitutive: 0.1;
+      f0004: activate(0.1, 1.0);
+      f0002: activate(0.1, 1.0);
+    }
+    product
+    {
+      default: f0005;
+    }
+  }
+
+  gene g0006
+  {
+    promoter
+    {
+      constitutive: 0.1;
+      f0002: activate(0.1, 1.0);
+      f0000: activate(0.1, 1.0);
+    }
+    product
+    {
+      default: f0006;
+    }
+  }
+
+  gene g0007
+  {
+    promoter
+    {
+      constitutive: 0.1;
+      f0000: activate(0.1, 1.0);
+      f0006: activate(0.1, 1.0);
+    }
+    product
+    {
+      default: f0007;
+    }
+  }
+}
+"""
+    self.assertEqual(tp_expect, str(tp))
+    
+    
 
 suite = unittest.TestSuite()
 suite.addTest(unittest.makeSuite(TestTranssysParser))
-unittest.TextTestRunner(verbosity =  2).run(suite)
+result = unittest.TextTestRunner(verbosity = 2).run(suite)
+if result.wasSuccessful() :
+  sys.exit()
+else :
+  sys.exit(1)
 
 # unittest.main()
 
