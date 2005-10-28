@@ -3,6 +3,10 @@
 # $Id$
 
 # $Log$
+# Revision 1.17  2005/10/28 16:29:17  jtk
+# TranssysInstance now has timestep member
+# TranssysInstance.time_series now produces list instead of dictionary
+#
 # Revision 1.16  2005/06/22 09:56:44  jtk
 # lsys parsing approaching completion
 #
@@ -1295,10 +1299,11 @@ class TranssysInstance :
 
   magic = '# transsys expression records 1.0'
 
-  def __init__(self, tp) :
+  def __init__(self, tp, timestep = None) :
     if not isinstance(tp, TranssysProgram) :
       raise StandardError, 'TranssysInstance::__init__: unsuitable type of tp (no TranssysProgram)'
     self.transsys_program = tp
+    self.timestep = timestep
     self.factor_concentration = [0.0] * self.transsys_program.num_factors()
     # FIXME (conceptual issue):
     # the stddev and entropy members are optional and they do not pertain
@@ -1312,9 +1317,9 @@ class TranssysInstance :
 
   def __str__(self) :
     s = 'transsys instance of %s\n' % self.transsys_program.name
-    glue = ''
+    s = s + 'timestep: %s\n' % str(self.timestep)
     for f in xrange(len(self.factor_concentration)) :
-      s = s + '  %s: %f\n' % (self.transsys_program.factor_list[f].name, self.factor_concentration[f])
+      s = s + '  %s: %g\n' % (self.transsys_program.factor_list[f].name, self.factor_concentration[f])
     return s
 
 
@@ -1337,8 +1342,8 @@ class TranssysInstance :
     return pc
 
 
-  def write_gnuplot(self, f, time_step) :
-    f.write('%d' % time_step)
+  def write_gnuplot(self, f) :
+    f.write('%d' % self.timestep)
     for c in self.factor_concentration :
       f.write(' %f' % c)
     f.write('\n')
@@ -1371,9 +1376,9 @@ class TranssysInstance :
           p.tochild.write('%s\n' % l)
       #sys.stdout.write(str(self.transsys_program))
       p.tochild.close()
-      sys.exit()
+      os._exit(os.EX_OK)
     p.tochild.close()
-    tseries_dict = {}
+    tseries = []
     line = p.fromchild.readline()
     magic = line.strip()
     if magic != self.magic :
@@ -1387,12 +1392,12 @@ class TranssysInstance :
           if len(l) != 3 * self.transsys_program.num_factors() + 2 :
             raise StandardError, 'TranssysInstance.time_series: bad line format: expected %d words, got %d' % (3 * self.transsys_program.num_factors() + 2, len(l))
           t = string.atoi(l[0])
-          ti = TranssysInstance(self.transsys_program)
+          ti = TranssysInstance(self.transsys_program, t)
           for i in xrange(len(self.transsys_program.factor_list)) :
             ti.factor_concentration[i] = float(l[3 * i + 2])
             ti.factor_concentration_stddev[i] = float(l[3 * i + 3])
             ti.factor_concentration_stddev[i] = float(l[3 * i + 4])
-          tseries_dict[t] = ti
+          tseries.append(ti)
       line = p.fromchild.readline()
     p.fromchild.close()
     status = p.wait()
@@ -1403,7 +1408,7 @@ class TranssysInstance :
         errmsg = p.childerr.readline()
       raise StandardError, 'TranssysInstance::time_series: transexpr exit status %d ("%s")' % (status, errmsg.strip())
     os.wait()
-    return tseries_dict
+    return tseries
 
 
 class DotParameters :
@@ -1830,7 +1835,7 @@ function."""
 
     def next_expression(s) :
       p = TranssysProgramParser(StringIO.StringIO(s.nextval()))
-      return p.parse_expr()
+      return p.parse_expr([])
 
     if self.topology == 'random_nk' :
       linklist = random_nk_linklist(self.n, self.k, self.rng)
