@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 
+# $Id$
+
+# $Log$
+# Revision 1.6  2005/10/28 16:29:59  jtk
+# added CVS tags
+#
+
+
 import string
 import copy
 import math
