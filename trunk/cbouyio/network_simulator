@@ -1,0 +1,81 @@
+#!/usr/bin/env python
+
+# First approach to explore some network statistic measures within the 
+#+transsys framework
+# CBouyio, UEA, 18 Jan 2006
+
+
+import re
+import sys
+import getopt
+
+import transsys
+
+
+def usage() :
+  print """Usage:"""
+
+
+try:
+  optlist, args = getopt.getopt(sys.argv[1:],"h",["help"])
+except getopt.GetoptError, error_msg:
+  # Print help info and exit
+  error_msg = 'Error in arguments passing, see usage'
+  print error_msg
+  usage()
+  sys.exit(1)
+
+for opt, par in optlist:
+  if opt in ("-h","--help"):
+    usage()
+    sys.exit(1)
+
+
+# I/O manipulation
+if len(args) > 0 :
+  infile = open(args[0], 'r')
+else :
+  print "\n!!! Please specify an .rtp file for input\n"
+  usage()
+  sys.exit(1)
+if len(args) > 1 :
+  outfile = open(args[1], 'w')
+else :
+  outfile = sys.stdout
+
+
+# Create an instance of the class
+rtp = transsys.RandomTranssysParameters()
+
+# Parse the input file
+rtp.parse(infile)
+
+# Extract the correspondant transsys program name with a regular expression
+name = re.search("\w+(?=\.\w)", str(sys.argv[1]))
+
+# Produces the transsys program. Look the group(0) method of RE
+tp = rtp.generate_transsys(name.group(0))
+
+# Try to print some network's properties....
+gene_network = {}
+for genes in tp.gene_list :
+  gene_links   = []
+  gene_name = genes.name  
+  for pe in xrange(len(genes.promoter)) :
+    if not re.match("constitutive", str(genes.promoter[pe]) ,1) :
+      for factor in genes.promoter[pe].factor_list :
+	for g in tp.encoding_gene_list(factor.name) :
+	  gene_links.append(g.name)
+  gene_network[gene_name] = gene_links
+
+
+for sorted_key in sorted(gene_network.keys()) :
+  outfile.write("%s -> %s \n" % (sorted_key, gene_network[sorted_key]))
+
+## Prints to outfile
+#outfile.write(str(tp))
+
+# Closes the files
+infile.close()
+outfile.close()
+
