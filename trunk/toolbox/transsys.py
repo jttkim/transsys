@@ -1815,11 +1815,17 @@ function."""
       return linklist
 
     def random_uniform_linklist(num_genes, num_edges, rng) :
+      """generate a link list by selecting from all possible edges with
+uniform probability.
+Notices: This function does not generate any links of a node to itself.
+This function does not create any multilinks."""
       all_links = []
       for i in xrange(num_genes) :
         for j in xrange(num_genes) :
           if i != j :
             all_links.append((i, j))
+      if len(all_links) < num_edges :
+        raise StandardError, 'number of edges %d too large: max %d for %d nodes' % (num_edges, len(all_links), num_genes)
       linklist = []
       for i in xrange(num_genes) :
         linklist.append([])
