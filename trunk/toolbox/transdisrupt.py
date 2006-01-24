@@ -325,7 +325,7 @@ def adjacency_matrix_scorefunc(promoter) :
     raise StandardError, 'adjacency_matrix_scorefunc: unknown PromoterElement class "%s"' % promoter.__class__.__name__
 
 
-def adjacency_matrix (network) :
+def adjacency_matrix(network) :
   adj_matrix = score_matrix(network, adjacency_matrix_scorefunc)
   adj_matrix.replace_none(0)
   return adj_matrix
