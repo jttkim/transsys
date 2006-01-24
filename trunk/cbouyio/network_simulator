@@ -2,7 +2,7 @@
 
 # First approach to explore some network statistic measures within the 
 #+transsys framework
-# CBouyio, UEA, 18 Jan 2006
+# CBouyio, UEA, 18-23 Jan 2006
 
 
 import re
@@ -14,6 +14,37 @@ import transsys
 
 def usage() :
   print """Usage:"""
+
+
+def Clustering_Coefficient(grn) :
+  """Function for caclulating the Clustering Coefficient (CC) of a network, as 
+  defined in (Watts and Strogatz 1998, Nature 393, 440). Adapted here, from 
+  (Albert and Barabasi, Stastical mechanics of Complex Networks). Takes the 
+  network in a dictionary format, and calculates the mean CC of it."""
+  # Clustering Coefficient (mean) of the network
+  cc = 0
+  # Clustering Coefficient of each node
+  c = 0
+  # Loop through all the linked nodes (genes) of the network
+  for links in grn.itervalues() :
+    ccg = 0
+    E = 0
+    if len(links) > 1 :
+      for gene in  links:
+        for reg_gene in grn[gene] :
+          if reg_gene in links :
+            E = E + 1
+      # Calculate the Clusterung Coefficient of each node
+      ccg = float(E)/float((len(links)*(len(links) - 1)))
+    # Calculate the sum for the whole network
+    c = c + ccg
+  # Calculate the mean Clustering Coefficient of the network
+  cc = c/len(grn.keys())
+  return cc
+
+
+######## make it to work both with .tra as well as with .rtp files....!!!!!!
+# Two options.....!!!
 
 
 try:
@@ -53,27 +84,41 @@ rtp.parse(infile)
 # Extract the correspondant transsys program name with a regular expression
 name = re.search("\w+(?=\.\w)", str(sys.argv[1]))
 
-# Produces the transsys program. Look the group(0) method of RE
+# Generates the transsys program. Look the group(0) method of RE
 tp = rtp.generate_transsys(name.group(0))
 
-# Try to print some network's properties....
+
+## Try to printout some network's properties....
+
+# This dictionary contains all the Gene Regulatory Network
 gene_network = {}
+
+# Loop through all genes
 for genes in tp.gene_list :
   gene_links   = []
-  gene_name = genes.name  
+  gene_name = genes.name 
   for pe in xrange(len(genes.promoter)) :
+    # Get only the regulatory promoter element(s) (NOT the constitutive)
     if not re.match("constitutive", str(genes.promoter[pe]) ,1) :
+      # Get the regulatory factor
       for factor in genes.promoter[pe].factor_list :
+	# Get the gene(s) encoding for this factor
 	for g in tp.encoding_gene_list(factor.name) :
 	  gene_links.append(g.name)
+  # Represent the network as a dictionary
   gene_network[gene_name] = gene_links
 
+C_coeff = Clustering_Coefficient(gene_network)
 
+# Printouts
+outfile.write('Clustering Coefficient: %.15f \n' % C_coeff)
+
+
+sys.exit()
+# Print out the network in a more "Human Readable format"
 for sorted_key in sorted(gene_network.keys()) :
   outfile.write("%s -> %s \n" % (sorted_key, gene_network[sorted_key]))
 
-## Prints to outfile
-#outfile.write(str(tp))
 
 # Closes the files
 infile.close()
