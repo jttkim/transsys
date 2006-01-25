@@ -1,0 +1,76 @@
+#!/usr/bin/env python
+
+# first version
+# Bug fixed for corect extraction off the transsys program name
+# Generates a transsys program out of a .rtp file (random transsys parameters)
+# Inside an .rtp files one can declare parameters such as:
+# the model of the transsys program, NK, random graph etc.
+# the decay, diffusibility etc. parameters
+
+# Prints out in a file the relevant transsys program
+# cbouyio, UEA, 01 Nov 2005
+
+
+import re
+import sys
+import getopt
+
+import transsys
+
+
+def usage():
+  print """Usage:
+    ./tp_generator [takes no arguments] (input file) (output file)
+		   -input file: Should be an .rtp file or a file with the 
+		    same format (declaring the transsys program parameters)
+		   -output file: You might give any filename you want but a
+		    .tp suffix is recommended (the .tp files contain the 
+		    transsys programs)"""
+
+
+try:
+  optlist, args = getopt.getopt(sys.argv[1:],"h",["help"])
+except getopt.GetoptError, error_msg:
+  # Print help info and exit
+  error_msg = 'Error in arguments passing, see usage'
+  print error_msg
+  usage()
+  sys.exit(1)
+
+for opt, par in optlist:
+  if opt in ("-h","--help"):
+    usage()
+    sys.exit(1)
+
+# I/O manipulation
+if len(args) > 0 :
+  infile = open(args[0], 'r')
+else :
+  print "\n!!! Please specify an .rtp file for input\n"
+  usage()
+  sys.exit(1)
+if len(args) > 1 :
+  outfile = open(args[1], 'w')
+else :
+  outfile = sys.stdout
+
+
+# Create an instance of the class
+rtp = transsys.RandomTranssysParameters()
+
+# Parse the input file
+rtp.parse(infile)
+
+# Extract the correspondant transsys program name with a regular expression
+name = re.search("\w+(?=\.\w)", str(sys.argv[1]))
+
+# Produces the transsys program. Look the group(0) method of RE
+tp = rtp.generate_transsys(name.group(0))
+
+# Prints to outfile
+outfile.write(str(tp))
+
+# Closes the files
+infile.close()
+outfile.close()
+
