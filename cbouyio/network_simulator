@@ -20,7 +20,7 @@ def clustering_coefficient(grn) :
   """Function for caclulating the Clustering Coefficient (CC) of a network, as 
   defined in (Watts and Strogatz 1998, Nature 393, 440). Adapted here, from 
   (Albert and Barabasi, Stastical mechanics of Complex Networks). Takes the 
-  network in a dictionary format, and calculates the mean CC of it."""
+  network in a dictionary format, and returnrs the mean CC of it."""
   # Clustering Coefficient of each node
   c = 0
   # Loop through all the linked nodes (genes) of the network
@@ -59,21 +59,11 @@ for opt, par in optlist:
     usage()
     sys.exit(1)
 
-
-infile_name = None
+# I/O Manipulation
 if len(args) > 0 :
-  infile_name = args[0]
+  infile = open(args[0], 'r')
 else :
-  # normally read from standard in ...
-  pass
-
-# I/O manipulation
-if infile_name is not None :
-  infile = open(infile_name, 'r')
-else :
-  sys.stderr.write('Please specify an .rtp file for input\n')
-  usage()
-  sys.exit(1)
+  infile = sys.stdin
 if len(args) > 1 :
   outfile = open(args[1], 'w')
 else :
@@ -86,20 +76,23 @@ rtp = transsys.RandomTranssysParameters()
 # Parse the input file
 rtp.parse(infile)
 
+
 # JTK: get base name of file as a regular expression group
 # JTK: use infile 
 # Extract the correspondant transsys program name with a regular expression
-# name = re.search('\\w+(?=\\.\\w)', str(sys.argv[1]))
-m = re.match('([A-Za-z][A-Za-z0-9_]*)\\.rtp', infile_name)
-if m is None :
-  raise StandardError, 'expected an rtp file'
-name = m.group(1)
+if infile is not sys.stdin :
+  m = re.match('([A-Za-z][A-Za-z0-9_]*)\\.rtp', infile.name)
+  if m is None :
+    raise StandardError, 'Expected an rtp file'
+  name = m.group(1)
+else :
+  name = 'STDIN'
 
-# Generates the transsys program. Look the group(0) method of RE
-tp = rtp.generate_transsys(name.group(0))
+# Generates the transsys program. 
+tp = rtp.generate_transsys(name)
 
 
-## Try to printout some network's properties....
+# Printout some network's properties....
 
 # This dictionary contains all the Gene Regulatory Network
 gene_network = {}
@@ -108,18 +101,20 @@ gene_network = {}
 for genes in tp.gene_list :
   gene_links   = []
   gene_name = genes.name 
-  for pe in xrange(len(genes.promoter)) :
+  for pe in genes.promoter :
     # Get only the regulatory promoter element(s) (NOT the constitutive)
     # !!! use objects
-    if not re.match('constitutive', str(genes.promoter[pe]) ,1) :
+    if not isinstance(pe, transsys.PromoterElementConstitutive) :
       # Get the regulatory factor
-      for factor in genes.promoter[pe].factor_list :
+      for factor in pe.factor_list :
 	# Get the gene(s) encoding for this factor
 	for g in tp.encoding_gene_list(factor.name) :
 	  gene_links.append(g.name)
   # Represent the network as a dictionary
   gene_network[gene_name] = gene_links
 
+
+# Calculate the Clustering Coefficient of the network.
 c_coeff = clustering_coefficient(gene_network)
 
 # Printouts
