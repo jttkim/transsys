@@ -157,6 +157,9 @@ class ExpressionNode :
 
 class ExpressionNodeValue(ExpressionNode) :
 
+  # v should be a numeric type (float or int, or perhaps long). Other
+  # types may be accepted now, but are not guaranteed to work in the
+  # future.
   def __init__(self, v) :
     self.value = float(v)
 
@@ -172,6 +175,8 @@ class ExpressionNodeValue(ExpressionNode) :
 class ExpressionNodeIdentifier(ExpressionNode) :
 
   def __init__(self, factor, transsys_label = None) :
+    if not (isinstance(factor, Factor) or (type(factor) is types.StringType)) :
+      raise StandardError, 'ExpressionNodeIdentifier::__init__: bad type of factor'
     self.factor = factor
     self.transsys_label = transsys_label
 
@@ -575,18 +580,14 @@ class PromoterElementRepress(PromoterElementLink) :
 
 class Factor :
 
-  def __init__(self, name, decay_expr = None, diffusibility_expr = None, dot_attrs = None) :
+  def __init__(self, name, decay_expr, diffusibility_expr, dot_attrs = None) :
     if not isinstance(decay_expr, ExpressionNode) :
       raise StandardError, 'Factor::__init__: bad decay_expr type'
     if not isinstance(diffusibility_expr, ExpressionNode) :
       raise StandardError, 'Factor::__init__: bad diffusibility_expr type'
     self.name = name
     self.decay_expression = decay_expr
-    if decay_expr is None :
-      self.decay_expression = ExpressionNodeValue(1.0)
     self.diffusibility_expression = diffusibility_expr
-    if diffusibility_expr is None :
-      self.diffusibility_expression = ExpressionNodeValue(1.0)
     self.comments = []
     if dot_attrs is None :
       self.dot_attributes = {}
@@ -622,6 +623,8 @@ class Factor :
 class Gene :
 
   def __init__(self, name, product, promoter = None, dot_attrs = None) :
+    if not (isinstance(product, Factor) or (type(product) is types.StringType)) :
+      raise StandardError, 'Gene::__init__: bad type of product'
     self.name = name
     self.product = product
     if promoter is None :
