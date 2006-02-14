@@ -741,7 +741,7 @@ static int edge_hashvalue(int hashvalue_max, int i1, int i2)
 {
   double g = 1.6180339887498948; /* the golden mean */
 
-  return((int) floor(hashvalue_max * fmod(g * (i1 * hashvalue_max + i2), 1.0)));
+  return((int) floor(hashvalue_max * fmod(g * (((double) i1) * ((double) hashvalue_max) + ((double) i2)), 1.0)));
 }
 
 
