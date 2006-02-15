@@ -42,7 +42,7 @@
 # Initial addition of files previously not CVS managed
 #
 
-bin_PROGRAMS = transps transdot transcheck transexpr transscatter ltrcheck ltransps ltransgl transdiscr cellcone
+bin_PROGRAMS = transps transdot transcheck transexpr transscatter ltrcheck ltransps ltransgl transdiscr cellcone ltransexpr
 lib_LIBRARIES = libtrans.a
 include_HEADERS = transsys.h trconfig.h trtypes.h
 noinst_HEADERS = trbison.h
@@ -51,6 +51,7 @@ transcheck_SOURCES = transcheck.c
 transdiscr_SOURCES = transdiscr.c
 transps_SOURCES = transps.c
 transexpr_SOURCES = transexpr.c
+ltransexpr_SOURCES = ltransexpr.c
 transscatter_SOURCES = transscatter.c
 ltrcheck_SOURCES = ltrcheck.c
 ltransps_SOURCES = ltransps.c
