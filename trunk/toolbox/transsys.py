@@ -1880,7 +1880,7 @@ class TranssysProgramScanner :
     self.buffer = ''
     self.lineno = 0
     self.keywords = ['factor', 'gene', 'promoter', 'product', 'constitutive', 'activate', 'repress', 'default', 'gauss', 'random', 'transsys', 'decay', 'diffusibility', 'lsys', 'symbol', 'axiom', 'rule', 'diffusionrange', '-->', 'graphics', 'move', 'sphere', 'cylinder', 'box', 'turn', 'roll', 'bank', 'color', 'push', 'pop', '<=', '>=', '==', '!=', '&&', '||']
-    self.identifier_re = re.compile('[A-Za-z_][A-Za-z0-9_]*')
+    self.identifier_re = re.compile('([A-Za-z_][A-Za-z0-9_]*)|([\\[\\]])')
     self.realvalue_re = re.compile('[+-]?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))([Ee][+-]?[0-9]+)?')
     self.next_token = self.get_token()
 
