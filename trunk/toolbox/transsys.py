@@ -777,8 +777,10 @@ re-implement this method.
 
 
   def find_factor(self, f_name) :
-    if type(f_name) is not types.StringType :
+    if isinstance(f_name, Factor) :
       f_name = f_name.name
+    elif type(f_name) is not types.StringType :
+      raise StandardError, 'TranssysProgram::find_factor: illegal argument type'
     i = self.find_factor_index(f_name)
     if i < 0 :
       raise StandardError, 'TranssysProgram::find_factor: no factor "%s" in transsys %s' % (f_name, self.name)
@@ -793,8 +795,10 @@ re-implement this method.
 
 
   def find_gene(self, g_name) :
-    if type(g_name) is not types.StringType :
+    if isinstance(g_name, Gene) :
       g_name = g_name.name
+    if type(g_name) is not types.StringType :
+      raise StandardError, 'TranssysProgram::find_gene: illegal argument type'
     i = self.find_gene_index(g_name)
     if i < 0 :
       raise StandardError, 'TranssysProgram::find_gene: no gene "%s" in transsys %s' % (g_name, self.name)
@@ -1291,6 +1295,38 @@ class LsysProgram :
       s.associate_transsys(tp)
     for r in self.rules :
       r.associate_transsys(tp)
+
+
+  def find_symbol_index(self, symbol_name) :
+    for i in xrange(len(self.symbols)) :
+      if self.symbols[i].name == symbol_name :
+        return i
+    return -1
+
+
+  def find_symbol(self, symbol_name) :
+    if type(symbol_name) is not types.StringType :
+      raise StandardError, 'LsysProgram::find_symbol: illegal argument type'
+    i = self.find_symbol_index(symbol_name)
+    if i < 0 :
+      raise StandardError, 'LsysProgram::find_symbol: no symbol "%s" in lsys %s' % (symbol_name, self.name)
+    return self.symbols[i]
+
+
+  def find_rule_index(self, rule_name) :
+    for i in xrange(len(self.rules)) :
+      if self.rules[i].name == rule_name :
+        return i
+    return -1
+
+
+  def find_rule(self, rule_name) :
+    if type(rule_name) is not types.StringType :
+      raise StandardError, 'LsysProgram::find_rule: illegal argument type'
+    i = self.find_rule_index(rule_name)
+    if i < 0 :
+      raise StandardError, 'LsysProgram::find_rule: no rule "%s" in lsys %s' % (rule_name, self.name)
+    return self.rules[i]
 
 
 class TranssysInstance :
