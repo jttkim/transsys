@@ -1103,6 +1103,7 @@ LSYS_STRING *derived_string(LSYS_STRING *lstr)
     {
       lstr->symbol[si_index].num_successors = num_successors;
       lstr->symbol[si_index].successor_index = successor_index;
+      lstr->symbol[si_index].rule_index = rule_index;
       if  (rule != NULL)
       {
 	lstr->symbol[si_index].successor_distance = 1;
