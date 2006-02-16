@@ -115,6 +115,227 @@ class TestTranssysParser(unittest.TestCase) :
 }
 """
 
+    self.lsys_arabidopsis = """transsys athgenome
+{
+  factor t
+  {
+    decay: 0.0;
+    diffusibility: 0.0;
+  }
+  factor tl
+  {
+    decay: 0.0;
+    diffusibility: 0.0;
+  }
+  factor elong
+  {
+    decay: 0.0;
+    diffusibility: 0.0;
+  }
+  factor turtlepar
+  {
+    decay: 0.0;
+    diffusibility: 0.0;
+  }
+
+  gene timerticker
+  {
+    promoter
+    {
+      constitutive: 0.05;
+    }
+    product
+    {
+      default: t;
+    }
+  }
+
+  gene localticker
+  {
+    promoter
+    {
+      constitutive: 0.05;
+    }
+    product
+    {
+      default: tl;
+    }
+  }
+}
+
+
+lsys bolting
+{
+  diffusionrange: 3;
+
+  symbol germ(athgenome);
+  symbol meristem(athgenome);
+  symbol axillary(athgenome);
+  symbol leaf;
+  symbol internode(athgenome);
+  symbol hypocotyl;
+  symbol cotyledon;
+  symbol flowerpedicel;
+  symbol flower(athgenome);
+  symbol petal;
+  symbol [;
+  symbol ];
+
+  symbol turtleroll(athgenome);
+  symbol turtlebank(athgenome);
+  symbol turtleturn(athgenome);
+
+  axiom germ();
+
+  rule germinate
+  {
+    germ(t) -->
+    hypocotyl
+    [ cotyledon ]
+    turtleroll(turtlepar = 180)
+    [ cotyledon ] meristem()
+  }
+  rule decussate
+  {
+    meristem(tm) : tm.t < 6 && tm.tl >= 1.0 -->
+    turtleroll(turtlepar = 90)
+    internode(transsys tm: tl = 0, elong = 0.1)
+    [ leaf turtlebank(turtlepar = 20) axillary(transsys tm: tl = 0) ]
+    turtleroll(turtlepar = 180)
+    [ leaf turtlebank(turtlepar = 20) axillary(transsys tm: tl = 0) ]
+    meristem(transsys tm: tl = 0)
+  }
+  rule spiral
+  {
+    meristem(tm) : tm.t >= 6 && tm.tl >= 1.0 -->
+    turtleroll(turtlepar = 137.5)
+    internode(transsys tm: tl = 0, elong = 0.1)
+    [ leaf turtlebank(turtlepar = 20) axillary(transsys tm: tl = 0) ]
+    meristem(transsys tm: tl = 0)
+  }
+  rule grow_flower
+  {
+    flower(tm) -->
+    flowerpedicel
+    [ petal ] turtleroll(turtlepar = 90)
+    [ petal ] turtleroll(turtlepar = 90)
+    [ petal ] turtleroll(turtlepar = 90)
+    [ petal ] turtleroll(turtlepar = 90)
+  }
+  rule axil_flower
+  {
+    axillary(tm) : tm.tl > 1 && tm.tl < 2 && tm.t >= 9 --> flower(transsys tm: )
+  }
+  rule axil_awake
+  {
+    axillary(tm) : tm.tl > 1 && tm.tl < 6 && tm.t >= 9 -->
+    meristem(transsys tm: )
+  }
+  rule bolt
+  {
+    internode(tm) : tm.t > 9 && tm.tl < 5 -->
+    internode(transsys tm: elong = tm.elong + 0.025)
+  }
+
+  graphics
+  {
+    germ
+    {
+      color(1.0, 0.8, 0.2);
+      sphere(0.4);
+    }
+    hypocotyl
+    {
+      move(0.5);
+      color(1.0, 1.0, 0.0);
+      cylinder(0.2, 1.0);
+      move(0.5);
+    }
+    cotyledon
+    {
+      push();
+      bank(80);
+      move(0.4);
+      bank(90);
+      color(0.5, 1.0, 0.0);
+      cylinder(0.4, 0.1);
+      pop();
+    }
+    leaf
+    {
+      push();
+      bank(80);
+      move(1.0);
+      bank(90);
+      roll(45);
+      color(0.0, 1.0, 0.0);
+      box(1.4, 1.4, 0.01);
+      pop();
+    }
+    meristem
+    {
+      move(0.3);
+      color(1, 0, 0);
+      sphere(0.3);
+      move(0.3);
+    }
+    axillary
+    {
+      move(0.3);
+      color(0, 0, 1);
+      sphere(0.3);
+      move(0.3);
+    }
+    flower
+    {
+      move(0.2);
+      color(1, 1, 1);
+      box(0.1, 0.4, 0.4);
+      move(0.2);
+    }
+    petal
+    {
+      push();
+      bank(50);
+      move(0.6);
+      bank(90);
+      roll(45);
+      color(1.0, 1.0, 1.0);
+      box(1.0, 1.0, 0.01);
+      pop();
+    }
+    internode
+    {
+      move(0.55 * elong);
+      color(0.0, 1.0, 0.0);
+      cylinder(0.2, elong);
+      move(0.55 * elong);
+    }
+    flowerpedicel
+    {
+      move(0.5);
+      color(1, 1, 0);
+      cylinder(0.1, 1.0);
+      move(0.5);
+    }
+    turtleroll
+    {
+      roll(turtlepar);
+    }
+    turtlebank
+    {
+      bank(turtlepar);
+    }
+    turtleturn
+    {
+      turn(turtlepar);
+    }
+    [ { push(); }
+    ] { pop(); }
+  }
+}
+"""
+
     self.rtp = """RandomTranssysParameters-1.1
 topology: random_nk
 n: 8
@@ -155,6 +376,192 @@ timestep: 99
   R: 0.00406464
 """
     self.assertEqual(ti99, str(ts[99]))
+
+
+  def testLsys(self) :
+    f = open('test.trl', 'w')
+    f.write(self.lsys_arabidopsis)
+    f.close()
+    f = open('test.trl', 'r')
+    p = transsys.TranssysProgramParser(f)
+    tp = p.parse()
+    lp = p.parse()
+    f.close()
+    lp_expect = """lsys bolting
+{
+  diffusionrange: 3;
+
+  symbol germ(athgenome);
+  symbol meristem(athgenome);
+  symbol axillary(athgenome);
+  symbol leaf;
+  symbol internode(athgenome);
+  symbol hypocotyl;
+  symbol cotyledon;
+  symbol flowerpedicel;
+  symbol flower(athgenome);
+  symbol petal;
+  symbol [;
+  symbol ];
+  symbol turtleroll(athgenome);
+  symbol turtlebank(athgenome);
+  symbol turtleturn(athgenome);
+
+  axiom germ;
+
+  rule germinate
+  {
+    germ(t)
+    --> hypocotyl [ cotyledon ] turtleroll(turtlepar = 180.0) [ cotyledon ] meristem
+  }
+
+  rule decussate
+  {
+    meristem(tm):
+    ((tm.t < 6.0) && (tm.tl >= 1.0))
+    --> turtleroll(turtlepar = 90.0) internode(transsys tm: tl = 0.0, elong = 0.1) [ leaf turtlebank(turtlepar = 20.0) axillary(transsys tm: tl = 0.0) ] turtleroll(turtlepar = 180.0) [ leaf turtlebank(turtlepar = 20.0) axillary(transsys tm: tl = 0.0) ] meristem(transsys tm: tl = 0.0)
+  }
+
+  rule spiral
+  {
+    meristem(tm):
+    ((tm.t >= 6.0) && (tm.tl >= 1.0))
+    --> turtleroll(turtlepar = 137.5) internode(transsys tm: tl = 0.0, elong = 0.1) [ leaf turtlebank(turtlepar = 20.0) axillary(transsys tm: tl = 0.0) ] meristem(transsys tm: tl = 0.0)
+  }
+
+  rule grow_flower
+  {
+    flower(tm)
+    --> flowerpedicel [ petal ] turtleroll(turtlepar = 90.0) [ petal ] turtleroll(turtlepar = 90.0) [ petal ] turtleroll(turtlepar = 90.0) [ petal ] turtleroll(turtlepar = 90.0)
+  }
+
+  rule axil_flower
+  {
+    axillary(tm):
+    (((tm.tl > 1.0) && (tm.tl < 2.0)) && (tm.t >= 9.0))
+    --> flower(transsys tm: )
+  }
+
+  rule axil_awake
+  {
+    axillary(tm):
+    (((tm.tl > 1.0) && (tm.tl < 6.0)) && (tm.t >= 9.0))
+    --> meristem(transsys tm: )
+  }
+
+  rule bolt
+  {
+    internode(tm):
+    ((tm.t > 9.0) && (tm.tl < 5.0))
+    --> internode(transsys tm: elong = (tm.elong + 0.025))
+  }
+
+  graphics
+  {
+    germ
+    {
+      color(1.0, 0.8, 0.2);
+      sphere(0.4);
+    }
+    meristem
+    {
+      move(0.3);
+      color(1.0, 0.0, 0.0);
+      sphere(0.3);
+      move(0.3);
+    }
+    axillary
+    {
+      move(0.3);
+      color(0.0, 0.0, 1.0);
+      sphere(0.3);
+      move(0.3);
+    }
+    leaf
+    {
+      push();
+      bank(80.0);
+      move(1.0);
+      bank(90.0);
+      roll(45.0);
+      color(0.0, 1.0, 0.0);
+      box(1.4, 1.4, 0.01);
+      pop();
+    }
+    internode
+    {
+      move((0.55 * elong));
+      color(0.0, 1.0, 0.0);
+      cylinder(0.2, elong);
+      move((0.55 * elong));
+    }
+    hypocotyl
+    {
+      move(0.5);
+      color(1.0, 1.0, 0.0);
+      cylinder(0.2, 1.0);
+      move(0.5);
+    }
+    cotyledon
+    {
+      push();
+      bank(80.0);
+      move(0.4);
+      bank(90.0);
+      color(0.5, 1.0, 0.0);
+      cylinder(0.4, 0.1);
+      pop();
+    }
+    flowerpedicel
+    {
+      move(0.5);
+      color(1.0, 1.0, 0.0);
+      cylinder(0.1, 1.0);
+      move(0.5);
+    }
+    flower
+    {
+      move(0.2);
+      color(1.0, 1.0, 1.0);
+      box(0.1, 0.4, 0.4);
+      move(0.2);
+    }
+    petal
+    {
+      push();
+      bank(50.0);
+      move(0.6);
+      bank(90.0);
+      roll(45.0);
+      color(1.0, 1.0, 1.0);
+      box(1.0, 1.0, 0.01);
+      pop();
+    }
+    [
+    {
+      push();
+    }
+    ]
+    {
+      pop();
+    }
+    turtleroll
+    {
+      roll(turtlepar);
+    }
+    turtlebank
+    {
+      bank(turtlepar);
+    }
+    turtleturn
+    {
+      turn(turtlepar);
+    }
+  }
+}
+"""
+    os.unlink('test.trl')
+    self.assertEqual(lp_expect, str(lp))
 
 
   def testRandomTranssysParameters(self) :

@@ -56,7 +56,15 @@ static int fprint_symbol_line(FILE *outfile, const LSYS_STRING *lstr, size_t sym
 {
   const SYMBOL_INSTANCE *si = lstr->symbol + symbol_instance_index;
   const SYMBOL_ELEMENT *symbol = si->lsys_string->lsys->symbol_list +si->symbol_index;
-  fprintf(outfile, "%lu %s", (unsigned long) symbol_instance_index, symbol->name);
+  fprintf(outfile, " %lu %s", (unsigned long) symbol_instance_index, symbol->name);
+  if (si->rule_index == NO_INDEX)
+  {
+    fprintf(outfile, " <copy>");
+  }
+  else
+  {
+    fprintf(outfile, " %s", lstr->lsys->rule_list[si->rule_index].name);
+  }
   if (symbol->transsys)
   {
     const TRANSSYS *transsys = symbol->transsys;
@@ -94,7 +102,7 @@ static int symbol_filter(const LSYS_STRING *lstr, size_t i, const TRANSSYS *tran
 /*
  * print a table of lines, each line describing a symbol of the lsys string
  */
-static int fprint_lstr_table(FILE *outfile, const LSYS_STRING *lstr, const TRANSSYS *transsys, int symbol_index)
+static int fprint_lstr_table(FILE *outfile, const LSYS_STRING *lstr, const TRANSSYS *transsys, int symbol_index, unsigned long time_step)
 {
   size_t i;
 
@@ -102,6 +110,7 @@ static int fprint_lstr_table(FILE *outfile, const LSYS_STRING *lstr, const TRANS
   {
     if (symbol_filter(lstr, i, transsys, symbol_index))
     {
+      fprintf(outfile, "%lu", time_step);
       fprint_symbol_line(outfile, lstr, i);
     }
   }
@@ -148,7 +157,7 @@ static int ltransexpr(FILE *outfile, const LSYS *lsys, const TRANSSYS *transsys,
     dstr = derived_string(lstr);
     if ((t % output_period) == 0)
     {
-      fprint_lstr_table(outfile, lstr, transsys, symbol_index);
+      fprint_lstr_table(outfile, lstr, transsys, symbol_index, t);
     }
     free_lsys_string(lstr);
     lstr = dstr;

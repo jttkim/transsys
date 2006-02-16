@@ -33,11 +33,22 @@ class BindingSite :
 
 
 class DNABinder :
+  """Represents a DNA binding factor using a scoring matrix and a threshold."""
 
   def __init__(self, name, dna) :
     self.name = name
-    self.matrix = []
+    self.decode(dna)
+
+
+  def decode(self, dna) :
+    """Decode a string of dna bases to a matrix and a threshold.
+The matrix is decoded by taking words of length 5 from the encoding
+sequence. If the first four characters are all identical, decoding
+stops. Otherwise, they are mapped to integer values in {0, 1, 2, 3}
+and appended to the matrix as a further column. The 5th character is
+mapped to an integer, which is incremented and added to the threshold."""
     self.threshold = 0.0
+    self.matrix = []
     i = 0
     while len(dna) - i >= 5 :
       c = map(baseToInt, dna[i:i + 4])
@@ -98,7 +109,11 @@ def find_binding_sites(proteome, seq) :
 
 
 class RawDNAGene :
-
+  """Represents a raw gene, i.e. the sequences of the gene's elements, which
+are the gene start (promoter), the activator binding area, the repressor binding
+area, the structural area, and the end (transcriptional terminator). The gene is
+'raw' in the sense that this class holds just the sequences, not any data
+structures derived from them, such as DNABinder etc."""
   def __init__(self, position, gene_name, product_name, geneStart, geneEnd, activatorArea, repressorArea, structuralArea) :
     self.position = position
     self.gene_name = gene_name
@@ -119,9 +134,28 @@ class RawDNAGene :
 
 
 class TranssysDNADecoder :
+  """Decodes genome sequences into transsys programs.
+The overall gene structure is:
+...|----activator area-----|----repressor area ----|-geneStart-|--structural area--|-geneEnd...
+   |<-activatorAreaLength->|<-repressorAreaLength->|
+The structural area length is variable. Gene start and end can also be variable,
+as enabled by regular expressions.
+
+This decoder uses the following constants:
+    * geneStartRE, geneEndRE: Regular expressions to determine start and end of
+      a gene
+    * repressorAreaLength: length of area where binding represses
+    * activationAreaLength: length of area where binding activates
+    * decay, diffusibility: constants for factor construction
+    * a_spec, a_max: constants for promoter element construction
+      (used for both activate and repress elements)
+    * constitutive: constant for constitutive promoter element construction
+Notice that strength of activation / repression does not depend on binding
+strength in this decoder."""
+
+  savefile_magic = 'TranssysDNADecoderParameters-1.0'
 
   def __init__(self) :
-    self.transsysName = None
     self.factorNameTemplate = None
     self.geneNameTemplate = None
     self.geneStartRE = None
@@ -135,6 +169,28 @@ class TranssysDNADecoder :
     self.constitutive = None
 
 
+  def __str__(self) :
+    s = 'factorNameTemplate: %s\n' % self.factorNameTemplate
+    s = s + 'geneNameTemplate: %s\n' % self.geneNameTemplate
+    s = s + 'geneStartRE: %s\n' % self.geneStartRE.pattern
+    s = s + 'geneEndRE: %s\n' % self.geneEndRE.pattern
+    s = s + 'repressorAreaLength: %d\n' % self.repressorAreaLength
+    s = s + 'repressorAreaLength: %d\n' % self.activatorAreaLength
+    s = s + 'decay: %g\n' % self.decay
+    s = s + 'diffusibility: %g\n' % self.diffusibility
+    s = s + 'a_spec: %g\n' % self.a_spec
+    s = s + 'a_max: %g\n' % self.a_max
+    s = s + 'constitutive: %g' % self.constitutive
+    return s
+
+
+  def write(self, f) :
+    f.write('%s\n' % savefile_magic)
+    f.write(str(self))
+    f.write('\n')
+    # *** continue here ***
+
+
   def setGeneStartRE(self, r) :
     self.geneStartRE = re.compile(r)
 
@@ -144,6 +200,7 @@ class TranssysDNADecoder :
 
 
   def rawDNAGenes(self, genome) :
+    """separate a genome into raw genes."""
     # print 'gene_index_list(%s, %s)' % (genome, gene_refpoint_tag)
     raw_gene_list = []
     m = self.geneStartRE.search(genome)
@@ -173,7 +230,15 @@ class TranssysDNADecoder :
     return raw_gene_list
 
 
-  def decode_transsys(self, genome) :
+  def decode_transsys(self, transsys_name, genome) :
+    """construct a transsys program by decoding a genome sequence. The
+process is: (1) split the genome into sequence portions that represent
+genes, based on the gene start and end regular expressions. (2) For each
+Gene, translate the structural parts of a gene into a DNABinder; the set
+of all DNABinders constitutes the proteome. (3) For each gene, determine
+the multiset of DNABinders that bind in the activating and the repressing
+regions, respectively. (4) Construct a transsys program of the genes and
+the proteome found, with promoters constructed based on (3)."""
     raw_gene_list = self.rawDNAGenes(genome)
     proteome = []
     factor_list = []
@@ -216,4 +281,4 @@ class TranssysDNADecoder :
       for r in repressors :
         gene.comments.append(r.arrowLine())
       gene_list.append(gene)
-    return transsys.TranssysProgram(self.transsysName, factor_list, gene_list, resolve = True)
+    return transsys.TranssysProgram(transsys_name, factor_list, gene_list, resolve = True)

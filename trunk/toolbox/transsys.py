@@ -1225,16 +1225,17 @@ class Rule :
   def __str__(self) :
     s = '  rule %s\n' % self.name
     s = s + '  {\n'
-    s = s + '    '
+    s = s + '   '
     for l in self.lhs :
       s = s + ' %s' % str(l)
     if self.condition is not None :
       s = s + ':\n'
       s = s + '    %s' % str(self.condition)
     s = s + '\n'
-    s = s + '    -->\n'
+    s = s + '    -->'
     for r in self.rhs :
-      s = s + '    %s\n' % str(r)
+      s = s + ' %s' % str(r)
+    s = s + '\n'
     s = s + '  }\n'
     return s
 
@@ -2128,7 +2129,7 @@ class TranssysProgramParser :
         expr2 = self.parse_arithmetic_expr(transsys_label_list)
         expr1 = ExpressionNodeGreater(expr1, expr2)
       elif l == '>=' :
-        self.expect_token('?=')
+        self.expect_token('>=')
         expr2 = self.parse_arithmetic_expr(transsys_label_list)
         expr1 = ExpressionNodeGreaterEqual(expr1, expr2)
       elif l == '==' :
@@ -2321,6 +2322,8 @@ class TranssysProgramParser :
     alist = []
     while self.scanner.lookahead() == 'identifier' :
       alist.append(self.parse_assignment(transsys, transsys_label_list))
+      if self.scanner.lookahead() == ',' :
+        self.expect_token(',')
     return alist
 
 
