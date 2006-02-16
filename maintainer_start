@@ -7,6 +7,9 @@
 # convenience script maintainer_start for aclocal autoconf, autoheader, automake
 #
 
+# these are site dependent, so get rid of them -- will be replaced
+# by -a flag to automake
+rm -f config.guess config.sub depcomp install-sh missing mkinstalldirs
 
 aclocal
 autoconf
