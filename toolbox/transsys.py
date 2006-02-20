@@ -155,6 +155,18 @@ class ExpressionNode :
     return copy.deepcopy(self)
 
 
+  def getValueNodes(self) :
+    """get all constant value nodes in expression subtree. This
+is the default implementation which returns an empty list."""
+    return []
+
+
+  def getIdentifierNodes(self) :
+    """get all identifier nodes in expression subtree. This
+is the default implementation which returns an empty list."""
+    return []
+
+
 class ExpressionNodeValue(ExpressionNode) :
 
   # v should be a numeric type (float or int, or perhaps long). Other
@@ -170,6 +182,10 @@ class ExpressionNodeValue(ExpressionNode) :
 
   def evaluate(self, transsys_instance_list) :
     return self.value
+
+
+  def getValueNodes(self) :
+    return [self]
 
 
 class ExpressionNodeIdentifier(ExpressionNode) :
@@ -203,7 +219,15 @@ class ExpressionNodeIdentifier(ExpressionNode) :
 
   def unresolved_copy(self) :
     return self.__class__(self.factor_name(), self.transsys_label)
-    
+
+
+  def getIdentifierNodes(self) :
+    """Returns itself (obviously).
+Notice, however, that an ExpressionNodeIdentifier might also have a transsys_label.
+The current mechanism is ok for use with self-contained transsys programs, but
+might need further thought for use with lsys programs."""
+    return [self]
+
 
   def evaluate(self, transsys_instance) :
     """transsys_instance may either be a single instance or a list of
@@ -239,6 +263,14 @@ class BinaryExpressionNode(ExpressionNode) :
     op1 = self.operand1.unresolved_copy()
     op2 = self.operand1.unresolved_copy()
     return self.__class__(op1, op2, self.operator_sym)
+
+
+  def getValueNodes(self) :
+    return self.operand1.getValueNodes() + self.operand2.getValueNodes()
+
+
+  def getIdentifierNodes(self) :
+    return self.operand1.getIdentifierNodes() + self.operand2.getIdentifierNodes()
 
 
 class ExpressionNodeAdd(BinaryExpressionNode) :
@@ -366,6 +398,14 @@ class ExpressionNodeNot(ExpressionNode) :
     return self.__class__(op)
 
 
+  def getValueNodes(self) :
+    return self.operand.getValueNodes()
+
+
+  def getIdentifierNodes(self) :
+    return self.operand.getIdentifierNodes()
+
+
 class ExpressionNodeAnd(BinaryExpressionNode) :
 
   def __init__(self, op1, op2) :
@@ -422,6 +462,20 @@ class FunctionExpressionNode(ExpressionNode) :
     return self.__class__(u)
 
 
+  def getValueNodes(self) :
+    vn = []
+    for op in self.operand :
+      vn = vn + op.getValueNodes()
+    return vn
+
+
+  def getIdentifierNodes(self) :
+    identifierNodes = []
+    for op in self.operand :
+      identifierNodes = identifierNodes + op.getIdentifierNodes()
+    return identifierNodes
+
+
 class ExpressionNodeUniformRandom(FunctionExpressionNode) :
 
   def __init__(self, op1, op2) :
@@ -471,11 +525,26 @@ class PromoterElementConstitutive(PromoterElement) :
 
   def unresolved_copy(self) :
     return self.__class__(self.expression.unresolved_copy())
-    
+
+
+  def getValueNodes(self) :
+    """Get the constant value nodes of this constitutive promoter element."""
+    return self.expression.getValueNodes()
+
+
+  def getIdentifierNodes(self) :
+    """Get the factor identifier nodes of this constitutive promoter element.
+This implementation only works for transsy, not for lsys programs which use
+complex identifiers."""
+    # FIXME: it's not entirely clear what should be done with complex
+    # identifiers in lsys programs.
+    return self.expression.getIdentifierNodes()
+
 
   def write_dot_edge(self, f, target_name, dot_parameters, transsys) :
-    pass # constitutive expression of genes should probably be indicated
-         # by node shape / border or the like...
+    # FIXME: constitutive expression of genes should probably be indicated
+    # by node shape / border or the like...
+    pass
   
 
 class PromoterElementLink(PromoterElement) :
@@ -506,7 +575,7 @@ class PromoterElementLink(PromoterElement) :
         fn = f.name
       s = s + glue + fn
       glue = ' + '
-      return s
+    return s
 
 
   def resolve(self, tp) :
@@ -526,6 +595,25 @@ class PromoterElementLink(PromoterElement) :
       else :
         flist.append(f.name)
     return self.__class__(self.expression1.unresolved_copy(), self.expression2.unresolved_copy(), flist, self.dot_attributes)
+
+
+  def getValueNodes(self) :
+    """Get all constant value expressions involved in this promoter element."""
+    return self.expression1.getValueNodes() + self.expression2.getValueNodes()
+
+
+  def getIdentifierNodes(self) :
+    """Get all identifier nodes that control this promoter element.
+The list includes the factors mentioned in activate and repress as well as
+any identifier nodes that may appear in the parameters to the link element."""
+    identifierNodes = []
+    
+    for factor in self.factor_list :
+      if not isinstance(factor, Factor) :
+        raise StandardError, 'PromoterElementLink::getIdentifierNodes: non-Factor in factor_list (unresolved transsys?)'
+      identifierNodes = identifierNodes + [ExpressionNodeIdentifier(factor)]
+    identifierNodes = identifierNodes + self.expression1.getIdentifierNodes() + self.expression2.getIdentifierNodes()
+    return identifierNodes
 
 
   def write_dot_edge(self, f, target_name, display_factors, arrowhead, transsys) :
@@ -613,6 +701,36 @@ class Factor :
     return self.__class__(self.name, self.decay_expression.unresolved_copy(), self.diffusibility_expression.unresolved_copy(), self.dot_attributes)
 
 
+  def getDecayValueNodes(self) :
+    """get all constant value expression nodes in the decay expression."""
+    return self.decay_expression.getValueNodes()
+
+
+  def getDiffusibilityValueNodes(self) :
+    """get all constant value expression nodes in the diffusiblility expression."""
+    return self.diffusibility_expression.getValueNodes()
+
+
+  def getValueNodes(self) :
+    """get all constant value expression nodes controlling the factor's behaviour."""
+    return self.getDecayValueNodes() + self.getDiffusibilityValueNodes()
+
+
+  def getDecayIdentifierNodes(self) :
+    """get all identifier expression nodes in the decay expression."""
+    return self.decay_expression.getIdentifierNodes()
+
+
+  def getDiffusibilityIdentifierNodes(self) :
+    """get all identifier expression nodes in the diffusiblility expression."""
+    return self.diffusibility_expression.getIdentifierNodes()
+
+
+  def getIdentifierNodes(self) :
+    """get all identifier expression nodes controlling the factor's behaviour."""
+    return self.getDecayIdentifierNodes() + self.getDiffusibilityIdentifierNodes()
+
+
   def write_dot_node(self, f, dot_parameters, transsys) :
     f.write('  %s' % self.name)
     if len(self.dot_attributes) > 0 :
@@ -676,6 +794,22 @@ class Gene :
     for pe in self.promoter :
       unresolved_promoter.append(pe.unresolved_copy())
     return self.__class__(self.name, self.product_name(), unresolved_promoter, self.dot_attributes)
+
+
+  def getValueNodes(self) :
+    """Get a list of constant value nodes from all promoter elements of this gene."""
+    vn = []
+    for p in self.promoter :
+      vn = vn + p.getValueNodes()
+    return vn
+
+
+  def getIdentifierNodes(self) :
+    """Get a list of identifier nodes from all promoter elements of this gene."""
+    identifierNodes = []
+    for p in self.promoter :
+      identifierNodes = identifierNodes + p.getIdentifierNodes()
+    return identifierNodes
 
 
   def write_dot_node(self, f, dot_parameters, transsys) :
@@ -829,6 +963,24 @@ gene names and factor names can be altered without changing the network."""
     # constructors they may have, we don't use the self.__class__() constructor
     # call here.
     return TranssysProgram(self.name, factor_list, gene_list, False)
+
+
+  def getValueNodes(self) :
+    """Get all constant value nodes in this transsys program."""
+    valueNodes = []
+    for factor in self.factor_list :
+      valueNodes = valueNodes + factor.getValueNodes()
+    for gene in self.gene_list :
+      valueNodes = valueNodes + gene.getValueNodes()
+
+
+  def getIdentifierNodes(self) :
+    """Get all identifier nodes in this transsys program."""
+    identifierNodes = []
+    for factor in self.factor_list :
+      identifierNodes = identifierNodes + factor.getIdentifierNodes()
+    for gene in self.gene_list :
+      identifierNodes = identifierNodes + gene.getIdentifierNodes()
 
 
   def encoding_gene_list(self, factor_name) :
@@ -1460,6 +1612,57 @@ class DotParameters :
     self.repress_arrowhead = 'tee'
 
 
+
+def parse_int(f, label) :
+  """retrieves an int from a line of the form::
+
+<label>: <int>
+
+Raises an error if label is not matched or not followed by a
+colon (optionally flanked by whitespace) and an int.
+"""
+  r = '%s\\s*:\\s*([0-9]+)' % label
+  line = f.readline()
+  m = re.match(r, line.strip())
+  if m is None :
+    raise StandardError, 'ParserSupport::parse_int: failed to obtain int "%s" in "%s"' % (label, line.strip())
+  return int(m.group(1))
+
+
+def parse_float(f, label) :
+  """retrieves a float from a line of the form::
+
+<label>: <float>
+
+Raises an error if label is not matched or not followed by a
+colon (optionally flanked by whitespace) and a float.
+"""
+  r = '%s\\s*:\\s*([+-]?([0-9]+(\\.[0-9]+)?)|(\\.[0-9]+)([Ee][+-]?[0-9]+)?)' % label
+  line = f.readline()
+  m = re.match(r, line.strip())
+  if m is None :
+    raise StandardError, 'ParserSupport::parse_float: failed to obtain float "%s" in "%s"' % (label, line.strip())
+  return float(m.group(1))
+
+
+def parse_string(f, label) :
+  """retrieves a string from a line of the form::
+
+<label>:<string>
+
+Raises an error if label is not matched or not followed by a
+colon (optionally preceded by whitespace) and a (possibly empty) string.
+"""
+  r = '%s\\s*:(.*)' % label
+  line = f.readline()
+  if len(line) > 0 :
+    line = line[:-1]
+  m = re.match(r, line)
+  if m is None :
+    raise StandardError, 'ParserSupport::parse_string: failed to obtain string "%s" in "%s"' % (label, line.strip())
+  return m.group(1)
+
+
 class CyclicSequence :
   """A convenience class for use with RandomTranssysParameters. Implements an
 object from which numerical values can be pulled out indefinitely using the
@@ -1615,22 +1818,6 @@ that would make it more easy to omit parameters, and more difficult to check
 against this. Incomplete specifications are considered dangerous because
 unspecified parameters may end up in unclear defaults or even undefined states,
 so it's best to require explicit specification of all parameters."""
-
-    def parse_int(f, label) :
-      r = '%s\\s*:\\s*([0-9]+)' % label
-      line = f.readline()
-      m = re.match(r, line.strip())
-      if m is None :
-        raise StandardError, 'RandomTranssysParameters::parse: failed to obtain int "%s" in "%s"' % (label, line.strip())
-      return int(m.group(1))
-
-    def parse_float(f, label) :
-      r = '%s\\s*:\\s*([+-]?([0-9]+(\\.[0-9]+)?)|(\\.[0-9]+)([Ee][+-]?[0-9]+)?)' % label
-      line = f.readline()
-      m = re.match(r, line.strip())
-      if m is None :
-        raise StandardError, 'RandomTranssysParameters::parse: failed to obtain float "%s" in "%s"' % (label, line.strip())
-      return float(m.group(1))
 
     def parse_cyclicseq(f, label) :
       r = '%s\\s*:\\s*(.*)' % label
