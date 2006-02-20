@@ -28,6 +28,9 @@ Features / properties that are missing
 
     * no ``diff'' like tool for comparing transsys programs
 
+    * no function to find out regulating factors in general (i.e. those
+      that exert their effect not through activate or repress statments)
+
 
 Fundamental design / implementation issues
 
