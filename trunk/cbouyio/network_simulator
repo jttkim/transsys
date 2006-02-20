@@ -1,19 +1,84 @@
 #!/usr/bin/env python
 
-# First approach to explore some network statistic measures within the 
-#+transsys framework
-# CBouyio, UEA, 18-23 Jan 2006
+# First approach to calculate some network characteristc measurments within the
+#+transsys framework.
+# CBouyio, UEA, 18-23 Jan 2006.
 
 
 import re
 import sys
 import getopt
+import math
+import string
+import random
 
 import transsys
+import transdisrupt
+
 
 
 def usage() :
-  print """Usage:"""
+  print """Usage:
+    transsys_networks
+      -The program generates a transsys program from an .rtp file, stores the GRN in a dictionary and then calculates the clustering Coefficient of this particular network.
+      -The program reads .tra (transsys program) files as well"""
+
+
+
+class ExpressionMatrix :
+  """The gene expression matrix E, is described in the Rung et.al 2002 paper. Is consisting of the log ratio of expression levels of the disrupted genes through the background (reference state). Also implements the normalization function (sigma)."""
+
+  def __init__(self, tp, default_element=None) :
+    """The instance of the class is an empty [None] Num_Genes(Experiments)xFactor matrix."""
+    self.name = '%s_%s' %  (tp.name, 'Expression_Matrix')
+    self.matrix = []
+    self.experiments = tp.num_genes()
+    self.expressions = tp.num_factors()
+#    self.fill_all(default_element)
+
+#  def fill_all(self, de) :
+#    """Fills up the whole matrix with the default element."""
+#    for i in xrange(self.experiments) :
+#      row = [de] * self.expressions
+#      self.matrix.append(row)
+
+  def populate(self, rs, ds) :
+    """Populates the matrix with the log ration expression values."""
+    # First make a consistancy check. (the -1 exists for the non_functional 
+    #+factor).
+    if self.expressions != (len(ds) - 1) :
+      raise StandardError, 'Wrong factor concentration list'
+    expression_row = []
+    # Apply the epsilon threshold.
+    for j in xrange(self.expressions) :
+      # First calculate the expression ratio.
+      expression_row.append(float(ds[j]) / float(rs[j]))
+    # Then get the log (ln) of the ratio.
+    # Just put a safe guard for the zero values.
+    for k in xrange(len(expression_row)) :
+      if expression_row[k] == 0.0 :
+	expression_row[k] = 0.0
+      else :
+	expression_row[k] = math.log(expression_row[k])
+    self.matrix.append(expression_row)
+
+
+  def normalize(self, k) :
+    """Normalize the expression log/ratio of the matrix E as all the rows having standard deviation equal to  1. This is requisite for appling a uniform cutoff value for all the experiments. """
+    sum = 0
+    expression_row = self.matrix[k]
+    mean_row = reduce(lambda x, y : x + y,  expression_row) / len(expression_row)
+    for ex in expression_row :
+      sum = sum + ((ex - mean_row) ** 2)
+    variance = sum / (len(expression_row) - 1)
+    s_d = math.sqrt(variance)
+    if s_d != 0 :
+      for j in xrange(len(expression_row)) :
+        expression_row[j] = expression_row[j] / s_d
+    else :
+      expression_row = expression_row
+    print expression_row
+    self.matrix[k] = expression_row
 
 
 def clustering_coefficient(grn) :
@@ -21,9 +86,9 @@ def clustering_coefficient(grn) :
   defined in (Watts and Strogatz 1998, Nature 393, 440). Adapted here, from 
   (Albert and Barabasi, Stastical mechanics of Complex Networks). Takes the 
   network in a dictionary format, and returnrs the mean CC of it."""
-  # Clustering Coefficient of each node
+  # Clustering Coefficient of each node.
   c = 0
-  # Loop through all the linked nodes (genes) of the network
+  # Loop through all the linked nodes (genes) of the network.
   for links in grn.itervalues() :
     if len(links) > 1 :
       ccg = 0
@@ -32,21 +97,41 @@ def clustering_coefficient(grn) :
         for reg_gene in grn[gene] :
           if reg_gene in links :
             e = e + 1
-      # Calculate the Clusterung Coefficient of each node
+      # Calculate the Clusterung Coefficient of each node.
       ccg = float(e) / float((len(links) * (len(links) - 1)))
-      # Calculate the sum for the whole network
+      # Calculate the sum for the whole network.
       c = c + ccg
-  # Calculate the mean Clustering Coefficient of the network
+  # Calculate the mean Clustering Coefficient of the network.
   cc = c / len(grn.keys())
   return cc
 
 
-######## make it to work both with .tra as well as with .rtp files....!!!!!!
-# Two options.....!!!
+def grn_dictionary(tp) :
+  """Returns the Gene Regulatory Network of a transsys program in a dictionary format {key:value} where the {value} is a list containg all the genes whose regulating the gene {key}. We will see in the future the usefulness of this representation"""
+  # Initialize the GRN
+  gene_network = {}
+
+  # Loop through all genes.
+  for gene in tp.gene_list :
+    gene_links = []
+    for promoter_element in gene.promoter :
+      # Get only the regulatory promoter element(s) (NOT the constitutive)
+      #+!!! use objects.
+      if not isinstance(promoter_element, transsys.PromoterElementConstitutive) :
+        # Get the regulatory factor.
+        for factor in promoter_element.factor_list :
+          # Get the gene(s) encoding for this factor.
+          for reg_gene in tp.encoding_gene_list(factor.name) :
+            gene_links.append(reg_gene.name)
+    # Represent the network as a dictionary.
+    gene_network[gene.name] = gene_links
+  return gene_network
 
 
+
+# Command line parsing.
 try:
-  optlist, args = getopt.getopt(sys.argv[1:],'h',['help'])
+  optlist, args = getopt.getopt(sys.argv[1:],'h t r',['help', 'transsys', 'RTP'])
 except getopt.GetoptError, error_msg:
   # Print help info and exit
   error_msg = 'Error in arguments passing, see usage'
@@ -54,12 +139,20 @@ except getopt.GetoptError, error_msg:
   usage()
   sys.exit(1)
 
+# the two different input methods. .rtp & .tra files are accepted
+rtp_input = False
+transsys_input = False
 for opt, par in optlist:
-  if opt in ('-h','--help'):
+  if opt in ('-h', '--help') :
     usage()
     sys.exit(1)
+  if opt in ('-t', '--transsys') :
+    transsys_input = True
+  if opt in ('-r', '--RTP') :
+    rtp_input = True
 
-# I/O Manipulation
+
+# I/O Manipulation.
 if len(args) > 0 :
   infile = open(args[0], 'r')
 else :
@@ -70,64 +163,150 @@ else :
   outfile = sys.stdout
 
 
-# Create an instance of the class
-rtp = transsys.RandomTranssysParameters()
-
-# Parse the input file
-rtp.parse(infile)
-
-
-# JTK: get base name of file as a regular expression group
-# JTK: use infile 
-# Extract the correspondant transsys program name with a regular expression
+# JTK: get base name of file as a regular expression group.
+# JTK: use infile.
+# Extract the correspondant transsys program name with a regular expression.
+# Be always aware of the regular expresion behaviour.
 if infile is not sys.stdin :
-  m = re.match('([A-Za-z][A-Za-z0-9_]*)\\.rtp', infile.name)
-  if m is None :
-    raise StandardError, 'Expected an rtp file'
+  m = re.match('([A-Za-z][A-Za-z0-9_]*)\.([A-Za-z]{3})$', infile.name)
+  if (m is None) or (m.group(2) not in ('rtp', 'tra')) :
+    raise StandardError, 'Expect an .rtp (Random Transsys Parameter) OR a .tra (transsys program) file'
   name = m.group(1)
 else :
-  name = 'STDIN'
-
-# Generates the transsys program. 
-tp = rtp.generate_transsys(name)
+  name = 'User_Speficied_STDIN'
 
 
-# Printout some network's properties....
+# Manipulate the two different inputs (.rtp OR .tra)
+if rtp_input :
+  # Create an instance of the class.
+  rtp = transsys.RandomTranssysParameters()
+  # Parse the input file.
+  rtp.parse(infile)
+  # Generates the transsys program.
+  transsys_program = rtp.generate_transsys(name)
+elif transsys_input :
+  # Instantiate a transsys program.
+  tp = transsys.TranssysProgramParser(infile)
+  # Parse the input file.
+  transsys_program = tp.parse()
+else :
+  raise StandardError, 'Missing inpout flag -r (for .rtp files) OR -t (for .tra files). -h OR --help for more details'
 
-# This dictionary contains all the Gene Regulatory Network
-gene_network = {}
 
-# Loop through all genes
-for genes in tp.gene_list :
-  gene_links   = []
-  gene_name = genes.name 
-  for pe in genes.promoter :
-    # Get only the regulatory promoter element(s) (NOT the constitutive)
-    # !!! use objects
-    if not isinstance(pe, transsys.PromoterElementConstitutive) :
-      # Get the regulatory factor
-      for factor in pe.factor_list :
-	# Get the gene(s) encoding for this factor
-	for g in tp.encoding_gene_list(factor.name) :
-	  gene_links.append(g.name)
-  # Represent the network as a dictionary
-  gene_network[gene_name] = gene_links
+###################################
+# Begin of the Network Simulator...
+###################################
 
+# Control parameters for the transsys programs.
+number_timesteps = 300
+
+# Build the dictionary of interactions (Gene Network) of the transsys program.
+gene_network = grn_dictionary(transsys_program)
 
 # Calculate the Clustering Coefficient of the network.
 c_coeff = clustering_coefficient(gene_network)
 
-# Printouts
-outfile.write('Clustering Coefficient: %.15f \n' % c_coeff)
+# Instantiate the reference transsys program (knockout transsys in this case).
+knockout_tp = transdisrupt.KnockoutTranssysProgram(transsys_program)
 
+# Get the transsys program instance.
+tp_instance = transsys.TranssysInstance(knockout_tp)
 
-sys.exit()
-# Print out the network in a more "Human Readable format"
+# Calculate the timeseries and keep the final (reference) state of the system.
+tseries = tp_instance.time_series(number_timesteps)
+reference_state = tseries[len(tseries) - 1]
+
+# Printouts of the Reference transsys program (the program that will be 
+#+knocked-out).
+# Print the gene network dictionary in a "human readable" format.
+outfile.write('Reference Network: %s\n' % transsys_program.name)
 for sorted_key in sorted(gene_network.keys()) :
   outfile.write('%s -> %s \n' % (sorted_key, gene_network[sorted_key]))
+# Print the final state of the referenece program.
+outfile.write('Final State:\n')
+outfile.write('%s' % reference_state)
+# Print the Clustering Coefficient.
+outfile.write('Clustering Coefficient: %.10f \n' % c_coeff)
 
 
-# Closes the files
+# The Network reconstruction procedure (Using the transdisrupt.py module). 
+# The algorithm is based on the GRN reconstruction algorithm from 
+#+Rung et. al 2002.
+##########################################################################
+
+# Control parameters for the reconstruction algorithm.
+gamma            = 2
+sigma            = None
+epsilon          = 0.00001
+
+
+# Instantiate the expression matrix. Matrix_E in Rung et.al paper.
+matrix_E = ExpressionMatrix(transsys_program)
+
+# This loop will produce a knockout for each gene in a transsys program.
+for i in xrange(transsys_program.num_genes()) :
+  knockout_tp.do_knockout(i)
+
+  # Build the dictionary of interactions (Gene Network) of the knocked-out 
+  #+transsys program
+  knockout_network = grn_dictionary(knockout_tp)
+
+  # Calulate the Clustaring Coefficient of the disrupted network.
+  cc_disrupt = clustering_coefficient(knockout_network)
+
+  # Get a final state for the knocked-out network.
+  disrupt_instance = transsys.TranssysInstance(knockout_tp)
+  disrupt_tseries  = disrupt_instance.time_series(number_timesteps)
+  disrupt_state    = disrupt_tseries[len(disrupt_tseries) - 1]
+ 
+  # Populate the matrix E with expression values.
+  matrix_E.populate(reference_state.factor_concentration, disrupt_state.factor_concentration)
+
+  # Normalize.
+  matrix_E.normalize(i)
+  
+  #### Perturbation.............. SHOULD BE PUT LATER....
+  
+  # Populate the matrix E (expression matrix).
+#  for j in xrange(transsys_program.num_factors()) :
+#    if reference_state.factor_concentration[j] <= (0.0 + epsilon) :
+#      if disrupt_state.factor_concentration[j] <= (0.0 + epsilon) :
+#	matrix_E[i][j] = 0.0
+#      else :
+#	matrix_E[i][j] = max(sigma) * gamma
+#    elif disrupt_state.factor_concentration[j] <= (0.0 + epsilon) :
+#      matrix_E[i][j] = (-1) * max(sigma) * gamma
+#    else :
+#      matrix_E[i][j] = math.log(disrupt_state.factor_concentration[j] / reference_state.factor_concentration[j])
+
+
+  # Printouts. Knocked-out networks and a lot more...
+  # Print the name of the knocked-out.
+  outfile.write('\nKnocked-out: %s\n' % knockout_tp.name)
+  # Print the dictionary in a "human readable format"
+  for sorted_key in sorted(knockout_network.keys()) :
+    outfile.write('%s -> %s\n' % (sorted_key, knockout_network[sorted_key]))
+  # Print the final state of the knocked-out.
+  outfile.write('Final State:\n')
+  outfile.write('%s' % disrupt_state)
+  # Print the Clustering Coefficient.
+  outfile.write('Clustering Coefficient: %.10f \n' % cc_disrupt)
+
+  # Undo the knockout, needed to generate the next knockout.
+  knockout_tp.undo_knockout()
+
+print matrix_E.matrix
+
+sys.exit()
+# Printout the expression matrix. (matrix_E).
+outfile.write('\nThe Expression matrix:\n')
+for i in xrange(transsys_program.num_genes()) :
+  for j in xrange(transsys_program.num_factors()) :
+    outfile.write('%s ' % matrix_E.matrix[i][j])
+  outfile.write('\n')
+
+
+# Closes the files.
 infile.close()
 outfile.close()
 
