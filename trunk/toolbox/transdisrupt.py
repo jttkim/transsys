@@ -214,9 +214,10 @@ class KnockoutTranssysProgram(transsys.TranssysProgram) :
     """
     # FIXME: should check for existence of nonfunc factor somewhere
     # cbouyio adition: The decay and diffusibility expressions should be 
-    #+declared explicity as ExpressionNodeValue instances. (decay and 
-    #+diffusibility have been set to one).
-    #self.nonfunc = transsys.Factor(self.nonfunc_name)
+    # declared explicity as ExpressionNodeValue instances. (decay and 
+    # diffusibility have been set to one).
+    # self.nonfunc = transsys.Factor(self.nonfunc_name)
+    # FIXME: default decay / diffusibility values
     self.nonfunc = transsys.Factor(self.nonfunc_name, transsys.ExpressionNodeValue(1), transsys.ExpressionNodeValue(1))
     self.factor_list.append(self.nonfunc)
 
