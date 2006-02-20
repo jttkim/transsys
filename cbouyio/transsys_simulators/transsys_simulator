@@ -434,7 +434,8 @@ transsys_instance = transsys.TranssysProgramParser(infile)
 # Parse the transsys program instance.
 transsys_parced = transsys_instance.parse()
 
-# Construct the initial instance of the transsys program.
+# Construct the initial instance of the transsys program (Advance instance 
+#+within this program).
 initial_instance = TranssysInstanceAdvanced(transsys_parced)
 
 # initialize the values of the factor concentrations.
