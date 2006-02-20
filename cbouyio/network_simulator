@@ -26,7 +26,10 @@ def usage() :
 
 
 class ExpressionMatrix :
-  """The gene expression matrix E, is described in the Rung et.al 2002 paper. Is consisting of the log ratio of expression levels of the disrupted genes through the background (reference state). Also implements the normalization function (sigma)."""
+  """The gene expression matrix E, is described in the Rung et.al
+2002 paper. Is consisting of the log ratio of expression levels of
+the disrupted genes through the background (reference state). Also
+implements the normalization function (sigma)."""
 
   def __init__(self, tp, default_element=None) :
     """The instance of the class is an empty [None] Num_Genes(Experiments)xFactor matrix."""
