@@ -35,18 +35,21 @@ class BindingSite :
 class DNABinder :
   """Represents a DNA binding factor using a scoring matrix and a threshold."""
 
-  def __init__(self, name, dna) :
+  def __init__(self, name, dna, thresholdOffset) :
     self.name = name
-    self.decode(dna)
+    self.decode(dna, thresholdOffset)
 
 
-  def decode(self, dna) :
+  def decode(self, dna, thresholdOffset) :
     """Decode a string of dna bases to a matrix and a threshold.
 The matrix is decoded by taking words of length 5 from the encoding
 sequence. If the first four characters are all identical, decoding
 stops. Otherwise, they are mapped to integer values in {0, 1, 2, 3}
 and appended to the matrix as a further column. The 5th character is
-mapped to an integer, which is incremented and added to the threshold."""
+mapped to an integer, which is and added to the threshold. The threshold
+is further controlled by the threshold offset, which is also added to
+the threshold for each position in the matrix, thus allowing some
+control over the binder's specificity."""
     self.threshold = 0.0
     self.matrix = []
     i = 0
@@ -56,7 +59,7 @@ mapped to an integer, which is incremented and added to the threshold."""
         i = i + 4
         break
       self.matrix.append(c)
-      self.threshold = self.threshold + baseToInt(dna[i + 4]) + 1.0
+      self.threshold = self.threshold + baseToInt(dna[i + 4]) + thresholdOffset
       i = i + 5
     self.encoding_sequence = dna[:i]
 
@@ -153,9 +156,10 @@ This decoder uses the following constants:
 Notice that strength of activation / repression does not depend on binding
 strength in this decoder."""
 
-  savefile_magic = 'TranssysDNADecoderParameters-1.0'
+  savefile_magic = 'TranssysDNADecoderParameters-1.1'
 
   def __init__(self) :
+    self.thresholdOffset = None
     self.factorNameTemplate = None
     self.geneNameTemplate = None
     self.geneStartRE = None
@@ -170,12 +174,13 @@ strength in this decoder."""
 
 
   def __str__(self) :
-    s = 'factorNameTemplate: %s\n' % self.factorNameTemplate
+    s = 'thresholdOffset: %g\n' % self.thresholdOffset
+    s = s + 'factorNameTemplate: %s\n' % self.factorNameTemplate
     s = s + 'geneNameTemplate: %s\n' % self.geneNameTemplate
     s = s + 'geneStartRE: %s\n' % self.geneStartRE.pattern
     s = s + 'geneEndRE: %s\n' % self.geneEndRE.pattern
     s = s + 'repressorAreaLength: %d\n' % self.repressorAreaLength
-    s = s + 'repressorAreaLength: %d\n' % self.activatorAreaLength
+    s = s + 'activatorAreaLength: %d\n' % self.activatorAreaLength
     s = s + 'decay: %g\n' % self.decay
     s = s + 'diffusibility: %g\n' % self.diffusibility
     s = s + 'a_spec: %g\n' % self.a_spec
@@ -185,10 +190,27 @@ strength in this decoder."""
 
 
   def write(self, f) :
-    f.write('%s\n' % savefile_magic)
+    f.write('%s\n' % self.savefile_magic)
     f.write(str(self))
     f.write('\n')
-    # *** continue here ***
+
+
+  def parse(self, f) :
+    line = f.readline()
+    if line.strip() != self.savefile_magic :
+      raise StandardError, 'TranssysDNADecode::parse: bad magic "%s"' % line.strip()
+    self.thresholdOffset = transsys.parse_float(f, 'thresholdOffset')
+    self.factorNameTemplate = transsys.parse_string(f, 'factorNameTemplate').strip()
+    self.geneNameTemplate = transsys.parse_string(f, 'geneNameTemplate').strip()
+    self.setGeneStartRE(transsys.parse_string(f, 'geneStartRE').strip())
+    self.setGeneEndRE(transsys.parse_string(f, 'geneEndRE').strip())
+    self.repressorAreaLength = transsys.parse_int(f, 'repressorAreaLength')
+    self.activatorAreaLength = transsys.parse_int(f, 'activatorAreaLength')
+    self.decay = transsys.parse_float(f, 'decay')
+    self.diffusibility = transsys.parse_float(f, 'diffusibility')
+    self.a_spec = transsys.parse_float(f, 'a_spec')
+    self.a_max = transsys.parse_float(f, 'a_max')
+    self.constitutive = transsys.parse_float(f, 'constitutive')
 
 
   def setGeneStartRE(self, r) :
@@ -243,7 +265,7 @@ the proteome found, with promoters constructed based on (3)."""
     proteome = []
     factor_list = []
     for rg in raw_gene_list :
-      p = DNABinder(rg.product_name, rg.structuralArea)
+      p = DNABinder(rg.product_name, rg.structuralArea, self.thresholdOffset)
       proteome.append(p)
       decay_expr = transsys.ExpressionNodeValue(self.decay)
       diffusibility_expr = transsys.ExpressionNodeValue(self.diffusibility)
