@@ -18,6 +18,7 @@ import os
 import unittest
 
 import transsys
+import transdecode
 
 class TestTranssysParser(unittest.TestCase) :
 
@@ -77,6 +78,18 @@ class TestTranssysParser(unittest.TestCase) :
     product
     {
       default: complex_expr;
+    }
+  }
+
+  gene complex_factor_activated
+  {
+    promoter
+    {
+      noparam + simple + complex_expr: activate(0.1, 1.0);
+    }
+    product
+    {
+      default: noparam;
     }
   }
 }
@@ -351,13 +364,79 @@ diffusibility: 0.0
 rndseed: 1
 """
 
-  def testSingleTranssys(self) :
+    self.tdc = """TranssysDNADecoderParameters-1.1
+thresholdOffset: 1.1
+factorNameTemplate: f%03d
+geneNameTemplate: g%03d
+geneStartRE: aa
+geneEndRE: ttt
+repressorAreaLength: 10
+activatorAreaLength: 10
+decay: 0.3
+diffusibility: 0.1
+a_spec: 0.2
+a_max: 1
+constitutive: 0.333
+"""
+
+  def getTestTranssys(self) :
     f = open('test.tra', 'w')
     f.write(self.tp_check)
     f.close()
     t = transsys.TranssysProgramParser(open('test.tra', 'r')).parse()
     os.unlink('test.tra')
+    return t
+
+
+  def testTranssysDNADecoder(self) :
+    f = open('test.tdc', 'w')
+    f.write(self.tdc)
+    f.close()
+    f = open('test.tdc', 'r')
+    t = transdecode.TranssysDNADecoder()
+    t.parse(f)
+    f.close()
+    f = open('test.tdc', 'w')
+    t.write(f)
+    f.close()
+    f = open('test.tdc', 'r')
+    s = f.read()
+    f.close()
+    os.unlink('test.tdc')
+    self.assertEqual(self.tdc, s)
+
+
+  def testSingleTranssys(self) :
+    t = self.getTestTranssys()
     self.assertEqual(self.tp_check, str(t))
+
+
+  def testGetValueNodes(self) :
+    t = self.getTestTranssys()
+    f = t.find_factor('complex_expr')
+    vn = f.getValueNodes()
+    v = map(lambda n : n.value, vn)
+    self.assertEqual(v, [0.2, 3.0, 2.1, 0.4])
+    g = t.find_gene('complex_gene')
+    vn = g.getValueNodes()
+    v = map(lambda n : n.value, vn)
+    self.assertEqual(v, [0.3, 0.2, 0.01, 0.7])
+
+
+  def testGetIdentifierNodes(self) :
+    t = self.getTestTranssys()
+    f = t.find_factor('complex_expr')
+    identifierNodes = f.getIdentifierNodes()
+    v = map(lambda n : n.factor.name, identifierNodes)
+    self.assertEqual(v, ['noparam', 'simple', 'complex_expr', 'simple', 'complex_expr', 'noparam', 'simple'])
+    g = t.find_gene('complex_gene')
+    identifierNodes = g.getIdentifierNodes()
+    v = map(lambda n : n.factor.name, identifierNodes)
+    self.assertEqual(v, ['simple', 'simple', 'complex_expr', 'noparam', 'simple', 'complex_expr', 'noparam', 'simple'])
+    g = t.find_gene('complex_factor_activated')
+    identifierNodes = g.getIdentifierNodes()
+    v = map(lambda n : n.factor.name, identifierNodes)
+    self.assertEqual(v, ['noparam', 'simple', 'complex_expr'])
 
 
   def testTimeSeries(self) :
@@ -572,9 +651,6 @@ timestep: 99
     rtp.parse(open('test.rtp', 'r'))
     os.unlink('test.rtp')
     tp = rtp.generate_transsys('test')
-    f = open('testexpect.tra', 'w')
-    f.write(str(tp))
-    f.close()
     tp_expect = """transsys test
 // topology: random_nk
 // n: 8
