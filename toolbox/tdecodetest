@@ -27,7 +27,6 @@ def random_sequence(l, rng) :
 
 
 decoder = transdecode.TranssysDNADecoder()
-decoder.transsysName = 'tdecodetest'
 decoder.factorNameTemplate = 'f%03d'
 decoder.geneNameTemplate = 'g%03d'
 decoder.setGeneStartRE('aa')
@@ -68,5 +67,9 @@ else :
   rng = random.Random(rndseed)
   dnaseq = random_sequence(seq_length, rng)
 
-print decoder.decode_transsys(dnaseq)
+f = open('x.tdc', 'w')
+decoder.write(f)
+f.close()
+
+print decoder.decode_transsys('tdecodetest', dnaseq)
 
