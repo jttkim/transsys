@@ -411,6 +411,17 @@ constitutive: 0.333
     self.assertEqual(self.tp_check, str(t))
 
 
+  def testTranssysInstanceCloning(self) :
+    t = self.getTestTranssys()
+    ti = transsys.TranssysInstance(t)
+    for i in xrange(t.num_factors()) :
+      ti.factor_concentration[i] = 0.1 * i * i + 0.3114
+    ti_clone = ti.clone()
+    self.assertEqual(ti.factor_concentration, ti_clone.factor_concentration)
+    self.assert_(ti.factor_concentration is not ti_clone.factor_concentration, 'factor_concentration member in clone is same as in original')
+    self.assert_(ti.transsys_program is ti_clone.transsys_program, 'transsys_program in clone is not same as in original')
+
+
   def testGetValueNodes(self) :
     t = self.getTestTranssys()
     f = t.find_factor('complex_expr')
