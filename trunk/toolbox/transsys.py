@@ -1543,6 +1543,20 @@ class TranssysInstance :
     return s
 
 
+  def clone(self) :
+    """Clones this transsys instance.
+The state (factor concentrations, time step etc.) is copied, but for the
+transsys program, the reference is copied, not the program itself.
+In this respect, cloning a TranssysInstance differs from using
+copy.deepcopy on it."""
+    ti = TranssysInstance(self.transsys_program)
+    ti.timestep = self.timestep
+    ti.factor_concentration = self.factor_concentration[:]
+    ti.factor_concentration_stddev = self.factor_concentration_stddev[:]
+    ti.factor_concentration_entropy = self.factor_concentration_entropy[:]
+    return ti
+
+
   def set_uniform_random(self, rng, c_min, c_max) :
     self.factor_concentration = []
     c_range = c_max - c_min
