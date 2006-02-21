@@ -965,22 +965,50 @@ gene names and factor names can be altered without changing the network."""
     return TranssysProgram(self.name, factor_list, gene_list, False)
 
 
-  def getValueNodes(self) :
-    """Get all constant value nodes in this transsys program."""
+  def getFactorValueNodes(self) :
+    """Get all constant value nodes pertaining to factors
+in this transsys program."""
     valueNodes = []
     for factor in self.factor_list :
       valueNodes = valueNodes + factor.getValueNodes()
+    return valueNodes
+
+ 
+  def getGeneValueNodes(self) :
+    """Get all constant value nodes pertaining to genes
+in this transsys program."""
+    valueNodes = []
     for gene in self.gene_list :
       valueNodes = valueNodes + gene.getValueNodes()
+    return valueNodes
+
+
+  def getValueNodes(self) :
+    """Get all constant value nodes in this transsys program."""
+    return self.getFactorValueNodes() + self.getGeneValueNodes()
+
+
+  def getFactorIdentifierNodes(self) :
+    """Get all identifier nodes pertaining to
+factors in this transsys program."""
+    identifierNodes = []
+    for factor in self.factor_list :
+      identifierNodes = identifierNodes + factor.getIdentifierNodes()
+    return identifierNodes
+
+
+  def getGeneIdentifierNodes(self) :
+    """Get all identifier nodes pertaining to
+genes in this transsys program."""
+    identifierNodes = []
+    for gene in self.gene_list :
+      identifierNodes = identifierNodes + gene.getIdentifierNodes()
+    return identifierNodes
 
 
   def getIdentifierNodes(self) :
     """Get all identifier nodes in this transsys program."""
-    identifierNodes = []
-    for factor in self.factor_list :
-      identifierNodes = identifierNodes + factor.getIdentifierNodes()
-    for gene in self.gene_list :
-      identifierNodes = identifierNodes + gene.getIdentifierNodes()
+    return self.getFactorIdentifierNodes() + self.getGeneIdentifierNodes()
 
 
   def encoding_gene_list(self, factor_name) :

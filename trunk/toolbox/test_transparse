@@ -421,6 +421,17 @@ constitutive: 0.333
     vn = g.getValueNodes()
     v = map(lambda n : n.value, vn)
     self.assertEqual(v, [0.3, 0.2, 0.01, 0.7])
+    factor_vn = [1.0, 1.0, 0.1, 0.3, 0.2, 3.0, 2.1, 0.4]
+    gene_vn = [1.1, 0.1, 0.1, 1.0, 0.3, 0.2, 0.01, 0.7, 0.1, 1.0]
+    vn = t.getFactorValueNodes()
+    v = map(lambda n : n.value, vn)
+    self.assertEqual(v, factor_vn)
+    vn = t.getGeneValueNodes()
+    v = map(lambda n : n.value, vn)
+    self.assertEqual(v, gene_vn)
+    vn = t.getValueNodes()
+    v = map(lambda n : n.value, vn)
+    self.assertEqual(v, factor_vn + gene_vn)
 
 
   def testGetIdentifierNodes(self) :
@@ -437,6 +448,17 @@ constitutive: 0.333
     identifierNodes = g.getIdentifierNodes()
     v = map(lambda n : n.factor.name, identifierNodes)
     self.assertEqual(v, ['noparam', 'simple', 'complex_expr'])
+    factor_identifierNodes = ['noparam', 'simple', 'complex_expr', 'simple', 'complex_expr', 'noparam', 'simple']
+    gene_identifierNodes = ['noparam', 'simple', 'simple', 'complex_expr', 'noparam', 'simple', 'complex_expr', 'noparam', 'simple', 'noparam', 'simple', 'complex_expr']
+    identifierNodes = t.getFactorIdentifierNodes()
+    v = map(lambda n : n.factor.name, identifierNodes)
+    self.assertEqual(v, factor_identifierNodes)
+    identifierNodes = t.getGeneIdentifierNodes()
+    v = map(lambda n : n.factor.name, identifierNodes)
+    self.assertEqual(v, gene_identifierNodes)
+    identifierNodes = t.getIdentifierNodes()
+    v = map(lambda n : n.factor.name, identifierNodes)
+    self.assertEqual(v, factor_identifierNodes + gene_identifierNodes)
 
 
   def testTimeSeries(self) :
