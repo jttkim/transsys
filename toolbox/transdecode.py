@@ -20,6 +20,11 @@ def baseToInt(b) :
   return i
 
 
+def normalisedColumn(c) :
+  s = float(sum(c))
+  return map(lambda x : x / s, c)
+
+
 class BindingSite :
 
   def __init__(self, protein, position, strength) :
@@ -35,12 +40,12 @@ class BindingSite :
 class DNABinder :
   """Represents a DNA binding factor using a scoring matrix and a threshold."""
 
-  def __init__(self, name, dna, thresholdOffset) :
+  def __init__(self, name, dna, thresholdBase, thresholdIncrement) :
     self.name = name
-    self.decode(dna, thresholdOffset)
+    self.decode(dna, thresholdBase, thresholdIncrement)
 
 
-  def decode(self, dna, thresholdOffset) :
+  def decode(self, dna, thresholdBase, thresholdIncrement) :
     """Decode a string of dna bases to a matrix and a threshold.
 The matrix is decoded by taking words of length 5 from the encoding
 sequence. If the first four characters are all identical, decoding
@@ -50,7 +55,7 @@ mapped to an integer, which is and added to the threshold. The threshold
 is further controlled by the threshold offset, which is also added to
 the threshold for each position in the matrix, thus allowing some
 control over the binder's specificity."""
-    self.threshold = 0.0
+    self.threshold = thresholdBase
     self.matrix = []
     i = 0
     while len(dna) - i >= 5 :
@@ -58,8 +63,8 @@ control over the binder's specificity."""
       if c[0] == c[1] and c[0] == c[2] and c[0] == c[3] :
         i = i + 4
         break
-      self.matrix.append(c)
-      self.threshold = self.threshold + baseToInt(dna[i + 4]) + thresholdOffset
+      self.matrix.append(normalisedColumn(c))
+      self.threshold = self.threshold + baseToInt(dna[i + 4]) * thresholdIncrement
       i = i + 5
     self.encoding_sequence = dna[:i]
 
@@ -71,11 +76,18 @@ control over the binder's specificity."""
     sg = 'g  '
     st = 't  '
     for c in self.matrix :
-      sa = sa + ('%4.1f' % c[0])
-      sc = sc + ('%4.1f' % c[1])
-      sg = sg + ('%4.1f' % c[2])
-      st = st + ('%4.1f' % c[3])
-    return 'DNABinder %s, threshold = %5.1f\n%s\n%s\n%s\n%s\nencoded by: %s' % (self.name, self.threshold, sa, sc, sg, st, self.encoding_sequence)
+      sa = sa + ('%5.2f' % c[0])
+      sc = sc + ('%5.2f' % c[1])
+      sg = sg + ('%5.2f' % c[2])
+      st = st + ('%5.2f' % c[3])
+    return 'DNABinder %s, threshold = %5.1f, max. score = %5.1f\n%s\n%s\n%s\n%s\nencoded by: %s' % (self.name, self.threshold, self.max_score(), sa, sc, sg, st, self.encoding_sequence)
+
+
+  def max_score(self) :
+    s = 0.0
+    for c in self.matrix :
+      s = s + max(c)
+    return s
 
 
   def bindingEnergy(self, seq) :
@@ -156,10 +168,11 @@ This decoder uses the following constants:
 Notice that strength of activation / repression does not depend on binding
 strength in this decoder."""
 
-  savefile_magic = 'TranssysDNADecoderParameters-1.1'
+  savefile_magic = 'TranssysDNADecoderParameters-1.3'
 
   def __init__(self) :
-    self.thresholdOffset = None
+    self.thresholdBase = None
+    self.trhesholdIncrement = None
     self.factorNameTemplate = None
     self.geneNameTemplate = None
     self.geneStartRE = None
@@ -174,7 +187,8 @@ strength in this decoder."""
 
 
   def __str__(self) :
-    s = 'thresholdOffset: %g\n' % self.thresholdOffset
+    s = 'thresholdBase: %g\n' % self.thresholdBase
+    s = s + 'thresholdIncrement: %g\n' % self.thresholdIncrement
     s = s + 'factorNameTemplate: %s\n' % self.factorNameTemplate
     s = s + 'geneNameTemplate: %s\n' % self.geneNameTemplate
     s = s + 'geneStartRE: %s\n' % self.geneStartRE.pattern
@@ -199,7 +213,8 @@ strength in this decoder."""
     line = f.readline()
     if line.strip() != self.savefile_magic :
       raise StandardError, 'TranssysDNADecode::parse: bad magic "%s"' % line.strip()
-    self.thresholdOffset = transsys.parse_float(f, 'thresholdOffset')
+    self.thresholdBase = transsys.parse_float(f, 'thresholdBase')
+    self.thresholdIncrement = transsys.parse_float(f, 'thresholdIncrement')
     self.factorNameTemplate = transsys.parse_string(f, 'factorNameTemplate').strip()
     self.geneNameTemplate = transsys.parse_string(f, 'geneNameTemplate').strip()
     self.setGeneStartRE(transsys.parse_string(f, 'geneStartRE').strip())
@@ -265,7 +280,7 @@ the proteome found, with promoters constructed based on (3)."""
     proteome = []
     factor_list = []
     for rg in raw_gene_list :
-      p = DNABinder(rg.product_name, rg.structuralArea, self.thresholdOffset)
+      p = DNABinder(rg.product_name, rg.structuralArea, self.thresholdBase, self.thresholdIncrement)
       proteome.append(p)
       decay_expr = transsys.ExpressionNodeValue(self.decay)
       diffusibility_expr = transsys.ExpressionNodeValue(self.diffusibility)

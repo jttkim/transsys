@@ -364,8 +364,9 @@ diffusibility: 0.0
 rndseed: 1
 """
 
-    self.tdc = """TranssysDNADecoderParameters-1.1
-thresholdOffset: 1.1
+    self.tdc = """TranssysDNADecoderParameters-1.3
+thresholdBase: 1.1
+thresholdIncrement: 0.2
 factorNameTemplate: f%03d
 geneNameTemplate: g%03d
 geneStartRE: aa
