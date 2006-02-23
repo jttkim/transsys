@@ -21,6 +21,10 @@
 #include "transsys.h"
 
 
+/*
+ * find the minimum of concentrations of factors in a set
+ * (regulating factor part of link element)
+ */
 static double minimal_concentration(int num_binding_factors, int *fi, double *fc)
 {
   int i;
@@ -33,6 +37,12 @@ static double minimal_concentration(int num_binding_factors, int *fi, double *fc
       c = fc[fi[i]];
   }
   return (c);
+}
+
+
+static double michaelis_menten(double km, double max, double c)
+{
+  max * c / (km + c);
 }
 
 
@@ -60,6 +70,14 @@ int process_expression(TRANSSYS_INSTANCE *ti)
     /* fprintf(stderr, "process_expression: decay is %f\n", d); */
     /* fprintf(stderr, "factor_concentration[%d] is currently %e\n", i, ti->factor_concentration[i]); */
     /* fprintf(stderr, "new_concentration[%d] is currently %e\n", i, ti->new_concentration[i]); */
+    if (d < 0.0)
+    {
+      d = 0.0;
+    }
+    if (d > 1.0)
+    {
+      d = 1.0;
+    }
     ti->new_concentration[i] = ti->factor_concentration[i] * (1.0 - d);
     /* fprintf(stderr, "new_concentration[%d] is now %e\n", i, ti->new_concentration[i]); */
     /* fprintf(stderr, "before decay: [%s] = %g, after decay: [%s] = %g\n", ti->transsys->factor_list[i].name, ti->factor_concentration[i], ti->transsys->factor_list[i].name, ti->new_concentration[i]); */
@@ -79,13 +97,13 @@ int process_expression(TRANSSYS_INSTANCE *ti)
 	cmin = minimal_concentration(ae->num_binding_factors, ae->factor_index, ti->factor_concentration);
 	km = evaluate_expression(ae->expr1, &const_ti);
 	max = evaluate_expression(ae->expr2, &const_ti);
-	a += max * cmin / (km + cmin);
+	a += michaelis_menten(km, max, cmin);
 	break;
       case ACT_REPRESS:
 	cmin = minimal_concentration(ae->num_binding_factors, ae->factor_index, ti->factor_concentration);
 	km = evaluate_expression(ae->expr1, &const_ti);
 	max = evaluate_expression(ae->expr2, &const_ti);
-	r += max * cmin / (km + cmin);
+	r += michaelis_menten(km, max, cmin);
 	break;
       default:
 	fprintf(stderr, "process_expression: unknown activation type %d\n", (int) ae->type);
@@ -94,12 +112,18 @@ int process_expression(TRANSSYS_INSTANCE *ti)
     }
     f_inc = a - r;
     if (f_inc < 0.0)
+    {
       f_inc = 0.0;
+    }
     if ((ti->transsys->gene_list[i].product_index >= 0) && (ti->transsys->gene_list[i].product_index < ti->transsys->num_factors))
+    {
       ti->new_concentration[ti->transsys->gene_list[i].product_index] += f_inc;
+    }
     else
+    {
       fprintf(stderr, "process_expression: transsys \"%s\", gene \"%s\": product index %d out of range\n",
 	      ti->transsys->name, ti->transsys->gene_list[i].name, ti->transsys->gene_list[i].product_index);
+    }
   }
   nc = ti->new_concentration;
   ti->new_concentration = ti->factor_concentration;
