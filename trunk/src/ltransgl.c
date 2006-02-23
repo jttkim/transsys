@@ -333,7 +333,7 @@ static void print_lstrings(FILE *f)
 
 static void print_globals(FILE *f)
 {
-  fprintf(f, "current string is #%d out of %d\n", lstr_block.string_index, lstr_block.num_strings);
+  fprintf(f, "current string is #%d out of %d, length = %lu\n", lstr_block.string_index, lstr_block.num_strings, lstr_block.lstr[lstr_block.string_index]->num_symbols);
   print_render_parameters(f, &render_parameters);
 }
 
