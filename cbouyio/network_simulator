@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # First approach to calculate some network characteristc measurments within the
-#+transsys framework.
+# transsys framework.
 # CBouyio, UEA, 18-23 Jan 2006.
 
 
@@ -25,37 +25,253 @@ def usage() :
 
 
 
+###########################
+# Main object's buildspase.
+###########################
+
+
+class GeneRegulatoryNetwork :
+  """A class for a gene regulatory netowrk.
+The GRN is implementing inside this class as a dictionary of {keys}genes ->
+{values}list of regulatory genes. The indegree, outegree, Clustering
+Coefficient & the average path length, have been implemented. A lot more
+network statistic measurments will be implementing later (network motifs,
+joint degree distributions etc. etc.) """
+
+  def __init__(self, transsysProgram) :
+    """Constructor of the class, a bunch of network measurments are implemented."""
+    # The name of the coresponding transsys program.
+    self.name = transsysProgram.name
+    # The Network represented by a dictionary.
+    self.grnDict = self.grn_dictionary(transsysProgram)
+    # The Network represented by an adjacency matrix.
+    self.adjMatrix = self.adjacency_matrix(transsysProgram)
+    # A list with the clustering coefficient of each node.
+    self.cCList = self.clustering_coefficient_list()
+    # The mean clustering coefficient of the network.
+    self.cCoeff = sum(self.cCList) / float(len(self.grnDict))
+    # A list with the indegreee of each node.
+    self.indegreeList = self.indegree_list()
+    # The mean indegree of the network.
+    self.indegree = sum(self.indegreeList) / float(len(self.grnDict))
+    # A list with the outdegree of each node.
+    self.outdegreeList = self.outdegree_list()
+    # The mean outdegree of the network.
+    self.outdegree = sum(self.outdegreeList) / float(len(self.grnDict))
+    # The degree list of the network.
+    self.degreeList = map(lambda x, y : x + y, self.indegreeList, self.outdegreeList)
+    # The degree of the network.
+    self.degree = max(self.degreeList)
+    # The path length list of the network.
+    self.pathLengthMatrix = self.path_length_matrix()
+    # The average path length of the network.
+    self.avgPathLength = self.average_path_length()
+    # The diameter of the network.
+#    self.diameter = max(self.pathLengthList)
+    # A list of the closeness of each node.
+    self.closenessList = self.closeness_list()
+    # The mean closeness of the network.
+#    self.closeness = sum(self.closenessList) / float(len(self.grnDict))
+    # A list of the betweenness of each node.
+    self.betweennessList = self.betweenness_list()
+    # The mean betweenness of the network.
+#    self.betweenness = sum(self.betweennesslist) / float(len(self.grndict))
+
+
+  def grn_dictionary(self, tp) :
+    """returns the gene regulatory network of a transsys program in a
+dictionary format. the {key:value} where the {value} is a list containg all
+the genes whose regulating the gene {key}. the usefulness of this
+representation would be evaluated by the future usage."""
+    # Initialize the grn
+    geneNetwork = {}
+    # Use the OLD method to come up with a regulatory dictionary 
+    # (incoming factors)
+    transGRN = self.grn_dictionary_TRANSPOSED(tp)
+    # Loop through all the network's genes.
+    for gene in transGRN.keys() :
+      # Initialize the list of the genes that the 'gene' is regulating.
+      regulatingGenesList = []
+      # Loop throogh all the regulatory genes.
+      for regGene, regGeneList in transGRN.iteritems() :
+        # Check for the existence of gene in the regulatory genes list.
+        if gene in regGeneList :
+          regulatingGenesList.append(regGene)
+      geneNetwork[gene] = regulatingGenesList
+    return geneNetwork
+
+  def grn_dictionary_TRANSPOSED(self, tp) :
+    """The OLD implementation of the Gene Regulatory Network. Not HELPFOUL
+implementation, since it was representing the genes that regulates each gene,
+incoming edges (indegree). But in a correct graph reprsentation, one wants the
+edges that 'departes' from each node (the outcomming edges, or the outdegree)
+not the incoming. For more details 'Introduction to Algorithms' pp.525-531"""
+    # initialize the grn
+    geneNetwork = {}
+    # Loop through all genes.
+    for gene in tp.gene_list :
+      geneLinks = []
+      for promoterElement in gene.promoter :
+        # Get only the regulatory promoter element(s) (NOT the constitutive)
+        # !!! use objects.
+        if not isinstance(promoterElement, transsys.PromoterElementConstitutive) :
+          # Get the regulatory factor.
+          for factor in promoterElement.factor_list :
+            # Get the gene(s) encoding for this factor (in case of multiple 
+            # genes encoding for one factor).
+            for regGene in tp.encoding_gene_list(factor.name) :
+              geneLinks.append(regGene.name)
+      # Represent the network as a dictionary.
+      geneNetwork[gene.name] = geneLinks
+    return geneNetwork
+
+
+  def adjacency_matrix(self, tp) :
+    """A method to generate the network adjacency matrix. This matrix is
+indexed through gene names and not merely indices."""
+    # Taken from the transdisrupt module.
+    adjMatrix = transdisrupt.score_matrix(tp, transdisrupt.link_scorefunc)
+    adjMatrix = adjMatrix.matrix
+    return adjMatrix
+
+
+  # FIXME check the consistency of the clustering coefficient.
+  def clustering_coefficient_list(self) :
+    """Function for caclulating the Clustering Coefficient (CC) of a network,
+as defined in (Watts and Strogatz 1998, Nature 393, 440). Adapted here, from
+(Albert and Barabasi, Stastical mechanics of Complex Networks). Takes the
+network in a dictionary format, and returnrs the mean CC of it."""
+    # A list contaning all the clustering coefficients of each gene (node).
+    cCList = []
+    # Loop through all the linked nodes (genes) of the network.
+    for links in self.grnDict.itervalues() :
+      if len(links) > 1 :
+        cCNode = 0
+        e = 0
+        for gene in links:
+          for regGene in self.grnDict[gene] :
+            if regGene in links :
+              e = e + 1
+        # Calculate the Clusterung Coefficient of each node.
+        cCNode = float(e) / float(len(links) * (len(links) - 1))
+        # Append it to the list.
+        cCList.append(cCNode)
+    # Return a list of the clustering coefficient of all the nodes of the 
+    # network.
+    return cCList
+
+
+  def outdegree_list(self) :
+    """Calculates the indegree of a node, returns a list with all the indegrees.
+Indegree, in the context of transsys programs: All the genes (whose all the
+encoded factors) regulate a particular gene are counted for the indegree
+calculation of this gene (node)"""
+    # The list of the indegrees
+    indegreeList = []
+    for gene in self.grnDict :
+      nodeIndegree = len(self.grnDict[gene])
+      indegreeList.append(nodeIndegree)
+    return indegreeList
+
+
+  def indegree_list(self) :
+    """Calculates the outdegree of a node, returns a list with all the
+outdegrees. Outdegree, in the context of transsys programs: All the genes that
+a particular gene (all its encoded factors) is regulating are counted for the
+outdegree calculation of this particular gene (node)."""
+    # The list of outdegrees
+    outdegreeList = []
+    for gene in self.grnDict :
+      nodeOutdegree = 0
+      for regGene in self.grnDict.itervalues() :
+        if gene in regGene :
+          nodeOutdegree = nodeOutdegree + 1
+      outdegreeList.append(nodeOutdegree)
+    return outdegreeList
+
+
+  def path_length_matrix(self) :
+    """Calculates the average path length of the network. For a definition of
+the path length and average path length refer to Watts & Strogatz 1998"""
+    # Taken from the transdisrupt module.
+    pathLengthMatrix = transdisrupt.pathscore_matrix(transsys_program, transdisrupt.link_scorefunc, None)
+    pathLengthMatrix = pathLengthMatrix.matrix
+    return pathLengthMatrix
+
+  def average_path_length(self) :
+    """Calculates the average path length of the network. Uses the path
+length matrix"""
+    sumAvgRow = 0
+    for row in self.pathLengthMatrix :
+      sumRow = 0
+      sumRow = sum(row)
+      avgRow = sumRow / float(len(row))
+      sumAvgRow = sumAvgRow + avgRow
+    avgPathlength = sumAvgRow / float(len(self.pathLengthMatrix))
+    return avgPathlength
+
+
+  def closeness_list(self) :
+    """Calculates the closeness of each node, returns a list."""
+    pass
+
+
+  def betweenness_list(self) :
+    """Calculates the betweenness of each node, returns a list."""
+    pass
+
+
+  def spectral_decomposition(self) :
+    """Calculates the spectral decomposition of the network. Taken from Albert & Barabasi, 2002"""
+    pass
+
+
+  def strongly_conected_components(self) :
+    """Calculates the number of the Strongly Conected Componenets of the
+network. Taken from the 'Introduction to Algorithms'"""
+    pass
+
+
+
 class ExpressionMatrix :
-  """The gene expression matrix E, is described in the Rung et.al
-2002 paper. Is consisting of the log ratio of expression levels of
-the disrupted genes through the background (reference state). Also
-implements the normalization function (sigma)."""
+  """The gene expression matrix E, is described in the Rung et.al 2002 paper.
+Is consisting of the log ratio of expression levels of the disrupted genes
+through the background (reference state). Also implements the normalization
+function (sigma)."""
 
   def __init__(self, tp, default_element=None) :
-    """The instance of the class is an empty [None] Num_Genes(Experiments)xFactor matrix."""
+    """The instance of the class is an empty matrix.
+Later implementations should contain an Genes(Experiments) x
+Factors(Concentrations) matrix fill up with [None]."""
     self.name = '%s_%s' %  (tp.name, 'Expression_Matrix')
     self.matrix = []
     self.experiments = tp.num_genes()
     self.expressions = tp.num_factors()
-#    self.fill_all(default_element)
+    # Current implementation does not need fill up.
+    # self.fill_all(default_element)
 
-#  def fill_all(self, de) :
-#    """Fills up the whole matrix with the default element."""
-#    for i in xrange(self.experiments) :
-#      row = [de] * self.expressions
-#      self.matrix.append(row)
+  def fill_all(self, de) :
+    """Fills up the whole matrix with the default element."""
+    for i in xrange(self.experiments) :
+      row = [de] * self.expressions
+      self.matrix.append(row)
 
-  def populate(self, rs, ds) :
-    """Populates the matrix with the log ration expression values."""
+  def populate(self, rs, ds, e) :
+    """Populates the matrix with the log ratio of the expression values."""
     # First make a consistancy check. (the -1 exists for the non_functional 
-    #+factor).
+    # factor), poor implementation.
+    # FIXME: Make it realy rigorus.
     if self.expressions != (len(ds) - 1) :
       raise StandardError, 'Wrong factor concentration list'
     expression_row = []
-    # Apply the epsilon threshold.
+    # Loop through the list.
     for j in xrange(self.expressions) :
-      # First calculate the expression ratio.
-      expression_row.append(float(ds[j]) / float(rs[j]))
+      # Apply the epsilon cutoff.
+      if rs[j] < e and ds[j] < e :
+	expression_row.append(0.0)
+      else :
+        # Calculate the expression ratio.
+        expression_row.append(float(ds[j]) / float(rs[j]))
     # Then get the log (ln) of the ratio.
     # Just put a safe guard for the zero values.
     for k in xrange(len(expression_row)) :
@@ -66,73 +282,65 @@ implements the normalization function (sigma)."""
     self.matrix.append(expression_row)
 
 
-  def normalize(self, k) :
-    """Normalize the expression log/ratio of the matrix E as all the rows having standard deviation equal to  1. This is requisite for appling a uniform cutoff value for all the experiments. """
+  def normalize(self, k, sigma) :
+    """Normalize the expression log/ratio of the matrix E.
+The normalization is done by making all rows having standard deviation equal
+to 1. This is requisite making reasonable the application of a uniform cutoff
+value for all the different experiments."""
     sum = 0
     expression_row = self.matrix[k]
-    mean_row = reduce(lambda x, y : x + y,  expression_row) / len(expression_row)
+    mean_row = reduce(lambda x, y : x + y, expression_row) / len(expression_row)
     for ex in expression_row :
       sum = sum + ((ex - mean_row) ** 2)
     variance = sum / (len(expression_row) - 1)
+    # The standard deviation of each expression experiment (row in matrix_E).
     s_d = math.sqrt(variance)
-    if s_d != 0 :
-      for j in xrange(len(expression_row)) :
-        expression_row[j] = expression_row[j] / s_d
+    # Normalization.
+    # Accept an external provide sigma or not.
+    if sigma is None :
+      if s_d != 0 :
+        for j in xrange(len(expression_row)) :
+          expression_row[j] = expression_row[j] / s_d
+      else :
+        expression_row = expression_row
     else :
-      expression_row = expression_row
-    print expression_row
+      for i in xrange(len(expression_row)) :
+	expression_row[i] = expression_row[i] / sigma
     self.matrix[k] = expression_row
 
 
-def clustering_coefficient(grn) :
-  """Function for caclulating the Clustering Coefficient (CC) of a network, as 
-  defined in (Watts and Strogatz 1998, Nature 393, 440). Adapted here, from 
-  (Albert and Barabasi, Stastical mechanics of Complex Networks). Takes the 
-  network in a dictionary format, and returnrs the mean CC of it."""
-  # Clustering Coefficient of each node.
-  c = 0
-  # Loop through all the linked nodes (genes) of the network.
-  for links in grn.itervalues() :
-    if len(links) > 1 :
-      ccg = 0
-      e = 0
-      for gene in links:
-        for reg_gene in grn[gene] :
-          if reg_gene in links :
-            e = e + 1
-      # Calculate the Clusterung Coefficient of each node.
-      ccg = float(e) / float((len(links) * (len(links) - 1)))
-      # Calculate the sum for the whole network.
-      c = c + ccg
-  # Calculate the mean Clustering Coefficient of the network.
-  cc = c / len(grn.keys())
-  return cc
 
-
-def grn_dictionary(tp) :
-  """Returns the Gene Regulatory Network of a transsys program in a dictionary format {key:value} where the {value} is a list containg all the genes whose regulating the gene {key}. We will see in the future the usefulness of this representation"""
-  # Initialize the GRN
-  gene_network = {}
-
-  # Loop through all genes.
-  for gene in tp.gene_list :
-    gene_links = []
-    for promoter_element in gene.promoter :
-      # Get only the regulatory promoter element(s) (NOT the constitutive)
-      #+!!! use objects.
-      if not isinstance(promoter_element, transsys.PromoterElementConstitutive) :
-        # Get the regulatory factor.
-        for factor in promoter_element.factor_list :
-          # Get the gene(s) encoding for this factor.
-          for reg_gene in tp.encoding_gene_list(factor.name) :
-            gene_links.append(reg_gene.name)
-    # Represent the network as a dictionary.
-    gene_network[gene.name] = gene_links
-  return gene_network
+def discretize_matrix(matrixE, gamma) :
+  """Function to calculate the matrix D, as is described in Rung et.al."""
+  # Already implemented in transdisrupt module, by using different classes.
+  # Not able yet to use it from there, since the inegretion of the 
+  # network_simulator, with the transdisrupt module is still pending.
+  matrixD = []
+  for experiment in matrixE :
+    discrete_row = []
+    for expr in experiment :
+      # Gamma is a cutoff denoting the level of significant.
+      if -gamma < expr < gamma :
+	# Not significant interaction between those two genes.
+	discrete_row.append(0)
+      elif expr <= -gamma :
+	# Significant level of repression.
+	discrete_row.append(-1)
+      elif expr >= gamma :
+	# Significant level of activation.
+	discrete_row.append(1)
+      else :
+	# In case of any "strange" kind of value.
+	discrete_row.append(0)
+      matrixD.append(discrete_row)
+    return matrixD
 
 
 
+#######################
 # Command line parsing.
+#######################
+
 try:
   optlist, args = getopt.getopt(sys.argv[1:],'h t r',['help', 'transsys', 'RTP'])
 except getopt.GetoptError, error_msg:
@@ -173,7 +381,7 @@ else :
 if infile is not sys.stdin :
   m = re.match('([A-Za-z][A-Za-z0-9_]*)\.([A-Za-z]{3})$', infile.name)
   if (m is None) or (m.group(2) not in ('rtp', 'tra')) :
-    raise StandardError, 'Expect an .rtp (Random Transsys Parameter) OR a .tra (transsys program) file'
+    raise StandardError, ('Expect an .rtp (Random Transsys Parameter) OR a .tra (transsys program) file, instaed of %s' % infile.name)
   name = m.group(1)
 else :
   name = 'User_Speficied_STDIN'
@@ -196,18 +404,37 @@ else :
   raise StandardError, 'Missing inpout flag -r (for .rtp files) OR -t (for .tra files). -h OR --help for more details'
 
 
-###################################
-# Begin of the Network Simulator...
-###################################
+
+#################################
+# Begin of the Network Simulator.
+#################################
 
 # Control parameters for the transsys programs.
-number_timesteps = 300
+# Number of timesteps for the equilibrium of the reference state.
+equilibrium_timesteps = 300
+# Number of timesteps that each mutant will run, after the equilibrium.
+number_timesteps      = 200
 
-# Build the dictionary of interactions (Gene Network) of the transsys program.
-gene_network = grn_dictionary(transsys_program)
+# Instantiate the Gene Regualtory Network Class.
+grn = GeneRegulatoryNetwork(transsys_program)
 
+# Calculate Network Measurments.
 # Calculate the Clustering Coefficient of the network.
-c_coeff = clustering_coefficient(gene_network)
+c_coeff = grn.cCoeff
+
+# Calculate the indegre of the network.
+in_degree_list = grn.indegreeList
+in_degree = grn.indegree
+
+# Calculate the outdegree.
+out_degree_list = grn.outdegreeList
+out_degree = grn.outdegree
+degree_list = grn.degreeList
+degree = grn.degree
+
+# Calculate the path length
+
+
 
 # Instantiate the reference transsys program (knockout transsys in this case).
 knockout_tp = transdisrupt.KnockoutTranssysProgram(transsys_program)
@@ -219,28 +446,61 @@ tp_instance = transsys.TranssysInstance(knockout_tp)
 tseries = tp_instance.time_series(number_timesteps)
 reference_state = tseries[len(tseries) - 1]
 
+#######################################################################
 # Printouts of the Reference transsys program (the program that will be 
-#+knocked-out).
-# Print the gene network dictionary in a "human readable" format.
-outfile.write('Reference Network: %s\n' % transsys_program.name)
-for sorted_key in sorted(gene_network.keys()) :
-  outfile.write('%s -> %s \n' % (sorted_key, gene_network[sorted_key]))
+# knocked-out).
+#######################################################################
+# The coresponding transsys program.
+outfile.write('Reference Transsys Program:\n%s' % transsys_program)
+# The gene network dictionary in a "human readable" format 
+# (graph representation I).
+outfile.write('Reference Network: %s\n' % grn.name)
+for key in grn.grnDict.keys() :
+#for sorted_key in sorted(grn.grnDict.keys()) :
+#  outfile.write('%s <== %s \n' % (sorted_key, grn.grnDict[sorted_key]))
+  grn.grnDict[key].sort()
+  outfile.write('%s ==> %s \n' % (key, grn.grnDict[key]))
+# The network adjacency matrix (graph representation II)
+outfile.write('%s\n' % grn.adjMatrix)
 # Print the final state of the referenece program.
-outfile.write('Final State:\n')
-outfile.write('%s' % reference_state)
-# Print the Clustering Coefficient.
-outfile.write('Clustering Coefficient: %.10f \n' % c_coeff)
+#outfile.write('Final State:\n')
+#outfile.write('%s' % reference_state)
+# Network Properties printouts.
+# Indegree List.
+outfile.write('Indegree List:  %s\n' % in_degree_list)
+# Indegree.
+outfile.write('Average Indegree: %i\n' % in_degree)
+# Outdegree List.
+outfile.write('Outdegree List:  %s\n' % out_degree_list)
+# Outdegree.
+outfile.write('Average Outdegree: %i\n' % out_degree)
+# Degree List.
+outfile.write('Degree List:  %s\n' % degree_list)
+# Print degree for R purposes
+#for i in degree_list :
+#  outfile.write('%s\n' % i)
+# Degree.
+outfile.write('Network Degree: %i\n' % degree)
+# Clustering Coefficient
+outfile.write('Network Clustering Coefficient: %.10f \n' % c_coeff)
+# Path length, average path length, diameter (taken from the transdisrupt 
+# module).
+# Path Length matrix.
+outfile.write('%s\n' % grn.pathLengthMatrix)
+# Average Path Length.
+outfile.write('%s\n' % grn.avgPathLength)
 
-
-# The Network reconstruction procedure (Using the transdisrupt.py module). 
-# The algorithm is based on the GRN reconstruction algorithm from 
-#+Rung et. al 2002.
-##########################################################################
+sys.exit()
+###############################################################################
+# The Network reconstruction implementation (Using the transdisrupt.py module).
+# The algorithm is based on the GRN reconstruction algorithm from
+# Rung et. al 2002.
+###############################################################################
 
 # Control parameters for the reconstruction algorithm.
-gamma            = 2
-sigma            = None
-epsilon          = 0.00001
+gamma   = 2       # The cutoff value. IN USE
+sigma   = 1       # The normalization factor (constant!). IN USE
+epsilon = 0.0001  # The minimum allowoed level of expression. NOT USED
 
 
 # Instantiate the expression matrix. Matrix_E in Rung et.al paper.
@@ -251,7 +511,7 @@ for i in xrange(transsys_program.num_genes()) :
   knockout_tp.do_knockout(i)
 
   # Build the dictionary of interactions (Gene Network) of the knocked-out 
-  #+transsys program
+  # transsys program
   knockout_network = grn_dictionary(knockout_tp)
 
   # Calulate the Clustaring Coefficient of the disrupted network.
@@ -261,44 +521,36 @@ for i in xrange(transsys_program.num_genes()) :
   disrupt_instance = transsys.TranssysInstance(knockout_tp)
   disrupt_tseries  = disrupt_instance.time_series(number_timesteps)
   disrupt_state    = disrupt_tseries[len(disrupt_tseries) - 1]
- 
+
   # Populate the matrix E with expression values.
-  matrix_E.populate(reference_state.factor_concentration, disrupt_state.factor_concentration)
+  matrix_E.populate(reference_state.factor_concentration, disrupt_state.factor_concentration, epsilon)
 
   # Normalize.
-  matrix_E.normalize(i)
-  
-  #### Perturbation.............. SHOULD BE PUT LATER....
-  
-  # Populate the matrix E (expression matrix).
-#  for j in xrange(transsys_program.num_factors()) :
-#    if reference_state.factor_concentration[j] <= (0.0 + epsilon) :
-#      if disrupt_state.factor_concentration[j] <= (0.0 + epsilon) :
-#	matrix_E[i][j] = 0.0
-#      else :
-#	matrix_E[i][j] = max(sigma) * gamma
-#    elif disrupt_state.factor_concentration[j] <= (0.0 + epsilon) :
-#      matrix_E[i][j] = (-1) * max(sigma) * gamma
-#    else :
-#      matrix_E[i][j] = math.log(disrupt_state.factor_concentration[j] / reference_state.factor_concentration[j])
+  matrix_E.normalize(i, sigma)
 
+  #### Perturbation.............. SHOULD BE PUT LATER....
 
   # Printouts. Knocked-out networks and a lot more...
   # Print the name of the knocked-out.
   outfile.write('\nKnocked-out: %s\n' % knockout_tp.name)
   # Print the dictionary in a "human readable format"
-  for sorted_key in sorted(knockout_network.keys()) :
-    outfile.write('%s -> %s\n' % (sorted_key, knockout_network[sorted_key]))
+#  for sorted_key in sorted(knockout_network.keys()) :
+#    outfile.write('%s -> %s\n' % (sorted_key, knockout_network[sorted_key]))
   # Print the final state of the knocked-out.
   outfile.write('Final State:\n')
   outfile.write('%s' % disrupt_state)
   # Print the Clustering Coefficient.
-  outfile.write('Clustering Coefficient: %.10f \n' % cc_disrupt)
+#  outfile.write('Clustering Coefficient: %.10f \n' % cc_disrupt)
 
   # Undo the knockout, needed to generate the next knockout.
   knockout_tp.undo_knockout()
 
+
+matrix_D = discretize_matrix(matrix_E.matrix, gamma)
+
 print matrix_E.matrix
+
+print matrix_D
 
 sys.exit()
 # Printout the expression matrix. (matrix_E).
@@ -309,7 +561,6 @@ for i in xrange(transsys_program.num_genes()) :
   outfile.write('\n')
 
 
-# Closes the files.
+# Close the files.
 infile.close()
 outfile.close()
-

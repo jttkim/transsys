@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 # The Transformed version has been developed to make the output suitable for
-#+SVD-PCA analysis not of the timeseries but only the final state of transsys 
-#+programs. 
+# SVD-PCA analysis not of the timeseries but only the final state of transsys 
+# programs. 
 # cbouyio, UEA, 22/11/2005
 
 # Third version: transsys_distances_r_03
@@ -10,30 +10,30 @@
 # Improved floating point presision at the output data, (1.12e representation).
 # Fixes on the printing functions.
 # A better build of the RNG stuff, every time call a generic method 
-#+called randomValue()
+# called randomValue()
 # Changes on 09/11/2005 (r_03):
 # Minor changes (more meaningful names for the controlparameters).
 # Implements a random object, to genatrate the random numbers string.
 # Change the perturbation method implementation, working with a rng object 
-#+(Random Number Genarator) a object of the class GaussianRNG.
+# (Random Number Genarator) a object of the class GaussianRNG.
 # Introduce a new control parameter, the number of different perturbed 
-#+states (no_perturbeSamples).
+# states (no_perturbeSamples).
 # Improovments in the Usage() output.
 # Introduce the printout() function, to explain the printout format. 
 # Changes on 07/11/2005 (r_02):
 # Prints out in a more consistent format (using headers for R files). 
-#+DOESN'T print in ; separated anymore. (r_02)
+# DOESN'T print in ; separated anymore. (r_02)
 # Compute the "random" state of a transsys instance, instead of a random 
-#+factor concentration list, the elements of the new list will be calculated 
-#+according to a "random" distribution (check the random module of python for 
-#+more details). Take extra care of the way to build such bistribution.
-#+Implementation: 'factor_concentration_pertubation' method (r_02)
+# factor concentration list, the elements of the new list will be calculated 
+# according to a "random" distribution (check the random module of python for 
+# more details). Take extra care of the way to build such bistribution.
+# Implementation: 'factor_concentration_pertubation' method (r_02)
 # Doesn't get as the initial state the transsys instance of zero but let the 
-#+program run several times and then get an instance. (r_02)
+# program run several times and then get an instance. (r_02)
 # Changes on 28/10/2005 (r_01):
 # Minor changes: Prints in ";" separated columns (R readable format). (r_01)
 # Contains a constant random seed to increase reproducibility !
-#+should change in upcoming versions. (r_01)
+# should change in upcoming versions. (r_01)
 # Implements a function for randomize the factor concentration list. (r_00)
 # CBouyio & JTK, UEA, 28 Oct 2005.
 
@@ -137,10 +137,10 @@ def euclidian_distance_timeseries(timeseries1, timeseries2):
   if not len(timeseries1) == len(timeseries2):
     raise StandardError, 'Euclidean distance can not be calculated between two timeseries with different lengths.'
   # Puting the timeseries in a tuple (as long as they have the same number of 
-  #+timesteps it is safe).
+  # timesteps it is safe).
   ts = zip(timeseries1, timeseries2)
   # Returns ONLY the Eu_Dist list and not the factor concentrations
-  #+as it did on previous versions.
+  # as it did on previous versions.
   edlist = []
   for t1, t2 in ts:
     ed = euclidian_distance_instances(t1, t2)
@@ -159,7 +159,7 @@ def print_factors_eu_distance(tsr1, tsr2, EuL):
     outfile.write('S2_%s\t'% name2)
   outfile.write('Eu_Dist\n')
   # Print the timestep, the factor concentrations of both series.
-  #+and the Euclidean Distance between them.
+  # and the Euclidean Distance between them.
   two_ts = zip(tsr1, tsr2)
   for ts1, ts2 in two_ts:
     outfile.write(' %i ' % ts1.timestep)
@@ -197,7 +197,7 @@ def print_final_states(MultiFC):
     outfile.write('Fin_State_%i\t' % i)
   outfile.write('\n')
   # The centered Factors Concentration list (matrix) is already transposed
-  #+print it without transpose it.
+  # print it without transpose it.
   for i in xrange(tp.num_factors()):
     # Print The factors names.
     #f_name = tp.factor_names()[i]
@@ -231,7 +231,7 @@ def print_factors(MultTime):
 # Distance.
 
 # This "advanced" subClass has also the randomize_factor_concentration 
-#+and the factor_concentration_perturbation attributes.
+# and the factor_concentration_perturbation attributes.
 
 class TranssysInstanceAdvanced(transsys.TranssysInstance):
   """Subclass of TranssysInstance with some "advanced" attributes: 
@@ -250,8 +250,8 @@ class TranssysInstanceAdvanced(transsys.TranssysInstance):
     timeseries = transsys.TranssysInstance.time_series(self, num_timesteps, sampling_period, lsys_lines, lsys_symbol)
     tsfinal = []
     # Constructs a TranssysInstanceEuclidianDistance Instance of the 
-    #+timeserieslist. The timeseries has now instances from 
-    #+TranssysInstanceEuclidianDistance class.
+    # timeserieslist. The timeseries has now instances from 
+    # TranssysInstanceEuclidianDistance class.
     for t in timeseries:
       a = TranssysInstanceAdvanced(t.transsys_program, t.timestep)
       a.transsys_program = t.transsys_program
@@ -282,7 +282,7 @@ class TranssysInstanceAdvanced(transsys.TranssysInstance):
     # Foreach of the factor concentration values in the list.
     for f in self.factor_concentration:
       # Creates a perturbed by adding a number from a "random"
-      #+Gauss distribution.
+      # Gauss distribution.
       # Check the random python module for more details.
       p = rng.randomValue()
       while p + f <= 0:
@@ -318,17 +318,17 @@ class ConstantRNG:
 no_Timesteps          = 100  # Default number of timesteps.
 samplingIntervals     = 1    # Default number of sampling.
 equilibrationTimestep = 50   # Default number of starting runs before 
-                             #+applying anything, let the system reaches 
-			     #+an equilibrium state.
+                             # applying anything, let the system reaches 
+			     # an equilibrium state.
 no_perturbeSamples    = 1    # Default number of different pertubed instances
-                             #+you will get the same number of Euclidean 
-			     #+distances series.
+                             # you will get the same number of Euclidean 
+			     # distances series.
 rndseed               = 5    # Default seed of the random number generator.
 sigma                 = 0.05 # Deafult Standard Deviation of the Gauss 
-                             #+distribution.
+                             # distribution.
 # Initialize the printout options also.
 printout              = 'normal' # Print in the normal (timesteps*distances)
-                                 #+format (there is also an SVD/PCA format).
+                                 # format (there is also an SVD/PCA format).
 
 
 # Parse options & arguments.
@@ -397,7 +397,7 @@ for fc in xrange(len(instancetp_zero.factor_concentration)):
   instancetp_zero.factor_concentration[fc] = 5
 
 # The timeseries runs for equilibrationTimestep times, letting the system 
-#+reaches an equillibium state.
+# reaches an equillibium state.
 initialization_ts = instancetp_zero.time_series(equilibrationTimestep)
 instancetp = initialization_ts[equilibrationTimestep - 1]
 
@@ -409,8 +409,8 @@ gaussRNG = GaussianRNG(rndseed, 0, sigma)
 
 # Initialize the list of multiple Euclidean distances.
 # The list of factor_concentrations and the timeseries. Put the initial 
-#+factor concentrations as first element and the first timeseries. (Needed 
-#+for the SVD analysis).
+# factor concentrations as first element and the first timeseries. (Needed 
+# for the SVD analysis).
 MultiEuDist = []
 MultiFactorConcentrations = [instancetp.factor_concentration]
 MultiTimeseries = [timeseries]
@@ -428,11 +428,11 @@ for time_sample in xrange(no_perturbeSamples):
   secondtimeseries = pertuerbed_instancetp.time_series(no_Timesteps, samplingIntervals)
 
   # Calculate the Euclidean Distances between the corresponding timesteps
-  #+of the reference and the second timeseries.
+  # of the reference and the second timeseries.
   edl = euclidian_distance_timeseries(timeseries, secondtimeseries)
   
   # Assign the factor concentration list of the final state 
-  #+(Needed for the SVD).
+  # (Needed for the SVD).
   fcl = secondtimeseries[no_Timesteps - 1].factor_concentration
   
   # Collect all the Euclidean distances lists
@@ -455,7 +455,7 @@ MultiTimeseries = map(lambda *row: list(row), *MultiTimeseries)
 # Check the print functions as well as the --printout option for details.
 
 # Print information and the Control Parametrs of the simulation  to the 
-#+begining of the file as comments.
+# begining of the file as comments.
 outfile.write("# Script     : %s\n# Time       : %s\n# InputFile  : %s\n# OutpoutFile: %s\n# Simulator's Control Parameters:\n# Number of Timesteps     (-n):%i\n# Sampling Intervals      (-d):%i\n# Equilibration Time      (-e):%s\n# Number of Perturbations (-m):%i\n# Random Seed             (-r):%i\n# Standard Deviation      (-s):%.3f\n# Printout Format         (-p):%s\n" % (sys.argv[0], time.asctime(), infile.name, outfile.name, no_Timesteps, samplingIntervals, equilibrationTimestep, no_perturbeSamples, rndseed, sigma, printout))
 
 # In case of one perturbed instance prints the factor concentrations & the 
@@ -465,20 +465,20 @@ if no_perturbeSamples is 1 and printout == 'normal':
   print_factors_eu_distance(timeseries, secondtimeseries, MultiEuDist[0])
 
 # In any other case (m > 1) prints in each column, a list of the Euclidean
-#+distances over the time from the reference instance.
+# distances over the time from the reference instance.
 elif no_perturbeSamples > 1  and printout == 'normal':
   # Check the definition of the print function.
   print_multiple_eu_distances(MultiEuDist)
 
 
 # In case of an SVD/PCA analysis prints the factor concentrations of all the 
-#+perturbed instances at a final state (not the indermediate timesteps). 
+# perturbed instances at a final state (not the indermediate timesteps). 
 elif printout == 'final_state':
   # Check the definition of the print function.
   print_final_states(MultiFactorConcentrations)
 
 # Print out the factor concentrations of all factors on all the timesteps 
-#+(doesn't print any distance, Suitable for SVD/PCA analysis)
+# (doesn't print any distance, Suitable for SVD/PCA analysis)
 elif printout == 'factors':
   # Check the function definition for details
   print_factors(MultiTimeseries)

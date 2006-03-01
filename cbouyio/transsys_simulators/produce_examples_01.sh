@@ -26,7 +26,7 @@ else
 fi
   
 # Invoke the transsys_distances_r_03 program (with n=200 
-#+as default value)
+# as default value)
 ./transsys_distances_r_03 -n $t $name.tra $name.out
 mkdir $name-files
 
