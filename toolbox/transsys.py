@@ -796,6 +796,26 @@ class Gene :
     return self.__class__(self.name, self.product_name(), unresolved_promoter, self.dot_attributes)
 
 
+  def getConstitutiveValueNodes(self) :
+    """Get a list of constant value nodes from all constitutive
+promoter elements of this gene."""
+    vn = []
+    for p in self.promoter :
+      if isinstance(p, PromoterElementConstitutive) :
+        vn = vn + p.getValueNodes()
+    return vn
+
+
+  def getLinkValueNodes(self) :
+    """Get a list of constant value nodes from all link
+promoter elements (activate, repress) of this gene."""
+    vn = []
+    for p in self.promoter :
+      if isinstance(p, PromoterElementLink) :
+        vn = vn + p.getValueNodes()
+    return vn
+
+
   def getValueNodes(self) :
     """Get a list of constant value nodes from all promoter elements of this gene."""
     vn = []
@@ -965,21 +985,27 @@ gene names and factor names can be altered without changing the network."""
     return TranssysProgram(self.name, factor_list, gene_list, False)
 
 
-  def getFactorValueNodes(self) :
+  def getFactorValueNodes(self, decayNodes = True, diffusibilityNodes = True) :
     """Get all constant value nodes pertaining to factors
 in this transsys program."""
     valueNodes = []
     for factor in self.factor_list :
-      valueNodes = valueNodes + factor.getValueNodes()
+      if decayNodes :
+        valueNodes = valueNodes + factor.getDecayValueNodes()
+      if diffusibilityNodes :
+        valueNodes = valueNodes + factor.getDiffusibilityValueNodes()
     return valueNodes
 
  
-  def getGeneValueNodes(self) :
+  def getGeneValueNodes(self, constitutiveNodes = True, linkNodes = True) :
     """Get all constant value nodes pertaining to genes
 in this transsys program."""
     valueNodes = []
     for gene in self.gene_list :
-      valueNodes = valueNodes + gene.getValueNodes()
+      if constitutiveNodes :
+        valueNodes = valueNodes + gene.getConstitutiveValueNodes()
+      if linkNodes :
+        valueNodes = valueNodes + gene.getLinkValueNodes()
     return valueNodes
 
 
@@ -1932,6 +1958,10 @@ so it's best to require explicit specification of all parameters."""
 
   def set_seed(self, rndseed = 1) :
     self.rng = transrnd.transrnd(rndseed)
+
+
+  def get_seed(self) :
+    return self.rng.seed
 
 
   def set_constitutive(self, v) :

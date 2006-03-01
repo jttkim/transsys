@@ -32,6 +32,7 @@ import transsys
 
 def usage() :
   print 'random_transsys -- generate transsys programs at random'
+  print 'usage: random_transsys [options] <number of prgs> <outfile>'
   print
   print '-n <num>: specify number of genes'
   print '-k <num>: specify number of incoming regulatory links per gene'
@@ -52,7 +53,7 @@ def usage() :
 
 vmax_activation = None
 vmax_repression = None
-rndseed = 1
+rndseed = None
 rtp = transsys.RandomTranssysParameters()
 rtp.topology = 'random_nk'
 rtp.n = 5
@@ -115,21 +116,20 @@ else :
     vmax_repression = float(rtp.num_genes()) / rtp.num_links()
   rtp.set_vmax_activation(vmax_activation)
   rtp.set_vmax_repression(vmax_repression)
+# Notice: changed commandline interface: first free parameter is
+# now number of programs to generate
+num_programs = 1
 if len(args) > 0 :
-  transsys_name = args[0]
-else :
-  transsys_name = 'rnd%d' % rndseed
+  num_programs = int(args[0])
 if len(args) > 1 :
   outfile = open(args[1], 'w')
 else :
   outfile = sys.stdout
-rtp.set_seed(rndseed)
+if rndseed is not None :
+  rtp.set_seed(rndseed)
 if rtp_outfname is not None :
   rtp.write(open(rtp_outfname, 'w'))
-tp = rtp.generate_transsys(transsys_name)
-# tp.factor_list[1].name = 'stue'
-# tp.factor_list[-1].name = 'banck'
-outfile.write(str(tp))
-
-#transsys.write_random_transsys(outfile, transsys_name, rtp)
-
+for i in xrange(num_programs) :
+  transsys_name = 'rnd%d_n%d' % (rtp.get_seed(), i)
+  tp = rtp.generate_transsys(transsys_name)
+  outfile.write(str(tp))
