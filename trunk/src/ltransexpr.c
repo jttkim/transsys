@@ -82,8 +82,26 @@ static int fprint_symbol_line(FILE *outfile, const LSYS_STRING *lstr, size_t sym
 }
 
 
+static int fprint_header(FILE *outfile, const LSYS *lsys, const TRANSSYS *transsys)
+{
+  size_t f;
+
+  fprintf(outfile, "timestep symStringIndex symbolName ruleName transsysName");
+  for (f = 0; f < transsys->num_factors; f++)
+  {
+    fprintf(outfile, " %s", transsys->factor_list[f].name);
+  }
+  fprintf(outfile, "\n");
+  return (0);
+}
+
+
 /*
- * determine whether a the i-th symbolof lstr passes the filter for printing.
+ * determine whether a the i-th symbol of lstr passes the filter for printing.
+ * filtering consists of (1) checking whether the symbol is parameterised
+ * by transsys, and (2) checking whether the symbol matches that
+ * identified by symbol_index.
+ * Wildcards are a transsys of NULL and a symbol_index of NO_INDEX.
  */
 static int symbol_filter(const LSYS_STRING *lstr, size_t i, const TRANSSYS *transsys, int symbol_index)
 {
@@ -137,6 +155,10 @@ static int ltransexpr(FILE *outfile, const LSYS *lsys, const TRANSSYS *transsys,
   else
   {
     symbol_index = NO_INDEX;
+  }
+  if (transsys)
+  {
+    fprint_header(outfile, lsys, transsys);
   }
   ulong_srandom(rndseed);
   lstr = axiom_string(lsys);
