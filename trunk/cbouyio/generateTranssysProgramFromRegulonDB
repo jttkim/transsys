@@ -1,0 +1,209 @@
+#!/usr/bin/env python
+
+# A script tha constructs a Transsys Programa using RegulonDB data.
+# Contributed by CBouyio, at UEA on 27/03/2006
+# Uploaded to the repository on 1/04/2006, version 1.
+
+import re
+import getopt
+import sys
+import copy
+import string
+
+import transsys
+
+
+def usage() :
+  print """./genetrate_RegulonDB_TranssysProgram [options] arguments
+    [options]
+             -h, --help : Prints this screen
+    arguments
+             <InputFile>  : A datafile from the online database RegulonDB
+                            (check the TFNetwork file for consistancy).
+             <OutputFile> : A transsys Program."""
+
+
+# Command line parsing
+try :
+  optlist, args = getopt.getopt(sys.argv[1:], 'h', ['help'])
+except getopt.GetoptError, errorMessage :
+  errorMessage = 'Error in arguments parsing, please give -h or --help for help '
+  print errorMessage
+  sys.exit(1)
+
+for opt, pr in optlist :
+  if opt in ('-h', '--help') :
+    usage()
+    sys.exit()
+
+# I/O manipulation
+if len(args) > 0 :
+  infile = open(args[0], 'r')
+else :
+  infile = sys.stdin
+if len(args) > 1 :
+  outfile = open(args[1], 'w')
+else :
+  outfile = sys.stdout
+
+# Main program.
+# Read the interaction data from the file.
+filedata = infile.readlines()
+for i in xrange(len(filedata)) :
+  if re.match('^_+$', filedata[i]) :
+    # Check the file from RegulonDB to determine the position of the first
+    # data line. In RegulonDB(v 5.0) the actual data starts after 3 lines.
+    data = filedata[i + 3:]
+    break
+
+# Split the data.
+interactionslist =[]
+for element in data :
+  # Split the data according to whitespaces, by this way the multiple
+  # interactions are preserved (they are separated by a |).
+  spliter1 = re.compile('\s')
+  elementlist = spliter1.split(element)
+  # Pop to get ride of the last \n.
+  elementlist.pop()
+  interactionslist.append(elementlist)
+
+# Build the lists of: genes, factors, regulated genes, regulatory functions.
+glist =[] # The genes list.
+flist = [] # The factor list.
+rglist =[] # The regulated genes list.
+rFunctionlist = []
+for element in interactionslist :
+  flist.append(element[0])
+  glist.append(element[1])
+  rglist.append(element[3])
+  rFunctionlist.append(element[5])
+
+
+# Generates the sets (non reduntant lists) of the gene list and factor list.
+genelist = list(set(glist))
+# Sort the genelist and pay attention to the Case (case insensitive method, 
+# capitals and lowercase are treated equally).
+genelist.sort(key=str.lower) # This is the incomplete genelist.
+
+factorlist = list(set(flist))
+# Same as in genelist.
+factorlist.sort(key=str.lower)
+
+# Generate a first naive gene -> factor dictionary.
+gfDict_TMP = {}
+for i in xrange(len(glist)) :
+  gfDict_TMP[glist[i]] = flist[i]
+
+# Check the consistancy of the genes -> factor dictionary.
+if len(gfDict_TMP) != len(genelist) != len(factorlist) :
+  raise StandardError, "Gene to Factor relationaship inconsistent, please check the input file."
+
+
+# Fix the Genes -> Factor dictionary by treating the complex factors.
+# (Factors that are encoded by more than one gene).
+# first split the genes by splitter = |.
+spliter2 = re.compile('\|')
+gfDict = {}
+for genes in gfDict_TMP.iterkeys() :
+  genesL = spliter2.split(genes)
+  genesL.pop()
+  for gene in genesL :
+    gfDict[gene] = gfDict_TMP[genes]
+
+# The complete regulatory gene list is this.
+genelist = gfDict.keys()
+
+# The regulated genes list (non reduntant).
+regGenesList = list(set(rglist))
+
+# Build the Gene -> Regulating Factors dictionary.
+regulatoryDict ={}
+flistTMP = copy.copy(flist)
+rlistTMP = copy.copy(rglist)
+rflistTMP = copy.copy(rFunctionlist)
+# Check the consistancy of the lists.
+if len(flistTMP) != len(rlistTMP) != len(rflistTMP) :
+  raise StandardError, 'Regulatory lists inconsistency, check the input file.'
+
+for gene in sorted(regGenesList) :
+  regulationList = []
+  k = rlistTMP.count(gene)
+  if k != 0 :
+    for j in xrange(k) :
+      i = rlistTMP.index(gene)
+      regulationTuple = (flistTMP.pop(i), rflistTMP.pop(i))
+      regulationList.append(regulationTuple)
+      del rlistTMP[i]
+  regulatoryDict[gene] = regulationList
+
+
+# Filter the regulatoryDict for unknown interactions. (discard them in the
+# first approach).
+for k, v in regulatoryDict.copy().iteritems() :
+  for t in v :
+    if t[1] == '?' :
+      del regulatoryDict[k]
+
+
+# ATTENTION: Most of the genes on the regulated genes list, are not included
+# in the regulatory genes list produced by the regulonDB datafile. All this
+# genes are not having any further regulatory activity so they are considered
+# functional genes untill any further information come across.
+
+# The factor names for this genes are following the conversion of capitalizing
+# the first character of the gene name.
+
+# The whole genes list set is the union of the two sets the regulatory genes
+# set and the regulated genes set.
+genesSet = list(set(genelist).union(set(regGenesList)))
+
+# Builid the complete genes -> factors dictionary.
+genesfactorDict = {}  # The complete gene -> factor dictionary.
+for gene in genesSet :
+  if gfDict.has_key(gene) :
+    genesfactorDict[gene] = gfDict[gene]
+  else :
+    genesfactorDict[gene] = string.upper(gene[0]) + gene[1:]
+
+
+# Begin the transsys implementation.
+
+# Parameter Initialization.
+decay         = transsys.ExpressionNodeValue(0.5)
+diffusibility = transsys.ExpressionNodeValue(1.0)
+v_max         = transsys.ExpressionNodeValue(1.0)
+k_m           = transsys.ExpressionNodeValue(1.0)
+constitutive  = transsys.ExpressionNodeValue(0.5)
+name          = infile.name
+
+# List initialization.
+transsysfactors = []
+transsysgenes = []
+# Generation of transsys objects.
+for gene in sorted(genesSet) :
+  transsysfactors.append(transsys.Factor(genesfactorDict[gene], decay, diffusibility))
+  promoter = []
+  promoter.append(transsys.PromoterElementConstitutive(constitutive))
+  if regulatoryDict.has_key(gene) :
+    for regulators in regulatoryDict[gene] :
+      if regulators[1] == '+' :
+        promoter.append(transsys.PromoterElementActivate(k_m, v_max, [regulators[0]]))
+      elif regulators[1] == '-' :
+        promoter.append(transsys.PromoterElementRepress(k_m, v_max, [regulators[0]]))
+      elif regulators[1] == '+-' :
+        promoter.append(transsys.PromoterElementActivate(k_m, v_max, [regulators[0]]))
+        promoter.append(transsys.PromoterElementRepress(k_m, v_max, [regulators[0]]))
+      else :
+        raise StandardError, 'Unknown type of interaction, check the input file'
+  transsysgenes.append(transsys.Gene(gene, genesfactorDict[gene], promoter))
+
+# Generate the transsys program.
+tp = transsys.TranssysProgram(name, transsysfactors, transsysgenes)
+
+# Print it.
+outfile.write('%s' % tp)
+
+infile.close()
+outfile.close()
+
+sys.exit()
