@@ -220,7 +220,9 @@ EXPRESSION_NODE *new_expression_node(EXPR_NODE_TYPE type, ...)
       strcpy(node->content.raw_identifier.transsys_label, identifier_name);
     }
     else
+    {
       node->content.raw_identifier.transsys_label = NULL;
+    }
     identifier_name = va_arg(arglist, char *);
     node->content.raw_identifier.factor_name = (char *) malloc((strlen(identifier_name) + 1) * sizeof(char));
     if (node->content.raw_identifier.factor_name == NULL)
@@ -310,7 +312,7 @@ static void free_promoter_components(PROMOTER_ELEMENT *a)
 {
   if (a->num_binding_factors)
     free(a->factor_index);
-  if (a->type == ACT_CONSTITUTIVE)
+  if (a->type == PROMOTERELEMENT_CONSTITUTIVE)
     free_expression_tree(a->expr1);
   else
   {
@@ -334,7 +336,7 @@ static void free_promoter_list(PROMOTER_ELEMENT *alist)
 }
 
 
-PROMOTER_ELEMENT *new_promoter_element(ACTIVATION_TYPE type, int num_binding_factors, int *factors, EXPRESSION_NODE *expr1, EXPRESSION_NODE *expr2)
+PROMOTER_ELEMENT *new_promoter_element(PROMOTERELEMENT_TYPE type, int num_binding_factors, int *factors, EXPRESSION_NODE *expr1, EXPRESSION_NODE *expr2)
 {
   PROMOTER_ELEMENT *a;
 
@@ -352,7 +354,7 @@ PROMOTER_ELEMENT *new_promoter_element(ACTIVATION_TYPE type, int num_binding_fac
   {
     a->factor_index = NULL;
   }
-  if (type == ACT_CONSTITUTIVE)
+  if (type == PROMOTERELEMENT_CONSTITUTIVE)
   {
     a->expr1 = expr1;
   }

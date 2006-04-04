@@ -476,7 +476,7 @@ static INTEGER_ARRAY *extend_factor_combination(INTEGER_ARRAY *ia, const char *n
 }
 
 
-static PROMOTER_ELEMENT *create_promoter(ACTIVATION_TYPE atype, INTEGER_ARRAY *ia, EXPRESSION_NODE *expr1, EXPRESSION_NODE *expr2)
+static PROMOTER_ELEMENT *create_promoter(PROMOTERELEMENT_TYPE atype, INTEGER_ARRAY *ia, EXPRESSION_NODE *expr1, EXPRESSION_NODE *expr2)
 {
   PROMOTER_ELEMENT *a;
 
@@ -486,7 +486,9 @@ static PROMOTER_ELEMENT *create_promoter(ACTIVATION_TYPE atype, INTEGER_ARRAY *i
     free(ia);
   }
   else
+  {
     a = new_promoter_element(atype, 0, NULL, expr1, expr2);
+  }
   if (a == NULL)
   {
     yyerror("create_promoter failed");
@@ -543,7 +545,7 @@ static TRANSSYS *add_transsys(TRANSSYS *trlist, TRANSSYS *tr)
     for (pe = ge->promoter_list; pe; pe = pe->next)
     {
       resolve_identifiers(pe->expr1, tr, NULL);
-      if (pe->type != ACT_CONSTITUTIVE)
+      if (pe->type != PROMOTERELEMENT_CONSTITUTIVE)
 	resolve_identifiers(pe->expr2, tr, NULL);
     }
   }
@@ -1302,9 +1304,9 @@ promoter_statements
 	;
 
 promoter_statement
-	: CONSTITUTIVE ':' expr ';' { $$ = create_promoter(ACT_CONSTITUTIVE, NULL, $3, NULL); }
-	| factor_combination ':' ACTIVATE '(' expr ',' expr ')' ';' { $$ = create_promoter(ACT_ACTIVATE, $1, $5, $7); }
-	| factor_combination ':' REPRESS '(' expr ',' expr ')' ';' { $$ = create_promoter(ACT_REPRESS, $1, $5, $7); }
+	: CONSTITUTIVE ':' expr ';' { $$ = create_promoter(PROMOTERELEMENT_CONSTITUTIVE, NULL, $3, NULL); }
+	| factor_combination ':' ACTIVATE '(' expr ',' expr ')' ';' { $$ = create_promoter(PROMOTERELEMENT_ACTIVATE, $1, $5, $7); }
+	| factor_combination ':' REPRESS '(' expr ',' expr ')' ';' { $$ = create_promoter(PROMOTERELEMENT_REPRESS, $1, $5, $7); }
 	;
 
 factor_combination

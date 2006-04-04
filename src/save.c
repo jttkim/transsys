@@ -186,11 +186,11 @@ static void fprint_promoter(FILE *f, int indent_depth, const PROMOTER_ELEMENT *a
   fprint_indented(f, indent_depth, "");
   switch(a->type)
   {
-  case ACT_CONSTITUTIVE:
+  case PROMOTERELEMENT_CONSTITUTIVE:
     fprintf(f, "constitutive: ");
     fprint_expression_tree(f, a->expr1, factor, NULL);
     break;
-  case ACT_ACTIVATE:
+  case PROMOTERELEMENT_ACTIVATE:
     for (i = 0; i < a->num_binding_factors; i++)
     {
       if (i == 0)
@@ -204,7 +204,7 @@ static void fprint_promoter(FILE *f, int indent_depth, const PROMOTER_ELEMENT *a
     fprint_expression_tree(f, a->expr2, factor, NULL);
     fprintf(f, ")");
     break;
-  case ACT_REPRESS:
+  case PROMOTERELEMENT_REPRESS:
     for (i = 0; i < a->num_binding_factors; i++)
     {
       if (i == 0)
@@ -298,8 +298,8 @@ static void fprint_gene_as_discretenet_node(FILE *f, const TRANSSYS *transsys, i
   {
     switch (a->type)
     {
-    case ACT_ACTIVATE:
-    case ACT_REPRESS:
+    case PROMOTERELEMENT_ACTIVATE:
+    case PROMOTERELEMENT_REPRESS:
       for (i = 0; i < a->num_binding_factors; i++)
       {
 	for (ge = transsys->gene_list; ge; ge = ge->next)
