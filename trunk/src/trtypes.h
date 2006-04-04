@@ -64,11 +64,11 @@ typedef enum
 
 typedef enum
 {
-  ACT_NONE,
-  ACT_CONSTITUTIVE,
-  ACT_ACTIVATE,
-  ACT_REPRESS
-} ACTIVATION_TYPE;
+  PROMOTERELEMENT_NONE,
+  PROMOTERELEMENT_CONSTITUTIVE,
+  PROMOTERELEMENT_ACTIVATE,
+  PROMOTERELEMENT_REPRESS
+} PROMOTERELEMENT_TYPE;
 
 typedef enum
 {
@@ -145,7 +145,7 @@ typedef struct tag_expression_node
 typedef struct tag_promoter
 {
   struct tag_promoter *next;
-  ACTIVATION_TYPE type;
+  PROMOTERELEMENT_TYPE type;
   int num_binding_factors;
   int *factor_index;
   EXPRESSION_NODE *expr1, *expr2;

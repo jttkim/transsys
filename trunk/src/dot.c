@@ -203,7 +203,7 @@ static int dot_gene_node(FILE *f, const TRANSSYS *transsys, const GENE_ELEMENT *
   {
     switch (a->type)
     {
-    case ACT_CONSTITUTIVE:
+    case PROMOTERELEMENT_CONSTITUTIVE:
       fprintf(f, "      subgraph cluster_%s;\n", dot_constitutive_identifier(a, s));
       fprintf(f, "      {\n");
       dot_expression_node(f, transsys, a->expr1);
@@ -211,9 +211,9 @@ static int dot_gene_node(FILE *f, const TRANSSYS *transsys, const GENE_ELEMENT *
       fprintf(f, "      }\n");
       fprintf(f, "      %s -> %s [arrowhead=dot,arrowtail=dot];\n", ge->name, dot_expression_identifier(a->expr1, s));
       break;
-    case ACT_NONE:
-    case ACT_ACTIVATE:
-    case ACT_REPRESS:
+    case PROMOTERELEMENT_NONE:
+    case PROMOTERELEMENT_ACTIVATE:
+    case PROMOTERELEMENT_REPRESS:
       break;
     default:
       fprintf(stderr, "dot_gene_node: don't know how to handle promoter element type %d\n", (int) a->type);
@@ -245,16 +245,16 @@ static int dot_factor(FILE *f, const TRANSSYS *transsys, const FACTOR_ELEMENT *f
     {
       switch (a->type)
       {
-      case ACT_CONSTITUTIVE:
+      case PROMOTERELEMENT_CONSTITUTIVE:
 	break;
-      case ACT_ACTIVATE:
+      case PROMOTERELEMENT_ACTIVATE:
 	for (j = 0; j < a->num_binding_factors; j++)
 	{
 	  if (a->factor_index[j] == fe->index)
 	    fprintf(f, "  %s -> %s [arrowhead=normal];\n", fe->name, ge->name);
 	}
 	break;
-      case ACT_REPRESS:
+      case PROMOTERELEMENT_REPRESS:
 	for (j = 0; j < a->num_binding_factors; j++)
 	{
 	  if (a->factor_index[j] == fe->index)

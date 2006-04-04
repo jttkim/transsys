@@ -338,14 +338,14 @@ int postscript_gene(FILE *f, const TRANSSYS *transsys, const GENE_ELEMENT *gene,
   {
     switch (a->type)
     {
-    case ACT_CONSTITUTIVE:
+    case PROMOTERELEMENT_CONSTITUTIVE:
       break;
-    case ACT_ACTIVATE:
+    case PROMOTERELEMENT_ACTIVATE:
       fprintf(f, "%f %f %f %f %f AHF\n", style->arrow_width, -style->arrow_length, -style->arrow_width * 0.5, gene->box.x, y);
       fprintf(f, "%% activation arrows to %s\n", gene->name);
       draw_activation_arrows(f, transsys, a, gene->box.x - style->arrow_length, y, style);
       break;
-    case ACT_REPRESS:
+    case PROMOTERELEMENT_REPRESS:
       fprintf(f, "%f %f %f %f %f AH\n", style->arrow_width, style->arrow_length, -style->arrow_width * 0.5, gene->box.x + gene->box.w, y);
       fprintf(f, "%% repression arrows to %s\n", gene->name);
       draw_repression_arrows(f, transsys, a, gene->box.x + gene->box.w + style->arrow_length, y, style);

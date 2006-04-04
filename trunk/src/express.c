@@ -90,16 +90,16 @@ int process_expression(TRANSSYS_INSTANCE *ti)
     {
       switch (ae->type)
       {
-      case ACT_CONSTITUTIVE:
+      case PROMOTERELEMENT_CONSTITUTIVE:
 	a += evaluate_expression(ae->expr1, &const_ti);
 	break;
-      case ACT_ACTIVATE:
+      case PROMOTERELEMENT_ACTIVATE:
 	cmin = minimal_concentration(ae->num_binding_factors, ae->factor_index, ti->factor_concentration);
 	km = evaluate_expression(ae->expr1, &const_ti);
 	max = evaluate_expression(ae->expr2, &const_ti);
 	a += michaelis_menten(km, max, cmin);
 	break;
-      case ACT_REPRESS:
+      case PROMOTERELEMENT_REPRESS:
 	cmin = minimal_concentration(ae->num_binding_factors, ae->factor_index, ti->factor_concentration);
 	km = evaluate_expression(ae->expr1, &const_ti);
 	max = evaluate_expression(ae->expr2, &const_ti);
