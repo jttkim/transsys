@@ -14,7 +14,7 @@ import transsys
 
 
 def usage() :
-  print """./genetrate_RegulonDB_TranssysProgram [options] arguments
+  print """./generateTranssysProgramFromRegulonDB [options] arguments
     [options]
              -h, --help : Prints this screen
     arguments
@@ -77,6 +77,13 @@ for element in interactionslist :
   glist.append(element[1])
   rglist.append(element[3])
   rFunctionlist.append(element[5])
+
+############ ATTTENTION ##########
+# Replace the dashes ('-') from the genes and factor names with a double underscore... untill now. Problem with the transsys parser.
+dash = re.compile('\-')
+glist = map(lambda gene: dash.sub('__', gene), glist)
+flist = map(lambda factor: dash.sub('__', factor), flist)
+rglist = map(lambda rgene: dash.sub('__', rgene), rglist)
 
 
 # Generates the sets (non reduntant lists) of the gene list and factor list.
@@ -157,8 +164,9 @@ for k, v in regulatoryDict.copy().iteritems() :
 # set and the regulated genes set.
 genesSet = list(set(genelist).union(set(regGenesList)))
 
-# Builid the complete genes -> factors dictionary.
-genesfactorDict = {}  # The complete gene -> factor dictionary.
+
+# Builid the complete genes -> transcription factors dictionary.
+genesfactorDict = {}  # The complete gene -> factors dictionary.
 for gene in genesSet :
   if gfDict.has_key(gene) :
     genesfactorDict[gene] = gfDict[gene]
@@ -175,6 +183,12 @@ v_max         = transsys.ExpressionNodeValue(1.0)
 k_m           = transsys.ExpressionNodeValue(1.0)
 constitutive  = transsys.ExpressionNodeValue(0.5)
 name          = infile.name
+
+# Keep as a 'transsys program' name everything that is before the first 
+# fullstop in the infile name.
+nameRE = re.compile('(^[\w]+)\\..+')
+match = nameRE.search(name)
+name = match.group(1)
 
 # List initialization.
 transsysfactors = []
@@ -194,7 +208,7 @@ for gene in sorted(genesSet) :
         promoter.append(transsys.PromoterElementActivate(k_m, v_max, [regulators[0]]))
         promoter.append(transsys.PromoterElementRepress(k_m, v_max, [regulators[0]]))
       else :
-        raise StandardError, 'Unknown type of interaction, check the input file'
+        raise StandardError, 'Unknown type of interaction, please remove these enties from the input file'
   transsysgenes.append(transsys.Gene(gene, genesfactorDict[gene], promoter))
 
 # Generate the transsys program.
