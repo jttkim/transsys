@@ -108,6 +108,16 @@ void dump_memory(void *p, size_t n, const char *fname, int lineno)
 }
 
 
+void free_integer_array(INTEGER_ARRAY *ia)
+{
+  if (ia->array)
+  {
+    free(ia->array);
+  }
+  free(ia);
+}
+
+
 INTEGER_ARRAY *extend_integer_array(INTEGER_ARRAY *ia, int v)
 {
   int *new_array;
@@ -322,7 +332,7 @@ static void free_promoter_components(PROMOTER_ELEMENT *a)
 }
 
 
-static void free_promoter_list(PROMOTER_ELEMENT *alist)
+void free_promoter_list(PROMOTER_ELEMENT *alist)
 {
   PROMOTER_ELEMENT *a;
 

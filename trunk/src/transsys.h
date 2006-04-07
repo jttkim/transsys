@@ -87,8 +87,10 @@ extern void seed_ulong_random(int seed);
 extern void random_shuffle(long num, long *a);
 
 void free_deadbeef(void *p);
+extern void free_integer_array(INTEGER_ARRAY *ia);
 extern INTEGER_ARRAY *extend_integer_array(INTEGER_ARRAY *ia, int v);
 extern EXPRESSION_NODE *new_expression_node(EXPR_NODE_TYPE type, ...);
+extern void free_promoter_list(PROMOTER_ELEMENT *alist);
 extern PROMOTER_ELEMENT *new_promoter_element(PROMOTERELEMENT_TYPE type, int num_binding_factors, int *factors, EXPRESSION_NODE *expr1, EXPRESSION_NODE *expr2);
 extern FACTOR_ELEMENT *new_factor_element(const char *name, EXPRESSION_NODE *decay_expression, EXPRESSION_NODE *diffusibility_expression);
 extern GENE_ELEMENT *new_gene_element(const char *name, PROMOTER_ELEMENT *promoter_list, int product_index);
