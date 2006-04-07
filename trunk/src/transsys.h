@@ -194,6 +194,46 @@ extern int dot_transsys(FILE *f, const TRANSSYS *transsys);
 extern double *transsys_collection_factor_entropy(TRANSSYS_INSTANCE **ti);
 extern double *transsys_collection_factor_information(TRANSSYS_INSTANCE **ti);
 
+/* parse.c */
+extern void add_factor_definition(TRANSSYS *ts, FACTOR_ELEMENT *fe);
+extern void add_gene_definition(TRANSSYS *ts, GENE_ELEMENT *ge);
+extern void add_factordef_decay(EXPRESSION_NODE *decay_expression, FACTOR_ELEMENT *fe);
+extern void add_factordef_diffusibility(EXPRESSION_NODE *diffusibility_expression, FACTOR_ELEMENT *fe);
+extern PROMOTER_ELEMENT *extend_promoter_list(PROMOTER_ELEMENT *alist, PROMOTER_ELEMENT *a);
+extern int find_factor_index(const TRANSSYS *ts, const char *name);
+extern int find_lhs_symbol_index(const RULE_ELEMENT *re, const char *transsys_label);
+extern int resolve_simple_identifier(EXPRESSION_NODE *node, const TRANSSYS *transsys);
+extern int resolve_complex_identifier(const LSYS *lsys, EXPRESSION_NODE *node, const RULE_ELEMENT *rule_element);
+extern int resolve_identifiers(EXPRESSION_NODE *node, const TRANSSYS *transsys, const LSYS *lsys, const RULE_ELEMENT *rule_element);
+extern INTEGER_ARRAY *extend_factor_combination(INTEGER_ARRAY *ia, const char *name, TRANSSYS *transsys);
+extern PROMOTER_ELEMENT *create_promoter(PROMOTERELEMENT_TYPE atype, INTEGER_ARRAY *ia, EXPRESSION_NODE *expr1, EXPRESSION_NODE *expr2);
+extern GENE_ELEMENT *create_gene(const char *name, PROMOTER_ELEMENT *alist, int gene_product);
+extern int resolve_transsys(TRANSSYS *tr);
+extern TRANSSYS *add_transsys(TRANSSYS *trlist, TRANSSYS *tr);
+extern GRAPHICS_PRIMITIVE *add_graphics_primitive(GRAPHICS_PRIMITIVE *gplist, GRAPHICS_PRIMITIVE *gp);
+extern SYMBOL_ELEMENT *find_symbol(const LSYS *ls, const char *name);
+extern int find_symbol_index(const LSYS *ls, const char *name);
+extern const TRANSSYS *find_transsys(const TRANSSYS *trlist, const char *name);
+extern SYMBOL_ELEMENT *create_symbol_element(const char *name, const char *transsys_name, const TRANSSYS *transsys_list);
+extern int find_lhs_symbol_by_transsys_label(const LHS_SYMBOL *symbol_list, const char *transsys_label);
+
+extern ASSIGNMENT_RESOLUTION_RESULT resolve_raw_assignments(const SYMBOL_ELEMENT *se, LHS_SYMBOL *lhs_symbol_list, RAW_ASSIGNMENT *ra_list);
+extern LHS_DESCRIPTOR *create_lhs_descriptor(const LSYS *lsys, LHS_SYMBOL *symlist);
+extern PRODUCTION_ELEMENT *create_production_element(const char *symbol_name, RAW_ASSIGNMENT *ra_list, const LSYS *lsys, LHS_SYMBOL *lhs_symbol_list);
+extern PRODUCTION_ELEMENT *add_production_element(PRODUCTION_ELEMENT *splist, PRODUCTION_ELEMENT *sp);
+extern LHS_SYMBOL *create_lhs_symbol(const char *symbol_name, const char *transsys_label, const LSYS *lsys);
+extern LHS_SYMBOL *add_lhs_symbol(LHS_SYMBOL *symlist, LHS_SYMBOL *symbol);
+extern RAW_ASSIGNMENT *create_raw_assignment(const char *factor_name, const char *transsys_label, EXPRESSION_NODE *value);
+extern RAW_ASSIGNMENT *add_raw_assignment(RAW_ASSIGNMENT *ra_list, RAW_ASSIGNMENT *ra);
+extern int resolve_graphics_identifiers(GRAPHICS_PRIMITIVE *gp, const TRANSSYS *transsys);
+extern LSYS *add_lsys(LSYS *lsyslist, LSYS *ls);
+extern void add_symbol_definition(LSYS *ls, SYMBOL_ELEMENT *se);
+extern void add_axiom_definition(LSYS *ls, SYMBOL_PRODUCTION *sp);
+extern void add_diffusionrange_definition(LSYS *ls, double diffusionrange);
+extern int resolve_rule_identifiers(RULE_ELEMENT *re, LSYS *lsys);
+extern int add_rule_definition(LSYS *ls, RULE_ELEMENT *re);
+extern void add_graphics_to_symbol(LSYS *ls, const char *symbol_name, GRAPHICS_PRIMITIVE *gp_list);
+
 extern char *prgname;
 extern char *yyin_name;
 extern TRANSSYS *parsed_transsys;

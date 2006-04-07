@@ -364,5 +364,16 @@ struct tag_lsys_string
   LSYS_STRING_CONTACT_GRAPH contact_graph;
 };
 
+/*
+ * use for parsing / interfacing purposes only.
+ */
+
+typedef struct
+{
+  ASSIGNMENT *assignment_list;
+  int source_lhs_symbol_index;
+  int error;
+} ASSIGNMENT_RESOLUTION_RESULT;
+
 #endif /* TRTYPES_H */
 
