@@ -527,8 +527,6 @@ void fprint_lsys(FILE *f, int indent_depth, const LSYS *lsys)
 {
   const SYMBOL_ELEMENT *se;
   const RULE_ELEMENT *re;
-  char *glue;
-  int i;
 
   if (!lsys->arrayed)
   {

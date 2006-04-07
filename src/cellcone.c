@@ -181,7 +181,7 @@ spewPrimitiveEPS(FILE * file, GLfloat * loc)
   int steps;
   Feedback3Dcolor *vertex;
   GLfloat xstep, ystep, rstep, gstep, bstep;
-  GLfloat xnext, ynext, rnext, gnext, bnext, distance;
+  GLfloat xnext = 0.0, ynext = 0.0, rnext = 0.0, gnext = 0.0, bnext = 0.0, distance = 0.0;
 
   token = *loc;
   loc++;
