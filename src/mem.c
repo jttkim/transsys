@@ -1362,9 +1362,13 @@ void init_transsys_instance_components(TRANSSYS_INSTANCE *ti)
 void free_transsys_instance_components(TRANSSYS_INSTANCE *ti)
 {
   if (ti->factor_concentration)
+  {
     free(ti->factor_concentration);
+  }
   if (ti->new_concentration)
+  {
     free(ti->new_concentration);
+  }
   init_transsys_instance_components(ti);
 }
 
@@ -1388,7 +1392,9 @@ int alloc_transsys_instance_components(TRANSSYS_INSTANCE *ti, const TRANSSYS *tr
   {
     ti->factor_concentration = (double *) malloc(transsys->num_factors * sizeof(double));
     if (ti->factor_concentration == NULL)
+    {
       return (-1);
+    }
     ti->new_concentration = (double *) malloc(transsys->num_factors * sizeof(double));
     if (ti->new_concentration == NULL)
     {
@@ -1419,10 +1425,39 @@ int clone_transsys_instance(TRANSSYS_INSTANCE *ti, const TRANSSYS_INSTANCE *sour
 
   return_value = alloc_transsys_instance_components(ti, source->transsys);
   if (return_value != 0)
+  {
     return (return_value);
+  }
   for (i = 0; i < ti->transsys->num_factors; i++)
+  {
     ti->factor_concentration[i] = source->factor_concentration[i];
+  }
   return (0);
+}
+
+
+void free_transsys_instance(TRANSSYS_INSTANCE *ti)
+{
+  free_transsys_instance_components(ti);
+  free(ti);
+}
+
+
+TRANSSYS_INSTANCE *new_transsys_instance(const TRANSSYS *transsys)
+{
+  TRANSSYS_INSTANCE *ti = (TRANSSYS_INSTANCE *) malloc(sizeof(TRANSSYS_INSTANCE));
+
+  if (ti == NULL)
+  {
+    return (NULL);
+  }
+  init_transsys_instance_components(ti);
+  if (alloc_transsys_instance_components(ti, transsys) != 0)
+  {
+    free(ti);
+    return (NULL);
+  }
+  return (ti);
 }
 
 

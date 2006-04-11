@@ -31,6 +31,11 @@ Features / properties that are missing
     * no function to find out regulating factors in general (i.e. those
       that exert their effect not through activate or repress statments)
 
+    * no arrangements to have ``make uninstall'' uninstall the python
+      elements of transsys -- problem is that there currently is no
+      ``python setup.py uninstall'' or similar, it seems. Please correct
+      me if I'm wrong.
+
 
 Fundamental design / implementation issues
 

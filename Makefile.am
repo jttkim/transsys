@@ -30,5 +30,5 @@ AM_CFLAGS = -Wall -pedantic
 
 EXTRA_DIST = BUGS
 
-SUBDIRS = src doc toolbox
+SUBDIRS = src doc toolbox python
 

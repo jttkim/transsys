@@ -134,6 +134,8 @@ extern void init_transsys_instance_components(TRANSSYS_INSTANCE *ti);
 extern void free_transsys_instance_components(TRANSSYS_INSTANCE *ti);
 extern int alloc_transsys_instance_components(TRANSSYS_INSTANCE *ti, const TRANSSYS *transsys);
 extern int clone_transsys_instance(TRANSSYS_INSTANCE *ti, const TRANSSYS_INSTANCE *source);
+extern void free_transsys_instance(TRANSSYS_INSTANCE *ti);
+extern TRANSSYS_INSTANCE *new_transsys_instance(const TRANSSYS *transsys);
 extern void free_cell_components(CELL *cell);
 extern void free_cells(int num_cells, CELL *cell);
 extern int alloc_cell_components(CELL *c, const TRANSSYS *transsys);
