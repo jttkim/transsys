@@ -63,7 +63,7 @@
 # initial toolbox assembly
 #
 
-PYTHONMODULES	= arrtool.py transrnd.py regstruct.py transdisrupt.py transdecode.py
+PYTHONMODULES	= arrtool.py transrnd.py regstruct.py transdisrupt.py transdecode.py transoptim.py
 PYTHONSCRIPTS	= random_transsys random_transsys_lsys transarray regstruct_transsys regstruct_transarray mutant_transsys get_overlap test_transparse
 RPACKAGE	= transarr
 
