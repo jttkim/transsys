@@ -259,9 +259,13 @@ static int compute_derived_strings(LSTR_BLOCK *lstr_block)
     lstr_block->string_index = LSTR_BLOCK_STRING_MAX - 1;
   }
   if (lstr_block->string_index < 0)
+  {
     lstr_block->string_index = 0;
+  }
   if (lstr_block->string_index < lstr_block->num_strings)
+  {
     return (0);
+  }
   if (lstr_block->num_strings == 0)
   {
     lstr_block->lstr[0] = axiom_string(lstr_block->lsys);

@@ -180,7 +180,7 @@ spewPrimitiveEPS(FILE * file, GLfloat * loc)
   GLfloat dx, dy, dr, dg, db, absR, absG, absB, colormax;
   int steps;
   Feedback3Dcolor *vertex;
-  GLfloat xstep, ystep, rstep, gstep, bstep;
+  GLfloat xstep = 0.0, ystep = 0.0, rstep = 0.0, gstep = 0.0, bstep = 0.0;
   GLfloat xnext = 0.0, ynext = 0.0, rnext = 0.0, gnext = 0.0, bnext = 0.0, distance = 0.0;
 
   token = *loc;
@@ -909,7 +909,7 @@ int extend_extrusion(MERISTEM_CONE *cone)
 void display_model(void)
 {
   int i, x, y, z, xmin, xmax, ymin, ymax, zmin, zmax;
-  double x0, y0, z0, r, g, b, rmax, gmax, bmax;
+  double x0, y0, z0, r, g, b, rmax = 0.0, gmax = 0.0, bmax = 0.0;
   GLfloat v[4];
 
   x0 = (cone.xwidth - 1) * 0.5;

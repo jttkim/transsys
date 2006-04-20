@@ -110,11 +110,14 @@ void dump_memory(void *p, size_t n, const char *fname, int lineno)
 
 void free_integer_array(INTEGER_ARRAY *ia)
 {
-  if (ia->array)
+  if (ia != NULL)
   {
-    free(ia->array);
+    if (ia->array != NULL)
+    {
+      free(ia->array);
+    }
+    free(ia);
   }
-  free(ia);
 }
 
 
@@ -501,7 +504,9 @@ TRANSSYS *new_transsys(const char *name)
 
   tr = (TRANSSYS *) malloc(sizeof(TRANSSYS));
   if (tr == NULL)
+  {
     return (NULL);
+  }
   tr->next = NULL;
   tr->arrayed = 0;
   tr->num_factors = 0;
@@ -724,14 +729,18 @@ void free_symbol_element_components(SYMBOL_ELEMENT *sym)
     if (sym->graphics_primitive_list)
     {
       for (i = 0; i < sym->num_graphics_primitives; i++)
+      {
 	free_graphics_primitive_components(sym->graphics_primitive_list + i);
+      }
       free(sym->graphics_primitive_list);
     }
   }
   else
   {
     if (sym->graphics_primitive_list)
+    {
       free_graphics_primitive_list(sym->graphics_primitive_list);
+    }
   }
 }
 
@@ -886,7 +895,9 @@ LHS_DESCRIPTOR *new_lhs_descriptor(LHS_SYMBOL *symbol_list)
 
   l = (LHS_DESCRIPTOR *) malloc(sizeof(LHS_DESCRIPTOR));
   if (l == NULL)
+  {
     return (NULL);
+  }
   l->arrayed = 0;
   l->num_symbols = 0;
   l->symbol_list = symbol_list;
@@ -900,9 +911,13 @@ int arrange_lhs_descriptor_arrays(LHS_DESCRIPTOR *l)
   LHS_SYMBOL *s_arr, *s, *s1;
 
   if (l->arrayed)
+  {
     return (0);
+  }
   for (num_symbols = 0, s = l->symbol_list; s; s = s->next)
+  {
     num_symbols++;
+  }
   if (num_symbols > 0)
   {
     s_arr = (LHS_SYMBOL *) malloc(num_symbols * sizeof(LHS_SYMBOL));
@@ -924,7 +939,9 @@ int arrange_lhs_descriptor_arrays(LHS_DESCRIPTOR *l)
   if (num_symbols > 0)
   {
     for (i = 1; i < num_symbols; i++)
+    {
       l->symbol_list[i - 1].next = l->symbol_list + i;
+    }
     l->symbol_list[i - 1].next = NULL;
   }
   l->arrayed = 1;
@@ -984,7 +1001,9 @@ PRODUCTION_ELEMENT *new_production_element(int symbol_index, int template_lhs_sy
 
   sp = (PRODUCTION_ELEMENT *) malloc(sizeof(PRODUCTION_ELEMENT));
   if (sp == NULL)
+  {
     return (NULL);
+  }
   sp->next = NULL;
   sp->arrayed = 0;
   sp->symbol_index = symbol_index;
@@ -1047,7 +1066,7 @@ void free_symbol_production_components(SYMBOL_PRODUCTION *sp)
 }
 
 
-SYMBOL_PRODUCTION *new_symbol_production(const TRANSSYS *transsys, PRODUCTION_ELEMENT *production_list)
+SYMBOL_PRODUCTION *new_symbol_production(PRODUCTION_ELEMENT *production_list)
 {
   SYMBOL_PRODUCTION *sp;
 
@@ -1055,7 +1074,6 @@ SYMBOL_PRODUCTION *new_symbol_production(const TRANSSYS *transsys, PRODUCTION_EL
   if (sp == NULL)
     return (NULL);
   sp->arrayed = 0;
-  sp->transsys = transsys;
   sp->num_production_elements = 0;
   sp->production_list = production_list;
   return (sp);
@@ -1102,11 +1120,19 @@ int arrange_symbol_production_arrays(SYMBOL_PRODUCTION *sp)
 void free_rule_element_components(RULE_ELEMENT *r)
 {
   if (r->condition)
+  {
     free_expression_tree(r->condition);
-  free_lhs_descriptor_components(r->lhs);
-  free(r->lhs);
-  free_symbol_production_components(r->rhs);
-  free(r->rhs);
+  }
+  if (r->lhs)
+  {
+    free_lhs_descriptor_components(r->lhs);
+    free(r->lhs);
+  }
+  if (r->rhs)
+  {
+    free_symbol_production_components(r->rhs);
+    free(r->rhs);
+  }
 }
 
 
@@ -1130,7 +1156,9 @@ RULE_ELEMENT *new_rule_element(const char *name, LHS_DESCRIPTOR *lhs, EXPRESSION
 
   r = (RULE_ELEMENT *) malloc(sizeof(RULE_ELEMENT));
   if (r == NULL)
+  {
     return (NULL);
+  }
   r->next = NULL;
   if (name)
   {
@@ -1138,7 +1166,9 @@ RULE_ELEMENT *new_rule_element(const char *name, LHS_DESCRIPTOR *lhs, EXPRESSION
     r->name[IDENTIFIER_MAX - 1] = '\0';
   }
   else
+  {
     r->name[0] = '\0';
+  }
   r->lhs = lhs;
   r->condition = condition;
   r->rhs = rhs;
@@ -1146,7 +1176,7 @@ RULE_ELEMENT *new_rule_element(const char *name, LHS_DESCRIPTOR *lhs, EXPRESSION
 }
 
 
-void free_lsys_components(LSYS *lsys)
+static void free_lsys_components(LSYS *lsys)
 {
   int i;
 
@@ -1204,13 +1234,95 @@ void free_lsys_list(LSYS *ls)
 }
 
 
+/*
+ * Returns a NULL terminated array of pointers to all transsys instances in lsys.
+ *
+ * Returns NULL if malloc for the array fails or if lsys is not arrayed (error).
+ *
+ * If successful, an array is returned. The array may consist of a NULL pointer
+ * only, and must be freed by caller after use.
+ */
+static const TRANSSYS **lsys_transsys_list(const LSYS *lsys)
+{
+  const TRANSSYS **tl = NULL, **tl1;
+  int n, i, j;
+
+  if (!lsys->arrayed)
+  {
+    fprintf(stderr, "lsys_transsys_list: lsys not arrayed\n");
+    return (NULL);
+  }
+  tl = (const TRANSSYS **) malloc(sizeof(TRANSSYS *));
+  if (tl == NULL)
+  {
+    fprintf(stderr, "lsys_transsys_list: malloc failed\n");
+    return (NULL);
+  }
+  n = 0;
+  for (i = 0; i < lsys->num_symbols; i++)
+  {
+    if (lsys->symbol_list[i].transsys != NULL)
+    {
+      for (j = 0; (j < n) && (tl[j] != lsys->symbol_list[i].transsys); j++)
+	;
+      if (j == n)
+      {
+	tl1 = (const TRANSSYS **) realloc(tl, (n + 1) * sizeof(TRANSSYS *));
+	if (tl1 == NULL)
+	{
+	  fprintf(stderr, "lsys_transsys_list: realloc failed\n");
+	  free(tl);
+	  return (NULL);
+	}
+	tl = tl1;
+	tl[n] = lsys->symbol_list[i].transsys;
+	n++;
+      }
+    }
+  }
+  tl[n] = NULL;
+  return (tl);
+}
+
+
+/*
+ * free one lsys and all transsys programs it uses in its symbols.
+ */
+void free_lsys_with_transsys(LSYS *ls)
+{
+  const TRANSSYS **transsys_list;
+  int i;
+
+  transsys_list = lsys_transsys_list(ls);
+  if (transsys_list != NULL)
+  {
+    for (i = 0; transsys_list[i] != NULL; i++)
+    {
+      /* cast from const TRANSSYS * to TRANSSYS * so we can alter and free transsys */
+      TRANSSYS *transsys = (TRANSSYS *) transsys_list[i];
+
+      if (transsys->next != NULL)
+      {
+	fprintf(stderr, "free_lsys_with_transsys: transsys \"%s\" has a successor (next)\n", transsys->name);
+      }
+      free_transsys_list(transsys);
+    }
+  }
+  free(transsys_list);
+  free_lsys_components(ls);
+  free(ls);
+}
+
+
 LSYS *new_lsys(const char *name)
 {
   LSYS *lsys;
 
   lsys = (LSYS *) malloc(sizeof(LSYS));
   if (lsys == NULL)
+  {
     return (NULL);
+  }
   lsys->next = NULL;
   lsys->arrayed = 0;
   lsys->num_symbols = 0;
@@ -1283,16 +1395,24 @@ int arrange_lsys_arrays(LSYS *lsys)
   int num_symbols, num_rules, i;
 
   if (lsys->arrayed)
+  {
     return (0);
+  }
   for (num_symbols = 0, se = lsys->symbol_list; se; se = se->next)
+  {
     num_symbols++;
+  }
   for (num_rules = 0, re = lsys->rule_list; re; re = re->next)
+  {
     num_rules++;
+  }
   if (num_symbols > 0)
   {
     se_arr = (SYMBOL_ELEMENT *) malloc(num_symbols * sizeof(SYMBOL_ELEMENT));
     if (se_arr == NULL)
+    {
       return (-1);
+    }
   }
   if (num_rules > 0)
   {
@@ -1300,7 +1420,9 @@ int arrange_lsys_arrays(LSYS *lsys)
     if (re_arr == NULL)
     {
       if (se_arr)
+      {
 	free(se_arr);
+      }
       return (-1);
     }
   }

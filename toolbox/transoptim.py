@@ -13,77 +13,6 @@ import transsys
 import transdecode
 
 
-class SymbolInstance :
-
-  def __init__(self, lsys_program, transsys_program, line) :
-    l = line.split()
-    if len(l) < 5 :
-      raise StandardError, 'bad symbol instance line: "%s"' % line.strip()
-    if transsys_program.name != l[4] :
-      raise StandardError, 'transsys mismatch: expected "%s", found "%s"' % (transsys_program.name, l[4])
-    self.transsys_program = transsys_program
-    self.timestep = int(l[0])
-    self.symbol_instance_index = int(l[1])
-    self.symbol = lsys_program.find_symbol(l[2])
-    if l[3] == '<copy>' :
-      self.rule = None
-    else :
-      self.rule = lsys_program.find_rule(l[3])
-    factor_concentration = []
-    for f in l[5:] :
-      factor_concentration.append(float(f))
-    self.transsys_instance = transsys.TranssysInstance(transsys_program)
-    if len(self.transsys_instance.factor_concentration) != len(factor_concentration) :
-      raise StandardError, 'factor concentration length mismatch'
-    self.transsys_instance.factor_concentration = factor_concentration
-
-
-  def __str__(self) :
-    s = '%d %d %s' % (self.timestep, self.symbol_instance_index, self.symbol.name)
-    if self.rule is None :
-      s = s + ' <copy>'
-    else :
-      s = s + ' %s' % self.rule.name
-    s = s + ' %s' % self.transsys_program.name
-    for f in self.transsys_instance.factor_concentration :
-      s = s + ' %g' % f
-    return s
-
-
-def transsys_symbol_instance_series(lsys_program, transsys_program, num_timesteps, timestep_delta = 1) :
-  cmd = 'ltransexpr -t %s -n %d -d %d' % (transsys_program.name, num_timesteps, timestep_delta)
-  sys.stdout.flush()
-  sys.stderr.flush()
-  p = popen2.Popen3(cmd, 1)
-  sys.stdout.flush()
-  sys.stderr.flush()
-  pid = os.fork()
-  if pid == 0 :
-    p.fromchild.close()
-    p.tochild.write(str(transsys_program))
-    p.tochild.write(str(lsys_program))
-    #sys.stdout.write(str(self.transsys_program))
-    p.tochild.close()
-    os._exit(os.EX_OK)
-  p.tochild.close()
-  instance_series = []
-  line = p.fromchild.readline()
-  while line :
-    # print line,
-    instance_series.append(SymbolInstance(lsys_program, transsys_program, line))
-    line = p.fromchild.readline()
-  p.fromchild.close()
-  status = p.wait()
-  if status != 0 :
-    errmsg = p.childerr.readline()
-    while errmsg :
-      sys.stderr.write(errmsg)
-      errmsg = p.childerr.readline()
-    raise StandardError, 'TranssysInstance::time_series: transexpr exit status %d ("%s")' % (status, errmsg.strip())
-  os.wait()
-  return instance_series
-
-
 class Interval :
 
   def __init__(self, a, b) :
@@ -194,6 +123,25 @@ class LsysDisparityFitnessResult(FitnessResult) :
     self.best_factor_list = best_factor_list
 
 
+def flat_symbol_instance_list(lstring_list, transsys_program = None) :
+
+  def filter(si, transsys_program) :
+    if transsys_program is None :
+      return True
+    if si.transsys_instance is None :
+      return False
+    if si.transsys_instance.transsys_program is transsys_program :
+      return True
+    return False
+  
+  flat_list = []
+  for lstring in lstring_list :
+    for si in lstring.symbol_list :
+      if filter(si, transsys_program) :
+        flat_list.append(si)
+  return flat_list
+
+
 def disparity_fitness(lsys_program, transsys_program, factor_names, num_timesteps, disparity) :
   if len(transsys_program.factor_list) == 0 :
     return 1.0
@@ -202,7 +150,7 @@ def disparity_fitness(lsys_program, transsys_program, factor_names, num_timestep
   factor_indices = []
   for factor_name in factor_names :
     factor_indices.append(transsys_program.find_factor_index(factor_name))
-  instance_series = transsys_symbol_instance_series(lsys_program, transsys_program, num_timesteps)
+  instance_series = flat_symbol_instance_list(lsys_program.derivation_series(num_timesteps), transsys_program)
   for rule in lsys_program.rules :
     fmin = None
     for factor_index in factor_indices :
@@ -299,21 +247,44 @@ def randomise_transsys_values(transsys_program, random_function, gene_name_list 
   value_expression_list = get_value_nodes(transsys_program, gene_name_list, factor_name_list)
   for n in value_expression_list :
     n.value = random_function()
-  
+
+
+class OptimisationResult :
+
+  def __init__(self, tp, optimisation_log) :
+    self.optimised_transsys_program = tp
+    self.optimisation_log = optimisation_log
+
 
 class GradientOptimiser :
 
-  def __init__(self, initial_stepsize, delta = 1.0e-6, stepsize_shrink = 0.5, stepsize_min = 1.0e-30, stepsize_max = 1.0e30) :
+  def __init__(self, initial_stepsize, delta = 1.0e-6, stepsize_shrink = 0.5, stepsize_min = 1.0e-30, stepsize_max = 1.0e30, improvement_threshold = 0.0) :
+    """
+@param initial_stepsize: distance initially stepped in gradient
+  direction. Subject to subsequent adaptation
+@param delta: offset from current point in search space used
+  for gradient computation (estimation)
+@param stepsize_shrink: factor by which stepsize is multiplied / divided
+  in stepsize adaptation
+@param stepsize_min: minimal stepsize, optimisation terminates if
+  stepsize falls below this limit
+@param stepsize_max: maximal stepsize, adaptation will not make
+  stepsize exceed this limit
+@param improvement_threshold: optimisation terminates if improvement
+  drops below this threshold.
+"""
     self.initial_stepsize = initial_stepsize
     self.delta = delta
     self.stepsize_shrink = stepsize_shrink
     self.stepsize_min = stepsize_min
     self.stepsize_max = stepsize_max
+    self.improvement_threshold = improvement_threshold
     self.eliminateFlatComponents = False
     self.verbose = False
 
 
   def optimise(self, transsys_program, objective_function, gene_name_list = None, factor_name_list = None) :
+    optimisation_log = []
     tp = copy.deepcopy(transsys_program)
     value_expression_list = get_value_nodes(tp, gene_name_list, factor_name_list)
     if self.verbose :
@@ -321,6 +292,7 @@ class GradientOptimiser :
     initial_values = map(lambda n : n.value, value_expression_list)
     current_values = initial_values[:]
     current_obj = objective_function(tp).fitness
+    optimisation_log = [current_obj]
     stepsize = self.initial_stepsize
     old_gradient = [1.0] * len(current_values)
     while stepsize > self.stepsize_min :
@@ -385,17 +357,20 @@ class GradientOptimiser :
             value_expression_list[i].value = current_values[i] - gradient[i] * stepsize
           new_obj = objective_function(tp).fitness
       if stepsize > self.stepsize_min :
+        d_obj = current_obj - new_obj
         if self.verbose :
-          sys.stderr.write('  making step %g: d_obj = %g, new_obj = %g\n' % (stepsize, current_obj - new_obj, new_obj))
+          sys.stderr.write('  making step %g: d_obj = %g, new_obj = %g\n' % (stepsize, d_obj, new_obj))
         current_obj = new_obj
+        optimisation_log.append(current_obj)
         current_values = map(lambda n : n.value, value_expression_list)
-    return tp
+      if d_obj < self.improvement_threshold :
+        break
+    return OptimisationResult(tp, optimisation_log)
 
 
 class LsysObjectiveFunction(ObjectiveFunction) :
 
   def __init__(self, lsys, control_transsys, disparity_function, num_timesteps) :
-    # FIXME: should dissociate / associate transsys here
     self.lsys = copy.deepcopy(lsys)
     self.control_transsys = copy.deepcopy(control_transsys)
     self.disparity_function = disparity_function
@@ -405,6 +380,10 @@ class LsysObjectiveFunction(ObjectiveFunction) :
   def __call__(self, tp) :
     transsys_program = copy.deepcopy(self.control_transsys)
     transsys_program.merge(tp)
-    return disparity_fitness(self.lsys, transsys_program, tp.factor_names(), self.num_timesteps, self.disparity_function)
+    self.lsys.associate_transsys(transsys_program)
+    # print self.lsys
+    fitness = disparity_fitness(self.lsys, transsys_program, tp.factor_names(), self.num_timesteps, self.disparity_function)
+    self.lsys.dissociate_transsys()
+    return fitness
 
 
