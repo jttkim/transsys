@@ -245,7 +245,7 @@ typedef struct tag_production_element
 typedef struct tag_symbol_production
 {
   int arrayed;
-  const TRANSSYS *transsys; /* transsys governing production -- obsolescent */
+  /* const TRANSSYS *transsys;  transsys governing production -- obsolescent */
   int num_production_elements;
   PRODUCTION_ELEMENT *production_list;
 } SYMBOL_PRODUCTION;

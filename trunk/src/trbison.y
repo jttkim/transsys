@@ -53,7 +53,20 @@ LSYS *parsed_lsys = NULL;
 
 static LSYS *current_lsys = NULL;
 static TRANSSYS *current_transsys = NULL;
+
+/*
+ * current_factor appears to be necessitated only to provide
+ * the obsolescent defaults to decay and diffusibility.
+ */
 static FACTOR_ELEMENT *current_factor = NULL;
+
+/*
+ * current_lhs_symbol_list effectively represents the namespace
+ * of transsys programs associated with symbols, established by
+ * the lefthand side of a rule. It is initialised upon parsing
+ * the lhs and passed in as a parameter during parsing the rhs.
+ * (Yes, this is a rather nasty hack.)
+ */
 static LHS_SYMBOL *current_lhs_symbol_list;
 
 
@@ -280,7 +293,9 @@ static RULE_ELEMENT *complete_rule(const char *name, RULE_ELEMENT *re)
   strncpy(re->name, name, IDENTIFIER_MAX);
   re->name[IDENTIFIER_MAX - 1] = '\0';
   if (arrange_symbol_production_arrays(re->rhs) != 0)
+  {
     yyerror("complete_rule: arrange_symbol_production_arrays() failed");
+  }
   return (re);
 }
 
@@ -370,7 +385,7 @@ symbol_definition
 	;
 
 axiom_definition
-	: AXIOM_DEF production_element_string ';' { $$ = new_symbol_production(NULL, $2); }
+	: AXIOM_DEF production_element_string ';' { $$ = new_symbol_production($2); }
 	;
 
 diffusionrange_definition
@@ -387,7 +402,7 @@ rule_components
 	;
 
 rule_lhs
-	: lhs_element_string { $$ = create_lhs_descriptor(current_lsys, $1); }
+	: lhs_element_string { $$ = create_lhs_descriptor(current_lsys, $1); current_lhs_symbol_list = $$->symbol_list; }
 	;
 
 lhs_element_string
@@ -396,12 +411,12 @@ lhs_element_string
 	;
 
 lhs_element
-	: IDENTIFIER  { $$ = create_lhs_symbol($1, NULL, current_lsys); }
-	| IDENTIFIER '(' IDENTIFIER ')' { $$ = create_lhs_symbol($1, $3, current_lsys); }
+	: IDENTIFIER  { $$ = create_lhs_symbol($1, NULL, current_lsys); if ($$ == NULL) YYABORT; }
+	| IDENTIFIER '(' IDENTIFIER ')' { $$ = create_lhs_symbol($1, $3, current_lsys); if ($$ == NULL) YYABORT; }
 	;
 
 rule_rhs
-	: production_element_string { $$ = new_symbol_production(NULL, $1); }
+	: production_element_string { $$ = new_symbol_production($1); }
 	;
 
 production_element_string
@@ -450,9 +465,9 @@ symgraph_list
 	;
 
 symgraph
-	: IDENTIFIER '{' graphcmd_list '}' { add_graphics_to_symbol(current_lsys, $1, $3); }
-	| '[' '{' graphcmd_list '}' { add_graphics_to_symbol(current_lsys, "[", $3); }
-	| ']' '{' graphcmd_list '}' { add_graphics_to_symbol(current_lsys, "]", $3); }
+	: IDENTIFIER '{' graphcmd_list '}' { add_graphics_to_named_symbol(current_lsys, $1, $3); }
+	| '[' '{' graphcmd_list '}' { add_graphics_to_named_symbol(current_lsys, "[", $3); }
+	| ']' '{' graphcmd_list '}' { add_graphics_to_named_symbol(current_lsys, "]", $3); }
 	;
 
 graphcmd_list

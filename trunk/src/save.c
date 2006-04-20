@@ -269,14 +269,22 @@ void fprint_transsys(FILE *f, int indent_depth, const TRANSSYS *transsys)
 
   if (!transsys->arrayed)
   {
+    fprintf(stderr, "fprint_transsys: printing non-arrayed transsys \"%s\" (may not work)\n", transsys->name);
+    fprint_indented(f, indent_depth, "#non-arrayed transsys\n");
+    /*
     fprintf(stderr, "fprint_transsys: printing non-arrayed transcription system, arraying first\n");
     if (arrange_transsys_arrays((TRANSSYS *) transsys) != 0)
+    {
       return;
+    }
+    */
   }
   fprint_indented(f, indent_depth, "transsys %s\n", transsys->name);
   fprint_indented(f, indent_depth, "{\n");
   for (fe = transsys->factor_list; fe; fe = fe->next)
+  {
     fprint_factor(f, indent_depth + 2, fe, transsys->factor_list);
+  }
   for (ge = transsys->gene_list; ge; ge = ge->next)
   {
     fprintf(f, "\n");
@@ -530,8 +538,9 @@ void fprint_lsys(FILE *f, int indent_depth, const LSYS *lsys)
 
   if (!lsys->arrayed)
   {
-    fprintf(stderr, "lsys \"%s\" not arrayed -- arraying before printing\n", lsys->name);
-    arrange_lsys_arrays((LSYS *) lsys);
+    fprintf(stderr, "fprint_lsys: printing non-arrayed lsys \"%s\" (may  not work)\n", lsys->name);
+    /* arrange_lsys_arrays((LSYS *) lsys); */
+    fprint_indented(f, indent_depth, "# non arrayed lsys\n");
   }
   fprint_indented(f, indent_depth, "lsys %s\n", lsys->name);
   fprint_indented(f, indent_depth, "{\n");

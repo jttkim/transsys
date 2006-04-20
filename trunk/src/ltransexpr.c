@@ -184,6 +184,7 @@ static int ltransexpr(FILE *outfile, const LSYS *lsys, const TRANSSYS *transsys,
     free_lsys_string(lstr);
     lstr = dstr;
   }
+  free_lsys_string(lstr);
   return (0);
 }
 

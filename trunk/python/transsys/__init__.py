@@ -243,13 +243,13 @@ instances (in a L-transsys context)"""
       return transsys_instance[self.transsys_label].factor_concentration[self.factor.index]
 
 
-class BinaryExpressionNode(ExpressionNode) :
+class ExpressionNodeBinary(ExpressionNode) :
 
   def __init__(self, op1, op2, operator_sym = None) :
     if not isinstance(op1, ExpressionNode) :
-      raise StandardError, 'BinaryExpressionNode::__init__: bad type of op1'
+      raise StandardError, 'ExpressionNodeBinary::__init__: bad type of op1'
     if not isinstance(op2, ExpressionNode) :
-      raise StandardError, 'BinaryExpressionNode::__init__: bad type of op2'
+      raise StandardError, 'ExpressionNodeBinary::__init__: bad type of op2'
     self.operand1 = op1
     self.operand2 = op2
     self.operator_sym = operator_sym
@@ -266,8 +266,12 @@ class BinaryExpressionNode(ExpressionNode) :
 
   def unresolved_copy(self) :
     op1 = self.operand1.unresolved_copy()
-    op2 = self.operand1.unresolved_copy()
-    return self.__class__(op1, op2, self.operator_sym)
+    op2 = self.operand2.unresolved_copy()
+    # This constructor call with two operand parameters works for
+    # subclasses of ExpressionNodeBinary, but not for this class
+    # itself. This is justified because ExpressionNodeBinary is
+    # an abstract base class
+    return self.__class__(op1, op2)
 
 
   def getValueNodes(self) :
@@ -278,100 +282,100 @@ class BinaryExpressionNode(ExpressionNode) :
     return self.operand1.getIdentifierNodes() + self.operand2.getIdentifierNodes()
 
 
-class ExpressionNodeAdd(BinaryExpressionNode) :
+class ExpressionNodeAdd(ExpressionNodeBinary) :
 
   def __init__(self, op1, op2) :
-    BinaryExpressionNode.__init__(self, op1, op2, '+')
+    ExpressionNodeBinary.__init__(self, op1, op2, '+')
 
 
   def evaluate(self, transsys_instance) :
     return self.operand1.evaluate(transsys_instance) + self.operand2.evaluate(transsys_instance)
 
 
-class ExpressionNodeSubtract(BinaryExpressionNode) :
+class ExpressionNodeSubtract(ExpressionNodeBinary) :
 
   def __init__(self, op1, op2) :
-    BinaryExpressionNode.__init__(self, op1, op2, '-')
+    ExpressionNodeBinary.__init__(self, op1, op2, '-')
 
 
   def evaluate(self, transsys_instance) :
     return self.operand1.evaluate(transsys_instance) - self.operand2.evaluate(transsys_instance)
 
 
-class ExpressionNodeMult(BinaryExpressionNode) :
+class ExpressionNodeMult(ExpressionNodeBinary) :
 
   def __init__(self, op1, op2) :
-    BinaryExpressionNode.__init__(self, op1, op2, '*')
+    ExpressionNodeBinary.__init__(self, op1, op2, '*')
 
 
   def evaluate(self, transsys_instance) :
     return self.operand1.evaluate(transsys_instance) * self.operand2.evaluate(transsys_instance)
 
 
-class ExpressionNodeDiv(BinaryExpressionNode) :
+class ExpressionNodeDiv(ExpressionNodeBinary) :
 
   def __init__(self, op1, op2) :
-    BinaryExpressionNode.__init__(self, op1, op2, '/')
+    ExpressionNodeBinary.__init__(self, op1, op2, '/')
 
 
   def evaluate(self, transsys_instance) :
     return self.operand1.evaluate(transsys_instance) / self.operand2.evaluate(transsys_instance)
 
 
-class ExpressionNodeLower(BinaryExpressionNode) :
+class ExpressionNodeLower(ExpressionNodeBinary) :
 
   def __init__(self, op1, op2) :
-    BinaryExpressionNode.__init__(self, op1, op2, '<')
+    ExpressionNodeBinary.__init__(self, op1, op2, '<')
 
 
   def evaluate(self, transsys_instance) :
     return self.operand1.evaluate(transsys_instance) < self.operand2.evaluate(transsys_instance)
 
 
-class ExpressionNodeLowerEqual(BinaryExpressionNode) :
+class ExpressionNodeLowerEqual(ExpressionNodeBinary) :
 
   def __init__(self, op1, op2) :
-    BinaryExpressionNode.__init__(self, op1, op2, '<=')
+    ExpressionNodeBinary.__init__(self, op1, op2, '<=')
 
 
   def evaluate(self, transsys_instance) :
     return self.operand1.evaluate(transsys_instance) <= self.operand2.evaluate(transsys_instance)
 
 
-class ExpressionNodeGreater(BinaryExpressionNode) :
+class ExpressionNodeGreater(ExpressionNodeBinary) :
 
   def __init__(self, op1, op2) :
-    BinaryExpressionNode.__init__(self, op1, op2, '>')
+    ExpressionNodeBinary.__init__(self, op1, op2, '>')
 
 
   def evaluate(self, transsys_instance) :
     return self.operand1.evaluate(transsys_instance) > self.operand2.evaluate(transsys_instance)
 
 
-class ExpressionNodeGreaterEqual(BinaryExpressionNode) :
+class ExpressionNodeGreaterEqual(ExpressionNodeBinary) :
 
   def __init__(self, op1, op2) :
-    BinaryExpressionNode.__init__(self, op1, op2, '>=')
+    ExpressionNodeBinary.__init__(self, op1, op2, '>=')
 
 
   def evaluate(self, transsys_instance) :
     return self.operand1.evaluate(transsys_instance) >= self.operand2.evaluate(transsys_instance)
 
 
-class ExpressionNodeEqual(BinaryExpressionNode) :
+class ExpressionNodeEqual(ExpressionNodeBinary) :
 
   def __init__(self, op1, op2) :
-    BinaryExpressionNode.__init__(self, op1, op2, '==')
+    ExpressionNodeBinary.__init__(self, op1, op2, '==')
 
 
   def evaluate(self, transsys_instance) :
     return self.operand1.evaluate(transsys_instance) == self.operand2.evaluate(transsys_instance)
 
 
-class ExpressionNodeUnequal(BinaryExpressionNode) :
+class ExpressionNodeUnequal(ExpressionNodeBinary) :
 
   def __init__(self, op1, op2) :
-    BinaryExpressionNode.__init__(self, op1, op2, '!=')
+    ExpressionNodeBinary.__init__(self, op1, op2, '!=')
 
 
   def evaluate(self, transsys_instance) :
@@ -411,32 +415,32 @@ class ExpressionNodeNot(ExpressionNode) :
     return self.operand.getIdentifierNodes()
 
 
-class ExpressionNodeAnd(BinaryExpressionNode) :
+class ExpressionNodeAnd(ExpressionNodeBinary) :
 
   def __init__(self, op1, op2) :
-    BinaryExpressionNode.__init__(self, op1, op2, '&&')
+    ExpressionNodeBinary.__init__(self, op1, op2, '&&')
 
 
   def evaluate(self, transsys_instance) :
     return self.operand1.evaluate(transsys_instance) and self.operand2.evaluate(transsys_instance)
 
 
-class ExpressionNodeOr(BinaryExpressionNode) :
+class ExpressionNodeOr(ExpressionNodeBinary) :
 
   def __init__(self, op1, op2) :
-    BinaryExpressionNode.__init__(self, op1, op2, '||')
+    ExpressionNodeBinary.__init__(self, op1, op2, '||')
 
 
   def evaluate(self, transsys_instance) :
     return self.operand1.evaluate(transsys_instance) or self.operand2.evaluate(transsys_instance)
 
 
-class FunctionExpressionNode(ExpressionNode) :
+class ExpressionNodeFunction(ExpressionNode) :
 
   def __init__(self, operand, funcname = 'undefined_function') :
     for op in operand :
       if not isinstance(op, ExpressionNode) :
-        raise StandardError, 'FunctionExpressionNode::__init__: bad type of operand'
+        raise StandardError, 'ExpressionNodeFunction::__init__: bad type of operand'
     self.operand = operand
     self.funcname = funcname
 
@@ -481,10 +485,10 @@ class FunctionExpressionNode(ExpressionNode) :
     return identifierNodes
 
 
-class ExpressionNodeUniformRandom(FunctionExpressionNode) :
+class ExpressionNodeUniformRandom(ExpressionNodeFunction) :
 
   def __init__(self, op1, op2) :
-    FunctionExpressionNode.__init__(self, [op1, op2], 'random')
+    ExpressionNodeFunction.__init__(self, [op1, op2], 'random')
 
 
   def evaluate(self, transsys_instance) :
@@ -496,10 +500,10 @@ class ExpressionNodeUniformRandom(FunctionExpressionNode) :
       return arg2 + (arg1 - arg2) * transsys_instance[0].rng.rnd()
 
 
-class ExpressionNodeGaussianRandom(FunctionExpressionNode) :
+class ExpressionNodeGaussianRandom(ExpressionNodeFunction) :
 
   def __init__(self, op1, op2) :
-    FunctionExpressionNode.__init__(self, [op1, op2], 'gauss')
+    ExpressionNodeFunction.__init__(self, [op1, op2], 'gauss')
 
 
   def evaluate(self, transsys_instance) :
@@ -1115,6 +1119,7 @@ genes in this transsys program."""
         self.gene_list.append(g)
       else :
         sys.stderr.write('TranssysProgram::merge: gene %s already present -- skipping\n' % g.name)
+    self.resolve()
     self.comments.append('merged with transsys %s' % other.name)
 
 
@@ -1329,25 +1334,33 @@ class Symbol :
       raise StandardError, 'Symbol::transsys_name: bad type %s of transsys member' % str(type(self.transsys))
 
 
+  def is_associated(self) :
+    return isinstance(self.transsys, TranssysProgram)
+
+
   def dissociate_transsys(self) :
+    if self.is_associated() :
+      if self.graphics is not None :
+        for g in self.graphics :
+          g.dissociate_transsys()
+      self.transsys = self.transsys_name()
+
+
+  def associate_transsys(self, tp) :
+    if self.transsys is None :
+      return
+    self.dissociate_transsys()
+    if tp.name != self.transsys_name() :
+      raise StandardError, 'associating incompatible transsys: "%s" != "%s"' % (tp.name, self.transsys_name())
     if self.graphics is not None :
       for g in self.graphics :
-        g.dissociate_transsys()
-    self.transsys = self.transsys_name()
-
-
-  def associate_transsys(transsys_list) :
-    self.dissociate_transsys()
-    for t in transsys_list :
-      if t.name == self.transsys :
-        if self.graphics is not None :
-          for g in self.graphics :
-            g.associate_transsys(t)
-        self.transsys = t
-        break
+        g.associate_transsys(tp)
+    self.transsys = tp
 
 
   def graphics_string(self) :
+    if self.graphics is None :
+      return '    // symbol %s: no graphics\n' % self.name
     s = '    %s\n' % self.name
     s = s + '    {\n'
     for g in self.graphics :
@@ -1366,27 +1379,33 @@ class Assignment :
 
 
   def __str__(self) :
-    return '%s = %s' % (self.factor, str(self.expression))
+    if isinstance(self.factor, Factor) :
+      return '%s = %s' % (self.factor.name, str(self.expression))
+    else :
+      return '%s = %s' % (self.factor, str(self.expression))
 
 
   def dissociate_transsys(self) :
+    if isinstance(self.factor, Factor) :
+      self.factor = self.factor.name
     self.expression = self.expression.unresolved_copy()
 
 
   def associate_transsys(self, tp) :
+    self.factor = tp.find_factor(self.factor)
     self.expression.resolve(tp)
 
 
 class LhsSymbol :
 
-  def __init__(self, symbol, transsys_name) :
+  def __init__(self, symbol, transsys_label) :
     self.symbol = symbol
-    self.transsys_name = transsys_name
+    self.transsys_label = transsys_label
 
 
   def __str__(self) :
-    if self.transsys_name :
-      return '%s(%s)' % (self.symbol.name, self.transsys_name)
+    if self.transsys_label :
+      return '%s(%s)' % (self.symbol.name, self.transsys_label)
     else :
       return self.symbol_name
 
@@ -1452,13 +1471,17 @@ class Rule :
 
 
   def dissociate_transsys(self) :
+    if self.condition is not None :
+      self.condition = self.condition.unresolved_copy()
     for r in self.rhs :
-      rhs.dissociate_transsys()
+      r.dissociate_transsys()
 
 
   def associate_transsys(self, tp) :
+    if self.condition is not None :
+      self.condition.resolve(tp)
     for r in self.rhs :
-      rhs.associate_transsys(tp)
+      r.associate_transsys(tp)
 
 
 class LsysProgram :
@@ -1541,6 +1564,10 @@ class LsysProgram :
     return self.rules[i]
 
 
+  def derivation_series(self, nsteps, sampling_period = 1) :
+    return clib.stringseries(self, nsteps, sampling_period)
+
+
 class TranssysInstance :
 
   # the 'magic first line' of transexpr output. If this is not found
@@ -1571,6 +1598,16 @@ class TranssysInstance :
     s = s + 'timestep: %s\n' % str(self.timestep)
     for f in xrange(len(self.factor_concentration)) :
       s = s + '  %s: %g\n' % (self.transsys_program.factor_list[f].name, self.factor_concentration[f])
+    return s
+
+
+  def assignmentString(self) :
+    s = ''
+    glue = ''
+    for f in xrange(len(self.factor_concentration)) :
+      sys.stdout.flush()
+      s = s + glue + '%s = %g' % (self.transsys_program.factor_list[f].name, self.factor_concentration[f])
+      glue = ', '
     return s
 
 
@@ -1681,6 +1718,56 @@ copy.deepcopy on it."""
       raise StandardError, 'TranssysInstance::time_series: transexpr exit status %d ("%s")' % (status, errmsg.strip())
     os.wait()
     return tseries
+
+
+class SymbolInstance :
+
+  def __init__(self, symbol, transsys_instance = None, rule = None) :
+    if not isinstance(symbol, Symbol) :
+      raise StandardError, 'symbol must be an instance of Symbol'
+    if symbol.transsys is not None and transsys_instance is None :
+      transsys_instance = TranssysInstance(symbol.transsys)
+    if symbol.transsys is not None :
+      if symbol.transsys is not transsys_instance.transsys_program :
+        raise StandardError, 'symbol and transsys_instance are not compatible'
+    self.symbol = symbol
+    self.transsys_instance = transsys_instance
+    self.rule = rule
+
+
+  def __str__(self) :
+    s = self.symbol.name
+    if self.transsys_instance is not None :
+      s = '%s(%s)' % (s, self.transsys_instance.assignmentString())
+    if self.rule is None :
+      s = s + ' [rule: <copy>]'
+    else :
+      s = s + ' [rule: %s]' % self.rule.name
+    return s
+
+
+class LsysSymbolString :
+
+  def __init__(self, lsys, timestep = None, symbol_list = None) :
+    self.lsys = lsys
+    self.timestep = timestep
+    if symbol_list is None :
+      symbol_list = []
+    self.symbol_list = symbol_list
+
+
+  def __str__(self) :
+    s = 'string of %s' % self.lsys.name
+    if self.timestep is not None :
+      s = s + ', timestep = %d' % self.timestep
+    s = s + '\n'
+    for si in self.symbol_list :
+      s = s + '  %s\n' % str(si)
+    return s
+
+
+  def length(self) :
+    return len(self.symbol_list)
 
 
 class DotParameters :
@@ -2605,11 +2692,11 @@ class TranssysProgramParser :
     symbol = symbol_dict[symbol_name]
     if self.scanner.lookahead() == '(' :
       self.expect_token('(')
-      transsys_name = self.expect_token('identifier')
+      transsys_label = self.expect_token('identifier')
       self.expect_token(')')
     else :
-      transsys_name = None
-    return LhsSymbol(symbol, transsys_name)
+      transsys_label = None
+    return LhsSymbol(symbol, transsys_label)
 
 
   def parse_lhs(self, symbol_dict) :
@@ -2657,7 +2744,7 @@ class TranssysProgramParser :
     rule_name = self.expect_token('identifier')
     self.expect_token('{')
     lhs = self.parse_lhs(symbol_dict)
-    transsys_label_list = map(lambda x: x.transsys_name, lhs)
+    transsys_label_list = map(lambda x: x.transsys_label, lhs)
     if self.consume_if_found(':') :
       condition = self.parse_expr(transsys_label_list)
     else :
@@ -2828,6 +2915,9 @@ class TranssysProgramParser :
       elif l == 'graphics' :
         self.parse_graphics(symbol_dict)
       l = self.scanner.lookahead()
+    if diffusionrange is None :
+      sys.stderr.write('warning: lsys without diffusionrange is deprecated\n')
+      diffusionrange = 0
     return symbols, axiom, diffusionrange, rules
 
 

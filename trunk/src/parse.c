@@ -81,7 +81,7 @@ int find_factor_index(const TRANSSYS *ts, const char *name)
     if (!strcmp(name, fe->name))
       return (fe->index);
   }
-  fprintf(stderr, "unknown factor \"%s\"", name);
+  fprintf(stderr, "unknown factor \"%s\"\n", name);
   return (-1);
 }
 
@@ -91,7 +91,9 @@ int find_lhs_symbol_index(const RULE_ELEMENT *re, const char *transsys_label)
   const LHS_SYMBOL *lhs_symbol;
 
   if (re == NULL)
+  {
     return (-1);
+  }
   for (lhs_symbol = re->lhs->symbol_list; lhs_symbol; lhs_symbol = lhs_symbol->next)
   {
     if (!strcmp(transsys_label, lhs_symbol->transsys_label))
@@ -281,6 +283,10 @@ GENE_ELEMENT *create_gene(const char *name, PROMOTER_ELEMENT *alist, int gene_pr
 }
 
 
+/*
+ * resolves identifier nodes. should only be called once after
+ * assembly by parsing (or conversion from Python etc.)
+ */
 int resolve_transsys(TRANSSYS *tr)
 {
   PROMOTER_ELEMENT *pe;
@@ -288,10 +294,14 @@ int resolve_transsys(TRANSSYS *tr)
   GENE_ELEMENT *ge;
   int return_value;
 
-  return_value = arrange_transsys_arrays(tr);
-  if (return_value != 0)
+  if (!tr->arrayed)
   {
-    fprintf(stderr, "resolve_transsys: arrange_transsys_arrays() returned %d\n", return_value);
+    return_value = arrange_transsys_arrays(tr);
+    if (return_value != 0)
+    {
+      fprintf(stderr, "resolve_transsys: arrange_transsys_arrays() returned %d\n", return_value);
+      return (-1);
+    }
   }
   for (fe = tr->factor_list; fe; fe = fe->next)
   {
@@ -317,8 +327,12 @@ TRANSSYS *add_transsys(TRANSSYS *trlist, TRANSSYS *tr)
 {
   TRANSSYS *tr1;
 
-  resolve_transsys(tr);
-  tr->next = NULL;
+  if (resolve_transsys(tr) != 0)
+  {
+    free_transsys_list(trlist);
+    free_transsys_list(tr);
+    return (NULL);
+  }
   if (trlist == NULL)
   {
     return (tr);
@@ -347,9 +361,11 @@ SYMBOL_ELEMENT *find_symbol(const LSYS *ls, const char *name)
   for (se = ls->symbol_list; se; se = se->next)
   {
     if (!strcmp(name, se->name))
+    {
       return (se);
+    }
   }
-  fprintf(stderr, "unknown symbol \"%s\"", name);
+  fprintf(stderr, "unknown symbol \"%s\"\n", name);
   return (NULL);
 }
 
@@ -360,7 +376,9 @@ int find_symbol_index(const LSYS *ls, const char *name)
 
   se = find_symbol(ls, name);
   if (se == NULL)
+  {
     return (-1);
+  }
   return (se->index);
 }
 
@@ -375,7 +393,7 @@ const TRANSSYS *find_transsys(const TRANSSYS *trlist, const char *name)
     }
     trlist = trlist->next;
   }
-  fprintf(stderr, "unknown transsys \"%s\"", name);
+  /* fprintf(stderr, "unknown transsys \"%s\"\n", name); */
   return (NULL);
 }
 
@@ -400,12 +418,25 @@ int find_lhs_symbol_by_transsys_label(const LHS_SYMBOL *symbol_list, const char 
 {
   const LHS_SYMBOL *sym;
 
+/*
+  {
+    int i = 0;
+    for (sym = symbol_list; sym; sym = sym->next)
+    {
+      fprintf(stderr, "  %d\n", i);
+      i++;
+    }
+    fprintf(stderr, "find_lhs_symbol_by_transsys_label: symbol_list = %p, %d lhs_symbols\n", (void *) symbol_list, i);
+  }
+*/
   for (sym = symbol_list; sym; sym = sym->next)
   {
     if (!strcmp(transsys_label, sym->transsys_label))
+    {
       return (sym->index);
+    }
   }
-  return (-1);
+  return (NO_INDEX);
 }
 
 
@@ -462,7 +493,9 @@ ASSIGNMENT_RESOLUTION_RESULT resolve_raw_assignments(const SYMBOL_ELEMENT *se, L
       lhs_symbol_index = find_lhs_symbol_by_transsys_label(lhs_symbol_list, ra->transsys_label);
       /* fprintf(stderr, "resolve_raw_assignments: transsys label \"%s\": resolves to index %d", ra->transsys_label, lhs_symbol_index); */
       if (a_result.source_lhs_symbol_index != NO_INDEX)
+      {
         fprintf(stderr, "resolve_raw_assignments: multiple transsys labels specified (inconsistent parser execution?)");
+      }
       a_result.source_lhs_symbol_index = lhs_symbol_index;
     }
     ra_list = ra_list->next;
@@ -472,10 +505,6 @@ ASSIGNMENT_RESOLUTION_RESULT resolve_raw_assignments(const SYMBOL_ELEMENT *se, L
   return (a_result);
 }
 
-
-/*
- * preliminary: make lhs descriptor with just one lhs symbol
- */
 
 LHS_DESCRIPTOR *create_lhs_descriptor(const LSYS *lsys, LHS_SYMBOL *symlist)
 {
@@ -487,7 +516,7 @@ LHS_DESCRIPTOR *create_lhs_descriptor(const LSYS *lsys, LHS_SYMBOL *symlist)
   /* this nonsense is hopefully now finally outdated for good. */
   /* provide global pointer to current list so RHS routines can resolve
      transsys labels */
-  /* lhs_symbol_list = lhs_descriptor->symbol_list; */
+  /* current_lhs_symbol_list = lhs_descriptor->symbol_list; */
   return (lhs_descriptor);
 }
 
@@ -586,7 +615,9 @@ RAW_ASSIGNMENT *create_raw_assignment(const char *factor_name, const char *trans
   /* fprintf(stderr, "create_raw_assignment: identifier \"%s\"\n", factor_name); */
   a = (RAW_ASSIGNMENT *) malloc(sizeof(RAW_ASSIGNMENT));
   if (a == NULL)
+  {
     fprintf(stderr, "create_raw_assignment: malloc failed");
+  }
   else
   {
     a->next = NULL;
@@ -640,22 +671,16 @@ int resolve_graphics_identifiers(GRAPHICS_PRIMITIVE *gp, const TRANSSYS *transsy
 }
 
 
-LSYS *add_lsys(LSYS *lsyslist, LSYS *ls)
+int resolve_lsys(LSYS *ls)
 {
   int return_value;
   SYMBOL_ELEMENT *se;
   GRAPHICS_PRIMITIVE *gp;
-  LSYS *ls1;
   int error = 0;
 
-/*
-  fprintf(stderr, "add_lsys: starting\n");
-  if (lsyslist)
-    fprint_lsys(stderr, 4, lsyslist);
-*/
   for (se = ls->symbol_list; se; se = se->next)
   {
-    /* fprintf(stderr, "add_lsys: resolving graphics expressions for symbol \"%s\"\n", se->name); */
+    /* fprintf(stderr, "resolve_lsys: resolving graphics expressions for symbol \"%s\"\n", se->name); */
     for (gp = se->graphics_primitive_list; gp; gp = gp->next)
     {
       return_value = resolve_graphics_identifiers(gp, se->transsys);
@@ -672,24 +697,36 @@ LSYS *add_lsys(LSYS *lsyslist, LSYS *ls)
   }
   if (error)
   {
-    free_lsys_list(ls);
-    free_lsys_list(lsyslist);
-    return (NULL);
+    return (-1);
   }
 /*
-  fprintf(stderr, "add_lsys: resolved graphics identifiers\n");
+  fprintf(stderr, "resolve_lsys: resolved graphics identifiers\n");
   if (lsyslist)
     fprint_lsys(stderr, 4, lsyslist);
 */
   return_value = arrange_lsys_arrays(ls);
 /*
-  fprintf(stderr, "add_lsys: arranged arrays\n");
+  fprintf(stderr, "resolve_lsys: arranged arrays\n");
   if (lsyslist)
     fprint_lsys(stderr, 4, lsyslist);
 */
   if (return_value != 0)
   {
-    fprintf(stderr, "add_lsys: arrange_lsys_arrays() returned %d\n", return_value);
+    fprintf(stderr, "resolve_lsys: arrange_lsys_arrays() returned %d\n", return_value);
+  }
+  return (0);
+}
+
+
+LSYS *add_lsys(LSYS *lsyslist, LSYS *ls)
+{
+  LSYS *ls1;
+
+  if (resolve_lsys(ls) != 0)
+  {
+    free_lsys_list(ls);
+    free_lsys_list(lsyslist);
+    return (NULL);
   }
   /* fprintf(stderr, "add_lsys: added lsys \"%s\"\n", ls->name); */
   ls->next = NULL;
@@ -737,7 +774,7 @@ void add_axiom_definition(LSYS *ls, SYMBOL_PRODUCTION *sp)
   if (arrange_symbol_production_arrays(sp) != 0)
     fprintf(stderr, "add_axiom_definition: arrange_symbol_production_arrays() failed");
   ls->axiom = sp;
-  ls->axiom->transsys = NULL;
+  /* ls->axiom->transsys = NULL; */
   /* fprintf(stderr, "add_axiom_definition: added axiom\n"); */
 }
 
@@ -758,7 +795,6 @@ int resolve_rule_identifiers(RULE_ELEMENT *re, LSYS *lsys)
   {
     for (a = pe->assignment_list; a; a = a-> next)
     {
-      /* obsolescent call: resolve_identifiers(a->value, re->rhs->transsys); */
       return_value = resolve_identifiers(a->value, NULL, lsys, re);
       if (return_value != 0)
       {
@@ -770,21 +806,19 @@ int resolve_rule_identifiers(RULE_ELEMENT *re, LSYS *lsys)
 }
 
 
-/*
- * preliminary: use single (i.e. first) lhs symbol to obtain "governing"
- * transsys for rhs -- this concept needs to be replaced anyway...
- */ 
-
 int add_rule_definition(LSYS *ls, RULE_ELEMENT *re)
 {
   SYMBOL_ELEMENT *se;
   int return_value;
 
+  /* fprintf(stderr, "add_rule_definition: starting, ls = %p, re = %p\n", (void *) ls, (void *) re); */
   for (se = ls->symbol_list; se; se = se->next)
   {
+    /* fprintf(stderr, "add_rule_definition: se = %p, se->index = %d, re->lhs->symbol_list = %p\n", (void *) se, se->index, (void *) re->lhs->symbol_list); */
     if (se->index == re->lhs->symbol_list->symbol_index)
     {
-      re->rhs->transsys = se->transsys;
+      /* re->rhs->transsys = se->transsys; */
+      /* fprintf(stderr, "add_rule_definition: resolving rule identifiers\n"); */
       return_value = resolve_rule_identifiers(re, ls);
       if (return_value != 0)
       {
@@ -793,6 +827,7 @@ int add_rule_definition(LSYS *ls, RULE_ELEMENT *re)
       }
       if (re->condition)
       {
+	/* fprintf(stderr, "add_rule_definition: resolving condition identifiers\n"); */
 	return_value = resolve_identifiers(re->condition, NULL, ls, re);
 	if (return_value != 0)
 	{
@@ -810,23 +845,27 @@ int add_rule_definition(LSYS *ls, RULE_ELEMENT *re)
 }
 
 
-void add_graphics_to_symbol(LSYS *ls, const char *symbol_name, GRAPHICS_PRIMITIVE *gp_list)
+void add_graphics_to_symbol(SYMBOL_ELEMENT *se, GRAPHICS_PRIMITIVE *gp_list)
 {
-  SYMBOL_ELEMENT *se;
-
-  se = find_symbol(ls, symbol_name);
-  if (se == NULL)
-  {
-    fprintf(stderr, "add_graphics_to_symbol: discarding graphics for unknown symbol %s", symbol_name);
-    free_graphics_primitive_list(gp_list);
-    return;
-  }
   if (se->graphics_primitive_list)
   {
-    fprintf(stderr, "add_graphics_to_symbol: graphics of symbol \"%s\" superseded", symbol_name);
+    fprintf(stderr, "add_graphics_to_named_symbol: graphics of symbol \"%s\" superseded", se->name);
     free_graphics_primitive_list(se->graphics_primitive_list);
   }
   se->graphics_primitive_list = gp_list;
 }
 
 
+void add_graphics_to_named_symbol(LSYS *ls, const char *symbol_name, GRAPHICS_PRIMITIVE *gp_list)
+{
+  SYMBOL_ELEMENT *se;
+
+  se = find_symbol(ls, symbol_name);
+  if (se == NULL)
+  {
+    fprintf(stderr, "add_graphics_to_named_symbol: discarding graphics for unknown symbol %s", symbol_name);
+    free_graphics_primitive_list(gp_list);
+    return;
+  }
+  add_graphics_to_symbol(se, gp_list);
+}

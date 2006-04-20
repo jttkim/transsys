@@ -158,22 +158,31 @@ static SYMBOL_INSTANCE *evaluate_production(const LSYS_STRING *lstr, const PRODU
 
   si = new_symbol_instance(lstr, pe->symbol_index);
   if (si == NULL)
+  {
     return (NULL);
+  }
+  /* fprintf(stderr, "evaluate_production: template_lhs_symbol_index = %d\n", pe->template_lhs_symbol_index); */
   if (pe->template_lhs_symbol_index != NO_INDEX)
   {
     if (ti_list[pe->template_lhs_symbol_index]->transsys != si->transsys_instance.transsys)
+    {
       fprintf(stderr, "evaluate_production: template transsys \"%s\" and target transsys \"%s\" mismatch\n", ti_list[pe->template_lhs_symbol_index]->transsys->name, si->transsys_instance.transsys->name);
+    }
     else
     {
       for (i = 0; i < si->transsys_instance.transsys->num_factors; i++)
+      {
 	si->transsys_instance.factor_concentration[i] = ti_list[pe->template_lhs_symbol_index]->factor_concentration[i];
+      }
     }
   }
   for (a = pe->assignment_list; a; a = a->next)
   {
     return_value = evaluate_assignment(&(si->transsys_instance), a, ti_list);
     if (return_value != 0)
+    {
       fprintf(stderr, "evaluate_production: evaluate_assignment() returned %d\n", return_value);
+    }
   }
   return (si);
 }
