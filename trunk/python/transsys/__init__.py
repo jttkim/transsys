@@ -1720,6 +1720,41 @@ copy.deepcopy on it."""
     return tseries
 
 
+class TranssysInstanceCollection :
+  """Base class of collections of transsys instances which
+are all instances of the same transsys program. This base
+class provides generic functions for computing average
+concentrations, standard deviation of concentrations etc.
+  """
+
+  def __init__(self) :
+    pass
+
+
+  def transsys_instance_list(self) :
+    """Return a list of all transsys instances in this collection.
+    """
+    raise StandardError, 'transsys_instance_list not overridden by subclass'
+
+
+  def get_transsys_program(self) :
+    """Return the transsys program of which the instances."""
+    raise StandardError, 'get_transsys_program not overridden by subclass'
+
+
+  def average_factor_concentrations(self) :
+    tp = self.get_transsys_program()
+    ti_list = self.transsys_instance_list()
+    n = tp.num_factors()
+    average_list = [0.0] * n
+    for ti in ti_list :
+      for i in xrange(n) :
+        average_list[i] = average_list[i] + ti.factor_concentration[i]
+    for i in xrange(n) :
+      average_list[i] = average_list[i] / len(ti_list)
+    return average_list
+    
+
 class SymbolInstance :
 
   def __init__(self, symbol, transsys_instance = None, rule = None) :
@@ -1746,7 +1781,7 @@ class SymbolInstance :
     return s
 
 
-class LsysSymbolString :
+class LsysSymbolString(TranssysInstanceCollection) :
 
   def __init__(self, lsys, timestep = None, symbol_list = None) :
     self.lsys = lsys
@@ -1768,6 +1803,20 @@ class LsysSymbolString :
 
   def length(self) :
     return len(self.symbol_list)
+
+
+  def transsys_instance_list(self) :
+    tp = None
+    ti_list = []
+    for sym in symbol_list :
+      if sym.transsys_instance is not None :
+	if tp is None :
+	  tp = sym.transsys_instance.transsys_program
+	else :
+	  if tp is not sym.transsys_instance.transsys_program :
+	    raise StandardError, 'lsys has transsys instances of multiple transsys programs'
+        ti_list.append(sym.transsys_instance)
+    return ti_list
 
 
 class DotParameters :

@@ -79,9 +79,18 @@ TESTS		= test_transparse
 
 CLEANFILES	= *~ *.pyc
 
+htmldoc : $(PYTHONMODULES)
+	epydoc --html -o htmldoc $(PYTHONMODULES)
+
 install-data-local : transarr/R/transarr.r
 	R_LIBS=$(rlibdir) R CMD INSTALL $(srcdir)/transarr
 	@if echo "$$PYTHONPATH" | grep "$(pylibdir)" ; then true ; else echo ; echo Please include $(pylibdir) in your PYTHONPATH environment variable ; echo ; fi
 
+all-local : htmldoc
+
+clean-local :
+	rm -rf htmldoc
+
 uninstall-hook :
 	rm -rf $(rlibdir)/transarr
+
