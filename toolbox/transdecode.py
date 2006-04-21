@@ -150,21 +150,23 @@ structures derived from them, such as DNABinder etc."""
 
 class TranssysDNADecoder :
   """Decodes genome sequences into transsys programs.
-The overall gene structure is:
-...|----activator area-----|----repressor area ----|-geneStart-|--structural area--|-geneEnd...
-   |<-activatorAreaLength->|<-repressorAreaLength->|
+The overall gene structure is::
+
+  ...|----activator area-----|----repressor area ----|-geneStart-|--structural area--|-geneEnd...
+     |<-activatorAreaLength->|<-repressorAreaLength->|
+
 The structural area length is variable. Gene start and end can also be variable,
 as enabled by regular expressions.
 
 This decoder uses the following constants:
-    * geneStartRE, geneEndRE: Regular expressions to determine start and end of
+    - geneStartRE, geneEndRE: Regular expressions to determine start and end of
       a gene
-    * repressorAreaLength: length of area where binding represses
-    * activationAreaLength: length of area where binding activates
-    * decay, diffusibility: constants for factor construction
-    * a_spec, a_max: constants for promoter element construction
+    - repressorAreaLength: length of area where binding represses
+    - activationAreaLength: length of area where binding activates
+    - decay, diffusibility: constants for factor construction
+    - a_spec, a_max: constants for promoter element construction
       (used for both activate and repress elements)
-    * constitutive: constant for constitutive promoter element construction
+    - constitutive: constant for constitutive promoter element construction
 Notice that strength of activation / repression does not depend on binding
 strength in this decoder."""
 

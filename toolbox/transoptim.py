@@ -363,8 +363,10 @@ class GradientOptimiser :
         current_obj = new_obj
         optimisation_log.append(current_obj)
         current_values = map(lambda n : n.value, value_expression_list)
-      if d_obj < self.improvement_threshold :
-        break
+        if d_obj < self.improvement_threshold :
+          if self.verbose :
+            sys.stderr.write('  terminating because d_obj = %f < threshold %f\n' % (d_obj, self.improvement_threshold))
+          break
     return OptimisationResult(tp, optimisation_log)
 
 
