@@ -116,6 +116,10 @@ class FitnessResult :
     self.fitness = fitness
 
 
+  def __str__(self) :
+    return 'FitnessResult(%g)' % self.fitness
+
+
 class LsysDisparityFitnessResult(FitnessResult) :
 
   def __init__(self, fitness, best_factor_list) :
@@ -251,8 +255,9 @@ def randomise_transsys_values(transsys_program, random_function, gene_name_list 
 
 class OptimisationResult :
 
-  def __init__(self, tp, optimisation_log) :
+  def __init__(self, tp, objectiveOptimum, optimisation_log) :
     self.optimised_transsys_program = tp
+    self.objectiveOptimum = objectiveOptimum
     self.optimisation_log = optimisation_log
 
 
@@ -367,7 +372,7 @@ class GradientOptimiser :
           if self.verbose :
             sys.stderr.write('  terminating because d_obj = %f < threshold %f\n' % (d_obj, self.improvement_threshold))
           break
-    return OptimisationResult(tp, optimisation_log)
+    return OptimisationResult(tp, current_obj, optimisation_log)
 
 
 class LsysObjectiveFunction(ObjectiveFunction) :

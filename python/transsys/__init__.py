@@ -1696,7 +1696,9 @@ copy.deepcopy on it."""
     while line :
       line = string.strip(line)
       if line :
-        if line[0] != '#' :
+        # the second condition is a kludge to allow time_series_old to
+        # work with output containing a header line
+        if line[0] != '#' and line[:16] != 'time n.instances' :
           l = string.split(line)
           if len(l) != 3 * self.transsys_program.num_factors() + 2 :
             raise StandardError, 'TranssysInstance.time_series: bad line format: expected %d words, got %d' % (3 * self.transsys_program.num_factors() + 2, len(l))
@@ -1720,11 +1722,35 @@ copy.deepcopy on it."""
     return tseries
 
 
+class CollectionStatistics :
+
+  def __init__(self, tp = None) :
+    self.transsys_program = tp
+    self.average = None
+    self.standard_deviation = None
+    self.shannon_entropy = None
+
+
+  def __str__(self) :
+    if self.transsys_program is None :
+      return '# empty statistics instance\n'
+    s = '# %s\n' % self.transsys_program.name
+    s = s + 'factor\taverage\tstddev\tentropy\n'
+    for i in xrange(self.transsys_program.num_factors()) :
+      s = s + '%s\t%g\t%g\t%g\n' % (self.transsys_program.factor_list[i].name, self.average[i], self.standard_deviation[i], self.shannon_entropy[i])
+    return s
+    
+
 class TranssysInstanceCollection :
-  """Base class of collections of transsys instances which
+  """Abstract base class of collections of transsys instances which
 are all instances of the same transsys program. This base
 class provides generic functions for computing average
 concentrations, standard deviation of concentrations etc.
+
+This class is abstract in the sense that the methods
+transsys_instance_list and get_transsys_program are implemented
+to raise exceptions. Subclasses must override (i.e. implement)
+these methods. In this sense, the methods are abstract.
   """
 
   def __init__(self) :
@@ -1733,6 +1759,11 @@ concentrations, standard deviation of concentrations etc.
 
   def transsys_instance_list(self) :
     """Return a list of all transsys instances in this collection.
+
+Implementing subclasses are allowed to return a list of references
+to their transsys instances. Therefore, the instances in a list
+obtained by this method should be used for reading only. If modifications
+are required, the instances should be cloned.
     """
     raise StandardError, 'transsys_instance_list not overridden by subclass'
 
@@ -1742,18 +1773,88 @@ concentrations, standard deviation of concentrations etc.
     raise StandardError, 'get_transsys_program not overridden by subclass'
 
 
-  def average_factor_concentrations(self) :
+  def statistics(self) :
     tp = self.get_transsys_program()
+    if tp is None :
+      return None
+    stats = CollectionStatistics(tp)
     ti_list = self.transsys_instance_list()
     n = tp.num_factors()
-    average_list = [0.0] * n
+    fc_sum = [0.0] * n
     for ti in ti_list :
       for i in xrange(n) :
-        average_list[i] = average_list[i] + ti.factor_concentration[i]
+        fc_sum[i] = fc_sum[i] + ti.factor_concentration[i]
+    stats.average = [None] * n
     for i in xrange(n) :
-      average_list[i] = average_list[i] / len(ti_list)
-    return average_list
-    
+      stats.average[i] = fc_sum[i] / len(ti_list)
+    stats.standard_deviation = [0.0] * n
+    for ti in ti_list :
+      for i in xrange(n) :
+        d = stats.average[i] - ti.factor_concentration[i]
+        stats.standard_deviation[i] = stats.standard_deviation[i] + d * d
+    for i in xrange(n) :
+      stats.standard_deviation[i] = math.sqrt(stats.standard_deviation[i]) / (float(n) - 1.0)
+    stats.shannon_entropy = [0.0] * n
+    for ti in ti_list :
+      if fc_sum[i] > 0.0 :
+        for i in xrange(n) :
+          p = ti.factor_concentration[i] / fc_sum[i]
+          if (p > 0.0) :
+            stats.shannon_entropy[i] = stats.shannon_entropy[i] - p * math.log(p, 2.0)
+    return stats
+
+
+class SimpleCollection(TranssysInstanceCollection) :
+  """A very simple, container-like implementation of the abstract
+TranssysInstanceCollection base class.
+  """
+
+  def __init__(self) :
+    self.transsys_program = None
+    self.collection = []
+
+
+  def __str__(self) :
+    if self.transsys_program is None :
+      return 'empty SimpleCollection'
+    s = 'SimpleCollection of %d instances of "%s":\n' % (len(self.collection), self.transsys_program.name)
+    for ti in self.collection :
+      s = s + str(ti)
+    return s
+
+
+  def add(self, ti) :
+    if self.transsys_program is None :
+      self.transsys_program = ti.transsys_program
+      self.collection = [ti]
+    else :
+      if self.transsys_program is not ti.transsys_program :
+        raise StandardError, 'members of collection must be instances of the same program'
+      self.collection.append(ti)
+
+
+  def get_transsys_program(self) :
+    return self.transsys_program
+
+
+  def transsys_instance_list(self) :
+    return self.collection
+
+
+class TimeSeries(TranssysInstanceCollection) :
+
+  def __init__(self, ti, num_timesteps, sampling_period = 1) :
+    self.transsys_program = ti.transsys_program
+    self.series = ti.time_series(num_timesteps, sampling_period)
+
+
+  def get_transsys_program(self) :
+    return self.transsys_program
+
+
+  def transsys_instance_list(self) :
+    return self.series
+
 
 class SymbolInstance :
 
