@@ -184,13 +184,6 @@ static void fprint_expression_header(FILE *f, const TRANSSYS *transsys, const LS
   time_t t;
 
   fprintf(f, "# transsys expression records %s\n", expression_record_version);
-  fprintf(f, "# time n.instances");
-  for (i = 0; i < transsys->num_factors; i++)
-  {
-    fprintf(f, "  %s.avg %s.stddev %s.entropy", transsys->factor_list[i].name, transsys->factor_list[i].name, transsys->factor_list[i].name);
-  }
-  fprintf(f, "\n");
-  t = time(NULL);
   fprintf(f, "# transsys %s\n", transsys->name);
   if (lsys)
   {
@@ -200,7 +193,14 @@ static void fprint_expression_header(FILE *f, const TRANSSYS *transsys, const LS
   {
     fprintf(f, "# no lsys\n");
   }
+  t = time(NULL);
   fprintf(f, "# run on %s", ctime(&t));
+  fprintf(f, "time n.instances");
+  for (i = 0; i < transsys->num_factors; i++)
+  {
+    fprintf(f, "  %s.avg %s.stddev %s.entropy", transsys->factor_list[i].name, transsys->factor_list[i].name, transsys->factor_list[i].name);
+  }
+  fprintf(f, "\n");
 }
 
 
