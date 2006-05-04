@@ -1793,7 +1793,7 @@ are required, the instances should be cloned.
         d = stats.average[i] - ti.factor_concentration[i]
         stats.standard_deviation[i] = stats.standard_deviation[i] + d * d
     for i in xrange(n) :
-      stats.standard_deviation[i] = math.sqrt(stats.standard_deviation[i]) / (float(n) - 1.0)
+      stats.standard_deviation[i] = math.sqrt(stats.standard_deviation[i]) / (float(len(ti_list)) - 1.0)
     stats.shannon_entropy = [0.0] * n
     for ti in ti_list :
       if fc_sum[i] > 0.0 :
