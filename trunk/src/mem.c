@@ -559,16 +559,22 @@ int arrange_transsys_arrays(TRANSSYS *transsys)
   }
   num_genes = 0;
   for (ge = transsys->gene_list; ge; ge = ge->next)
+  {
     num_genes++;
+  }
   num_factors = 0;
   for (fe = transsys->factor_list; fe; fe = fe->next)
+  {
     num_factors++;
+  }
   /* fprintf(stderr, "arrange_transsys_arrays: %d factors, %d genes\n", num_factors, num_genes); */
   if (num_genes > 0)
   {
     ge_arr = (GENE_ELEMENT *) malloc(num_genes * sizeof(GENE_ELEMENT));
     if (ge_arr == NULL)
+    {
       return (-1);
+    }
     ge = transsys->gene_list;
     for (i = 0; i < num_genes; i++)
     {
@@ -580,7 +586,9 @@ int arrange_transsys_arrays(TRANSSYS *transsys)
     }
     qsort(ge_arr, num_genes, sizeof(GENE_ELEMENT), cmp_index_gene);
     for (i = 0; i < num_genes - 1; i++)
+    {
       ge_arr[i].next = ge_arr + i + 1;
+    }
     ge_arr[i].next = NULL;
     transsys->gene_list = ge_arr;
   }
@@ -604,7 +612,9 @@ int arrange_transsys_arrays(TRANSSYS *transsys)
     }
     qsort(fe_arr, num_factors, sizeof(FACTOR_ELEMENT), cmp_index_factor);
     for (i = 0; i < num_factors - 1; i++)
+    {
       fe_arr[i].next = fe_arr + i + 1;
+    }
     fe_arr[i].next = NULL;
     transsys->factor_list = fe_arr;
     for (i = 0; i < transsys->num_factors; i++)
@@ -613,7 +623,9 @@ int arrange_transsys_arrays(TRANSSYS *transsys)
       for (j = 0; j < transsys->num_genes; j++)
       {
 	if (transsys->gene_list[j].product_index == i)
+	{
 	  ia = extend_integer_array(ia, j);
+	}
       }
       if (ia)
       {
@@ -621,8 +633,12 @@ int arrange_transsys_arrays(TRANSSYS *transsys)
 	transsys->factor_list[i].gene_index = ia->array;
 	free(ia);
       }
+/*
       else
+      {
 	fprintf(stderr, "warning: factor \"%s\" is not produced by any gene\n", transsys->factor_list[i].name);
+      }
+*/
     }
   }
   transsys->arrayed = 1;
