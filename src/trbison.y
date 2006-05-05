@@ -87,7 +87,9 @@ static void list_parsed_stuff(const char *msg)
     fprint_transsys(stderr, indent, t);
 */
   for (l = parsed_lsys; l; l = l->next)
+  {
     fprint_lsys(stderr, indent, l);
+  }
 }
 
 
