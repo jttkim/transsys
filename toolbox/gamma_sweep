@@ -127,7 +127,6 @@ import getopt
 import sys
 import string
 import re
-import transrnd
 import transsys
 import transdisrupt
 

@@ -34,7 +34,9 @@ static double minimal_concentration(int num_binding_factors, int *fi, double *fc
   for (i = 1; i < num_binding_factors; i++)
   {
     if (c > fc[fi[i]])
+    {
       c = fc[fi[i]];
+    }
   }
   return (c);
 }

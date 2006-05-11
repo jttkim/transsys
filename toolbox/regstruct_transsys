@@ -37,7 +37,7 @@ import math
 import getopt
 
 import transsys
-import transrnd
+import transsys.utils
 import regstruct
 
 
@@ -106,7 +106,7 @@ else :
   basename = 'newrtp'
 if len(args) > 1 :
   out_fname = args[1]
-rng = transrnd.transrnd(rndseed)
+rng = transsys.utils.transrnd(rndseed)
 rst = regstruct.RegStructTranssys(basename, rtp, struct_rtp, regulon_size_list, radius)
 rst.choose_perturbed_factors(num_perturbed_factors, rng)
 if dot_fname is not None :

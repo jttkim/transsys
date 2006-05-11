@@ -111,6 +111,16 @@
 # added transrnd.py and transsys.py to CVS repository
 #
 
+
+"""transsys module
+
+Classes:
+ExpressionNode             Base class for nodes in an expression tree
+
+Functions:
+dot_attribute_string       xxx?
+"""
+
 import copy
 import types
 import os
@@ -125,11 +135,15 @@ import clib
 
 import transrnd
 
-
-__all__ = ['clib']
+# __all__ appears to interfere with epydoc documentation generation
+# and is not useful for clib anyway, as clib is not intended for
+# general use
+# __all__ = ['clib']
 
 
 def dot_attribute_string(d) :
+  """Produce an attribute list in the dot language
+"""
   s = ''
   glue = ''
   for k in d.keys() :
@@ -138,7 +152,7 @@ def dot_attribute_string(d) :
   return s
 
 
-def comment_lines(clines, prefix = '') :
+def _comment_lines(clines, prefix = '') :
   s = ''
   for l in clines :
     s = s + prefix + '// ' + l + '\n'
@@ -151,6 +165,9 @@ def comment_lines(clines, prefix = '') :
 # evaluation_context thingy...
 
 class ExpressionNode :
+  """Base class for nodes in expression trees.
+"""
+
 
   def resolve(self, tp) :
     pass
@@ -173,7 +190,6 @@ is the default implementation which returns an empty list."""
 
 
 class ExpressionNodeValue(ExpressionNode) :
-
   # v should be a numeric type (float or int, or perhaps long). Other
   # types may be accepted now, but are not guaranteed to work in the
   # future.
@@ -698,7 +714,7 @@ class Factor :
 %s    decay: %s;
     diffusibility: %s;
   }
-""" % (self.name, comment_lines(self.comments, '    '), str(self.decay_expression), str(self.diffusibility_expression))
+""" % (self.name, _comment_lines(self.comments, '    '), str(self.decay_expression), str(self.diffusibility_expression))
 
 
   def resolve(self, tp) :
@@ -771,7 +787,7 @@ class Gene :
   def __str__(self) :
     s = '  gene %s\n' % self.name
     s = s + '  {\n'
-    s = s + comment_lines(self.comments, '    ')
+    s = s + _comment_lines(self.comments, '    ')
     s = s + '    promoter\n'
     s = s + '    {\n'
     for p in self.promoter :
@@ -897,7 +913,7 @@ re-implement this method.
 
   def __str__(self) :
     s = 'transsys %s\n' % self.name
-    s = s + comment_lines(self.comments)
+    s = s + _comment_lines(self.comments)
     s = s + '{\n'
     glue = ''
     for f in self.factor_list :

@@ -20,7 +20,7 @@ import math
 import getopt
 
 import transsys
-import transrnd
+import transsys.utils
 import regstruct
 
 
@@ -76,7 +76,7 @@ else :
   basename = 'lsysdummy'
 if len(args) > 1 :
   out_fname = args[1]
-rng = transrnd.transrnd(rndseed)
+rng = transsys.utils.transrnd(rndseed)
 tp = rtp.generate_transsys(basename)
 set_factor_names(tp, factor_name)
 if transsys_fname is not None :

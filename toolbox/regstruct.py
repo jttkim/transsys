@@ -30,7 +30,7 @@ import re
 import os
 
 import transsys
-import transrnd
+import transsys.utils
 
 
 def get_namevalue(f) :
@@ -329,7 +329,7 @@ class ExpGaussPerturber :
     self.perturbed_factor_list = copy.deepcopy(perturbed_factor_list)
     self.skew = skew
     self.dispersion = dispersion
-    self.rng = transrnd.transrnd(rndseed)
+    self.rng = transsys.utils.transrnd(rndseed)
 
 
   def __call__(self, c, factor_name) :
@@ -353,7 +353,7 @@ class ExponentialReplacementPerturber :
   def __init__(self, halfmax, rndseed, perturbed_factor_list = None) :
     self.perturbed_factor_list = copy.deepcopy(perturbed_factor_list)
     self.halfmax = halfmax
-    self.rng = transrnd.transrnd(rndseed)
+    self.rng = transsys.utils.transrnd(rndseed)
 
 
   def __call__(self, c, factor_name) :
@@ -379,7 +379,7 @@ class UniformReplacementPerturber :
     self.c_min = c_min
     self.c_max = c_max
     self.c_range = c_max - c_min
-    self.rng = transrnd.transrnd(rndseed)
+    self.rng = transsys.utils.transrnd(rndseed)
 
 
   def __call__(self, c, factor_name) :

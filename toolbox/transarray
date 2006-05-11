@@ -25,7 +25,7 @@ import getopt
 import string
 import os
 
-import transrnd
+import transsys.utils
 import transsys
 import arrtool
 
@@ -103,7 +103,7 @@ class DistortFunc :
   def __init__(self, skew, dispersion, rndseed = 1) :
     self.skew = skew
     self.dispersion = dispersion
-    self.rng = transrnd.transrnd(rndseed)
+    self.rng = transsys.utils.transrnd(rndseed)
 
 
   def __call__(self, v) :
@@ -168,7 +168,7 @@ else :
 
 p = transsys.TranssysProgramParser(transsys_filename)
 tp = p.parse_transsys()
-rng = transrnd.transrnd(rndseed)
+rng = transsys.utils.transrnd(rndseed)
 initial_values = transsys.TranssysInstance(tp)
 dfunc = DistortFunc(array_skew, array_dispersion)
 if num_perturbed_factors is None :
