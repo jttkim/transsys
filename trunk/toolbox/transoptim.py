@@ -230,6 +230,7 @@ class ObjectiveFunction :
     return None
 
 
+# moving to utils
 def get_value_nodes(transsys_program, gene_name_list, factor_name_list) :
   value_expression_list = []
   if factor_name_list is None :
@@ -247,6 +248,8 @@ def get_value_nodes(transsys_program, gene_name_list, factor_name_list) :
   return value_expression_list
 
 
+
+# moving to utils
 def randomise_transsys_values(transsys_program, random_function, gene_name_list = None, factor_name_list = None) :
   value_expression_list = get_value_nodes(transsys_program, gene_name_list, factor_name_list)
   for n in value_expression_list :
@@ -254,6 +257,21 @@ def randomise_transsys_values(transsys_program, random_function, gene_name_list 
 
 
 class OptimisationResult :
+  """Class for returning results of an optimisation.
+
+The members are:
+- optimised_transsys_program: The transsys program resulting
+  from the optimisation process
+- objectiveOptimum: The result of evaluating the optimised transsys
+  program using the objective function
+- optimisation_log: A trace of the optimisation process, provided
+  as a list of tuples
+The detailed structure of optimisation_log member may vary with the
+nature of the particular optimiser. As an emerging standard, the
+first element of each tuple (i.e. the leftmost column) should
+be the objective value of the current solution. (For population
+based optimisers, this might be replaced with the average objective
+value.)"""
 
   def __init__(self, tp, objectiveOptimum, optimisation_log) :
     self.optimised_transsys_program = tp

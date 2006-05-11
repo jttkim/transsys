@@ -11,7 +11,6 @@
 import string
 import copy
 import math
-import transrnd
 import transsys
 import types
 import sys

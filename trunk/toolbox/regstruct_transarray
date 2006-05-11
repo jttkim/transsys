@@ -49,7 +49,7 @@ import string
 import StringIO
 
 import transsys
-import transrnd
+import transsys.utils
 import regstruct
 import arrtool
 
@@ -59,7 +59,7 @@ class DistortFunc :
   def __init__(self, skew, dispersion, rndseed = 1) :
     self.skew = skew
     self.dispersion = dispersion
-    self.rng = transrnd.transrnd(rndseed)
+    self.rng = transsys.utils.transrnd(rndseed)
 
 
   def __call__(self, v) :
@@ -116,7 +116,7 @@ control_params = regstruct.RTAControlParameters()
 control_params.parse(open(args[0], 'r'))
 #control_params.write(sys.stdout)
 #sys.exit()
-rng = transrnd.transrnd(control_params.rndseed)
+rng = transsys.utils.transrnd(control_params.rndseed)
 control_params.write_nonperturbed_cluster()
 initial_state = transsys.TranssysInstance(control_params.transsys_program)
 initial_state.perturb(regstruct.UniformReplacementPerturber(control_params.min_initial_concentration, control_params.max_initial_concentration, control_params.rndseed))

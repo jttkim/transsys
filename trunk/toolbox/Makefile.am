@@ -63,8 +63,8 @@
 # initial toolbox assembly
 #
 
-PYTHONMODULES	= arrtool.py transrnd.py regstruct.py transdisrupt.py transdecode.py transoptim.py
-PYTHONSCRIPTS	= random_transsys random_transsys_lsys transarray regstruct_transsys regstruct_transarray mutant_transsys get_overlap test_transparse
+PYTHONMODULES	= arrtool.py regstruct.py transdisrupt.py transdecode.py transoptim.py
+PYTHONSCRIPTS	= random_transsys random_transsys_lsys transarray regstruct_transsys regstruct_transarray mutant_transsys get_overlap
 RPACKAGE	= transarr
 
 pylibdir	= $(DESTDIR)/$(libdir)/python
@@ -74,8 +74,6 @@ bin_SCRIPTS	= $(PYTHONSCRIPTS)
 pylib_DATA	= $(PYTHONMODULES)
 
 EXTRA_DIST	= $(PYTHONSCRIPTS) $(PYTHONMODULES) $(RPACKAGE)
-
-TESTS		= test_transparse
 
 CLEANFILES	= *~ *.pyc
 

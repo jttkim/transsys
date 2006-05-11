@@ -15,9 +15,78 @@
 
 
 import math
+import random
+
+
+def is_nan(x) :
+  """Returns true if x is NaN.
+
+This function is a temporary solution, to be replaced if and when
+python provides this functionality. The current implementation
+returns x != x; this works with current versions of python and Linux,
+but cannot be guaranteed to work generally."""
+  return x != x
+
+
+class UniformRNG :
+  """Callable class producing random floating point values from
+a uniform distribution.
+
+Based on the standard random module.
+"""
+
+  def __init__(self, rndseed, min_value = 0.0, max_value = 1.0) :
+    """
+@param rndseed: random seed
+@param min_value: minimal value (inclusive)
+@param max_value: maximal value (exclusive)
+@return: a random value r from [min_value, max_value[
+@rtype: float
+"""    
+    self.rng = random.Random(rndseed)
+    self.min_value = min_value
+    self.max_value = max_value
+
+
+  def __call__(self) :
+    return self.rng.uniform(self.min_value, self.max_value)
+
+
+def randomise_transsys_values(transsys_program, random_function, gene_name_list = None, factor_name_list = None) :
+  """Randomise numerical values in value nodes by replacing them
+with values obtained from the random_function.
+
+gene_name_list and factor_name_list identify the genes and the
+factors to have their numerical values randomised. The default value
+of None indicates that all genes / factors should be randomised.
+"""
+  value_expression_list = []
+  if factor_name_list is None :
+    value_expression_list.extend(transsys_program.getFactorValueNodes())
+  else :
+    for fn in factor_name_list :
+      factor = transsys_program.find_factor(fn)
+      value_expression_list.extend(factor.getValueNodes())
+  if gene_name_list is None :
+    value_expression_list.extend(transsys_program.getGeneValueNodes())
+  else :
+    for gn in gene_name_list :
+      gene = transsys_program.find_gene(gn)
+      value_expression_list.extend(gene.getValueNodes())
+  for n in value_expression_list :
+    n.value = random_function()
 
 
 class transrnd :
+  """Random number generator class.
+
+This is a legacy random number generator which was introduced before
+the standard Python random package appeared. It is a Python implementation
+of the random number generator implemented by the C{random} function
+in the GNU C standard library.
+
+This class should not be used anymore in new projects.
+"""
 
   def __init__(self, seed = 1, state = None, fptr = None, rptr = None) :
     self.rand_type = 4
@@ -97,7 +166,8 @@ class transrnd :
     
 
 class RouletteWheel :
-
+  """Roulette wheel for evolutionary algorithms and similar purposes.
+"""
   def __init__(self, rng, d = None) :
     if d is None :
       d = [1.0]

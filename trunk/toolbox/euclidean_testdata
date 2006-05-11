@@ -3,7 +3,7 @@
 import sys
 
 import regstruct
-import transrnd
+import transsys.utils
 
 
 class ClusterNodeWithVector(regstruct.ClusterNode) :
@@ -55,7 +55,7 @@ if len(sys.argv) < 3 :
   sys.exit(1)
 num_leaves = int(sys.argv[1])
 dim = int(sys.argv[2])
-rng = transrnd.transrnd(1)
+rng = transsys.utils.transrnd(1)
 rc = random_cluster(num_leaves, rng)
 rc.set_vectors(dim, rng)
 f = open('stuff.dat', 'w')
