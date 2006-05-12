@@ -14,18 +14,102 @@
 #
 
 
+"""Miscellaneous utilities.
+"""
+
 import math
 import random
 
 
 def is_nan(x) :
-  """Returns true if x is NaN.
+  """Determine whether x is NaN.
 
 This function is a temporary solution, to be replaced if and when
 python provides this functionality. The current implementation
 returns x != x; this works with current versions of python and Linux,
-but cannot be guaranteed to work generally."""
+but cannot be guaranteed to work generally.
+
+@param x: the floating point object to be tested
+@return: C{True} if C{x} is NaN
+@rtype: boolean
+"""
   return x != x
+
+
+def tablecell(x) :
+  """Render C{x} as a string suitable as an R table element.
+
+Currently supported types are:
+  - C{None}, rendered as C{NA}
+  - C{int}
+  - C{float}, formatted using C{'%1.17e'} as a format string
+  - C{boolean}, rendered as C{TRUE} or C{FALSE}.
+
+@param x: the value to be converted to a table element
+@return: a string representing C{x}
+@rtype: C{String}
+"""
+  if x is None :
+    return 'NA'
+  elif type(x) is types.IntType :
+    return '%d' % x
+  elif type(x) is types.FloatType :
+    return '%1.17e' % x
+  elif type(x) is types.BooleanType :
+    if x :
+      return 'TRUE'
+    else :
+      return 'FALSE'
+  raise StandardError, 'unsupported type %s' % str(type(x))
+
+
+def hamming_distance(s1, s2) :
+  """Compute the Hamming distance (number of different elements)
+between two strings (or other sequence types).
+
+Notice that this function compares objects for identity, not for
+equality.
+
+@param s1: first sequence
+@param s2: second sequence
+@return: Hamming distance between C{s1} and C{s2}
+@rtype: int
+"""
+  if len(s1) != len(s2) :
+    raise StandardError, 'length mismatch'
+  n = 0
+  for i in xrange(len(s1)) :
+    if s1[i] != s2[i] :
+      n = n + 1
+  return n
+
+
+def inner_product(v1, v2) :
+  """Compute the inner product of two vectors.
+
+@param v1: the first vector (any sequence consisting of numeric elements)
+@param v2: the second vector (a sequence of the same length)
+@result: the inner product of C{v1} and C{v2}
+@rtype: float
+"""
+  if len(v1) != len(v2) :
+    raise StandardError, 'unequal vector lengths'
+  s = 0.0
+  for i in xrange(len(v1)) :
+    d = v1[i] - v2[i]
+    s = s + d * d
+  return s
+
+
+def euclidean_distance(v1, v2) :
+  """Compute the Euclidean distance."""
+  if len(v1) != len(v2) :
+    raise StandardError, 'length mismatch'
+  d2 = 0.0
+  for i in xrange(len(v1)) :
+    d = v1[i] - v2[i]
+    d2 = d * d
+  return math.sqrt(d2)
 
 
 def mean_and_stddev(l) :

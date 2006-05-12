@@ -20,9 +20,9 @@ check-local : test_transsys pythonsetup-testinstall
 
 clean-local :
 	python setup.py clean
-	rm -rf build htmldoc test
+	rm -rf build doc test
 
-all-local : pythonsetup-build htmldoc
+all-local : pythonsetup-build epydoc-html
 
 pythonsetup-build : transsys
 	python setup.py build
@@ -30,6 +30,8 @@ pythonsetup-build : transsys
 # this is a weird kludge -- the problem is that the transsys
 # subdirectory is not accepted...
 
-htmldoc : pythonsetup-build
-	epydoc --html -o htmldoc `find build -name transsys`
+epydoc-html : pythonsetup-build
+	if test \! -d doc ; then mkdir doc ; fi
+	if test \! -d doc/html ; then mkdir doc/html ; fi
+	epydoc --html -o doc/html `find build -name transsys`
 

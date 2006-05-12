@@ -10,7 +10,7 @@ import random
 import string
 
 import transsys
-import transdecode
+import utils
 
 
 class Interval :
@@ -74,8 +74,8 @@ def stddev_disparity(rule, instance_series, factor_index) :
   active_set, inactive_set = active_and_inactive_set(rule, instance_series, factor_index)
   if len(active_set) == 0 or len(inactive_set) == 0 :
     return 0.0
-  m_active, s_active = mean_and_stddev(active_set)
-  m_inactive, s_inactive = mean_and_stddev(inactive_set)
+  m_active, s_active = utils.mean_and_stddev(active_set)
+  m_inactive, s_inactive = utils.mean_and_stddev(inactive_set)
   m_diff = abs(m_active - m_inactive)
   if m_diff == 0.0 :
     return 1.0
@@ -104,7 +104,17 @@ not activating rule."""
 
 
 class FitnessResult :
+  """Base class for results of objective (or fitness) functions.
 
+Calling objective functions should return instances of this class
+or one of its subclasses. Optimisers use the C{fitness} instance
+variable. Subclasses may introduce further instance variables to
+describe the result achieved, break it down to individual components
+of the transsys program etc.
+
+@ivar fitness: the fitness value, i.e. the value computed by the
+  objective function.
+"""
   def __init__(self, fitness) :
     self.fitness = fitness
 
@@ -188,16 +198,6 @@ class Mutator :
     return mutseq
 
 
-def hamming_distance(s1, s2) :
-  if len(s1) != len(s2) :
-    raise StandardError, 'length mismatch'
-  n = 0
-  for i in xrange(len(s1)) :
-    if s1[i] != s2[i] :
-      n = n + 1
-  return n
-
-
 def hillclimb(objective_function, decoder, initial_dnaseq, num_generations, mutator) :
   dnaseq = initial_dnaseq
   fitness = objective_function(decoder.decode_transsys('implant', dnaseq)).fitness
@@ -205,7 +205,7 @@ def hillclimb(objective_function, decoder, initial_dnaseq, num_generations, muta
     print '%d: %f' % (g, fitness)
     mutant_dnaseq = mutator.mutate(dnaseq)
     mutant_fitness = objective_function(decoder.decode_transsys('implant', mutant_dnaseq)).fitness
-    d = hamming_distance(dnaseq, mutant_dnaseq)
+    d = utils.hamming_distance(dnaseq, mutant_dnaseq)
     # print 'current: %f, mutant: %f, distance: %d (rel: %f)' % (fitness, mutant_fitness, d, float(d) / float(len(dnaseq)))
     if mutant_fitness <= fitness :
       dnaseq = mutant_dnaseq
@@ -214,7 +214,13 @@ def hillclimb(objective_function, decoder, initial_dnaseq, num_generations, muta
 
 
 class ObjectiveFunction :
+  """Base class for objective functions.
 
+This is notionally an abstract class. Subclasses should be
+callable and take a transsys program as a parameter. The
+returned value should be an instance of C{FitnessResult} or
+a subclass.
+"""
   def __init__(self) :
     pass
 
@@ -252,24 +258,189 @@ def randomise_transsys_values(transsys_program, random_function, gene_name_list 
 class OptimisationResult :
   """Class for returning results of an optimisation.
 
-The members are:
-- optimised_transsys_program: The transsys program resulting
-  from the optimisation process
-- objectiveOptimum: The result of evaluating the optimised transsys
-  program using the objective function
-- optimisation_log: A trace of the optimisation process, provided
-  as a list of tuples
-The detailed structure of optimisation_log member may vary with the
+The detailed structure of C{optimisation_log} member may vary with the
 nature of the particular optimiser. As an emerging standard, the
 first element of each tuple (i.e. the leftmost column) should
 be the objective value of the current solution. (For population
 based optimisers, this might be replaced with the average objective
-value.)"""
+value.)
+
+@ivar optimised_transsys_program: The transsys program resulting
+  from the optimisation process.
+@ivar objectiveOptimum: The result of evaluating the optimised transsys
+  program using the objective function.
+@ivar optimisation_log: A trace of the optimisation process, provided
+  as a list of tuples.
+"""
 
   def __init__(self, tp, objectiveOptimum, optimisation_log) :
     self.optimised_transsys_program = tp
     self.objectiveOptimum = objectiveOptimum
     self.optimisation_log = optimisation_log
+
+
+class SimulatedAnnealingRecord :
+
+  def __init__(self, obj = None, obj_alt = None, temperature = None, d_state = None, step_mean = None, p_accept = None, accept = None) :
+    self.obj = obj
+    self.obj_alt = obj_alt
+    self.temperature = temperature
+    self.d_state = d_state
+    self.step_mean = step_mean
+    self.p_accept = p_accept
+    self.accept = accept
+
+
+  def __str__(self) :
+    s = '%s %s %s %s %s %s %s' % (utils.tablecell(self.obj), utils.tablecell(self.obj_alt), utils.tablecell(self.temperature), utils.tablecell(self.d_state), utils.tablecell(self.step_mean), utils.tablecell(self.p_accept), utils.tablecell(self.accept))
+    return s
+
+
+  def column_headers(self) :
+    return 'obj obj_alt temperature d_state step_mean p_accept accept'
+
+
+class ExpressionSeriesObjective(ObjectiveFunction) :
+
+  def __init__(self, f = None) :
+    self.series = {}
+    if f is None :
+      return
+    series_length = None
+    s = f.readline()
+    while s :
+      w = s.split(':')
+      factor_name = w[0]
+      if factor_name == '' :
+        raise StandardError, 'empty factor name'
+      if factor_name in self.series.keys() :
+        raise StandardError, 'multiple series for factor "%s"' % factor_name
+      self.series[factor_name] = []
+      xlist = w[1].split()
+      if series_length is None :
+        series_length = len(xlist)
+      elif series_length != len(xlist) :
+        raise StandardError, 'unequal series lengths (%d != %d)' % (series_length, len(xlist))
+      self.series[factor_name] = map(float, xlist)
+      s = f.readline()
+    print 'series_length:', series_length
+
+
+  def __str__(self) :
+    s = ''
+    for factor_name in self.series.keys() :
+      s = s + '%s:' % factor_name
+      for xlevel in self.series[factor_name] :
+        s = s + ' %f' % xlevel
+      s = s + '\n'
+    return s
+
+
+  def series_length(self) :
+    if self.series is None :
+      return None
+    if len(self.series) == 0 :
+      return None
+    k = self.series.keys()[0]
+    return len(self.series[k])
+
+
+  def __call__(self, transsys_program) :
+    l = self.series_length()
+    if l is None :
+      raise StandardError, 'call of uninitialised series objective function'
+    if l == 0 :
+      raise StandardError, 'call of objective function with series length 0'
+    # this is a kludge -- will become much better once a time
+    # series class is available
+    for factor_name in self.series.keys() :
+      if transsys_program.find_factor_index(factor_name) == -1 :
+        raise StandardError, 'failed to find factor "%s" in transsys "%s"' % (factor_name, tp.name)
+    ti = transsys.TranssysInstance(transsys_program)
+    tseries = ti.time_series(l)
+    sq_sum = 0.0
+    for factor_name in self.series.keys() :
+      factor_index = transsys_program.find_factor_index(factor_name)
+      # sys.stderr.write('factor "%s" --> index %d\n' % (factor_name, factor_index))
+      v = []
+      for i in xrange(l) :
+        x = tseries[i].factor_concentration[factor_index]
+        if utils.is_nan(x) :
+          print str(tseries[i])
+          raise StandardError, 'expression level of factor "%s" is NaN' % factor_name
+        v.append(x)
+      x = transsys.utils.inner_product(self.series[factor_name], v)
+      sys.stderr.write('factor "%s": sq = %f = %s dot %s\n' % (factor_name, x, str(self.series[factor_name]), str(v)))
+      sq_sum = sq_sum + x
+    return FitnessResult(sq_sum)
+
+
+class SimulatedAnnealer :
+  """Simple Simulated Annealing tool.
+
+The parameterisation of stepping is based on the concepts
+outlined in "Mathematical Optimization".
+  """
+
+  def __init__(self) :
+    self.stepsize_learning_rate = 0.1 # alpha
+    self.stepsize_scale = 1.0         # omega
+    self.cooling_rate = 0.99
+    self.temperature_init = 1.0
+    self.temperature_min = 1.0e-3
+    self.verbose = False
+
+
+  def optimise(self, objective_function, transsys_program_init, rng, stepvector_init = None) :
+    transsys_program = copy.deepcopy(transsys_program_init)
+    records = []
+    state = map(lambda n : n.value, transsys_program.getValueNodes())
+    if stepvector_init is None :
+      stepvector = [1.0] * len(state)
+    elif type(stepvector_init) is types.FloatType :
+      stepvector = [stepvector_init] * len(state)
+    else :
+      stepvector = stepvector_init[:]
+    step_mean = sum(stepvector) / len(stepvector)
+    temperature = self.temperature_init
+    obj = objective_function(transsys_program).fitness
+    while temperature >= self.temperature_min :
+      if self.verbose :
+        sys.stderr.write('starting: temp = %f, obj = %f\n' % (temperature, obj))
+        sys.stderr.write('  state: %s\n' % str(state))
+      state_alt = []
+      for i in xrange(len(state)) :
+        # FIXME: this is marginally biased because the range of random
+        # values includes -stepvector[i], but excludes +stepvector[i].
+        state_alt.append(state[i] + rng.uniform(-stepvector[i], stepvector[i]))
+      d_state = utils.euclidean_distance(state, state_alt)
+      value_expression_list = transsys_program.getValueNodes()
+      for i in xrange(len(state)) :
+        value_expression_list[i].value = state[i]
+      obj_alt = objective_function(transsys_program).fitness
+      if self.verbose :
+        sys.stderr.write('  state_alt: %s, obj_alt = %f\n' % (str(state_alt), obj_alt))
+      accept = obj_alt <= obj
+      if accept :
+        p_accept = 1.0
+      else :
+        p_accept = math.exp((obj - obj_alt) / temperature / step_mean)
+        if self.verbose :
+          sys.stderr.write('step_mean = %f, delta_obj = %f, temperature = %f, p_accept = %f\n' % (step_mean, obj_alt - obj, temperature, p_accept))
+        accept = rng.random() < p_accept
+      records.append(SimulatedAnnealingRecord(obj, obj_alt, temperature, d_state, step_mean, p_accept, accept))
+      if accept :
+        if self.verbose :
+          sys.stderr.write('  state_alt accepted (obj = %f, obj_alt = %f)\n' % (obj, obj_alt))
+        for i in xrange(len(stepvector)) :
+          stepvector[i] = (1.0 - self.stepsize_learning_rate) * stepvector[i] + self.stepsize_learning_rate * self.stepsize_scale * abs(state[i] - state_alt[i])
+        step_mean = sum(stepvector) / len(stepvector)
+        if self.verbose :
+          sys.stderr.write('  new stepvector: %s\n' % str(stepvector))
+        state = state_alt
+        obj = obj_alt
+      temperature = temperature * self.cooling_rate
+    return OptimisationResult(transsys_program, obj, records)
 
 
 class GradientOptimiser :
