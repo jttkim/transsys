@@ -1613,7 +1613,7 @@ class TranssysInstance :
     s = 'transsys instance of %s\n' % self.transsys_program.name
     s = s + 'timestep: %s\n' % str(self.timestep)
     for f in xrange(len(self.factor_concentration)) :
-      s = s + '  %s: %g\n' % (self.transsys_program.factor_list[f].name, self.factor_concentration[f])
+      s = s + '  %s: %1.17e\n' % (self.transsys_program.factor_list[f].name, self.factor_concentration[f])
     return s
 
 
@@ -1753,7 +1753,7 @@ class CollectionStatistics :
     s = '# %s\n' % self.transsys_program.name
     s = s + 'factor\taverage\tstddev\tentropy\n'
     for i in xrange(self.transsys_program.num_factors()) :
-      s = s + '%s\t%g\t%g\t%g\n' % (self.transsys_program.factor_list[i].name, self.average[i], self.standard_deviation[i], self.shannon_entropy[i])
+      s = s + '%s\t%1.17e\t%1.17e\t%1.17e\n' % (self.transsys_program.factor_list[i].name, self.average[i], self.standard_deviation[i], self.shannon_entropy[i])
     return s
     
 
