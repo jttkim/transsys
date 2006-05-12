@@ -28,6 +28,24 @@ but cannot be guaranteed to work generally."""
   return x != x
 
 
+def mean_and_stddev(l) :
+  """Compute mean and standard deviation of a list of floating point values.
+
+@return: the mean and the standard deviation
+@rtype: tuple
+"""
+  if len(l) == 1 :
+    return l[0], 0.0
+  m = sum(l) / float(len(l))
+  d = map(lambda x : x - m, l)
+  d2 = map(lambda x : x * x, d)
+  v = sum(d2) / float(len(l) - 1)
+  # print l
+  # print v
+  sd = math.sqrt(v)
+  return m, sd
+
+
 class UniformRNG :
   """Callable class producing random floating point values from
 a uniform distribution.
