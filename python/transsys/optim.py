@@ -271,13 +271,22 @@ value.)
   program using the objective function.
 @ivar optimisation_log: A trace of the optimisation process, provided
   as a list of tuples.
+@ivar optimisatino_log_columns: A list of column headers for the optimisation
+  log.
 """
 
-  def __init__(self, tp, objectiveOptimum, optimisation_log) :
+  def __init__(self, tp, objectiveOptimum, optimisation_log, optimisation_log_columns = None) :
     self.optimised_transsys_program = tp
     self.objectiveOptimum = objectiveOptimum
     self.optimisation_log = optimisation_log
+    self.optimisation_log_columns = optimisation_log_columns
 
+
+  def write_log(self, f) :
+    if self.optimisation_log_columns is not None :
+      f.write('%s\n' % ' '.join(self.optimisation_log_columns))
+    # continue here
+    
 
 class SimulatedAnnealingRecord :
 
