@@ -72,14 +72,17 @@ rtp = transsys.RandomTranssysParameters()
 
 # Parse the input file.
 rtp.parse(infile)
+# Close the input file.
+if infile is not sys.stdin :
+  infile.close()
 
 # Extract the correspondant transsys program name with a regular expression.
 if name == None :
   # Build the regular expression to match 1-3 letters after a dot.
   suffix = re.compile('\.{1}\w{0,3}\Z')
   name = suffix.sub('', str(sys.argv[1]))
-  # Substitute the . (dots) and the - (dashes) in filenames to be valid 
-  # transsys program names.
+  # Substitute the . (dots) and the - (dashes) in parsed filename to be a valid
+  # transsys program name.
   s = re.compile('\.{1}|-{1}')
   name = s.sub('_', name)
   # Check the first character not to be digit, if it is prefix an '_'.
@@ -95,6 +98,6 @@ tp = rtp.generate_transsys(name)
 # Prints to outfile
 outfile.write(tp.__str__())
 
-# Closes the files
-infile.close()
-outfile.close()
+# Closes the output file.
+if outfile is not sys.stdout :
+  outfile.close()
