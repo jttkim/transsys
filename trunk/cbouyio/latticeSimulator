@@ -11,7 +11,7 @@ import getopt
 import sys
 import copy
 import random
-import math
+#import math
 import os
 import os.path
 import shutil
@@ -25,30 +25,40 @@ def usage() :
 ./latticeSimulator [options] arguments
   Options:
   -h, --help:   Prints this screen.
-          -n: Integer                The size of the nxn lattice.
-                                     (Default 5x5)
-          -t: Integer                The number of the timesteps for the
-                                     simulation. (Default=100)
-          -p: Float                  The percentage of interaction between
-                                     cells. (Default=0.25)
-          -r: Integer                The rundom number generator seed.
-                                     (Default=1)
-          -c: Integer                The grey gradient of the produced image.
-                                     Range 0-255. (Deafult=64)
-          -s: Concentration-Timestep Signal switcher, if it is defined, the
-                                     Concentration of a signal is been
-                                     introduced on Timestep.
-                                       *WARNING, Please be very precise
-                                     on the input format, there should be a
-                                     dash (-) between the two variables and NO
-                                     whitespaces at all.
-                                     (Default='OFF')
+          -a: (switch)      The animate flag, pops a window with a graphical
+                            animation of the simulator.
+                            (Default: OFF)
+          -n: Integer       The size of the nxn lattice.
+                            (Default: 5x5)
+          -t: Integer       The number of the timesteps for the simulation.
+                            (Default: 30)
+          -p: Float         The percentage of interaction between cells.
+                            (Default: 0.25)
+          -r: Integer       The rundom number generator seed.
+                            (Default: 1)
+          -m: Float         The maximum value of factor concentration that can
+                            be represented to the image output. The image color
+                            range is 0-255 gradients of grey.
+                            (Deafult: 10)
+          -s: String:Number Signal switcher, (FactorName:FactorConcentration)
+                            if it is defined, a factor gets the defined
+                            concentration (signal) in the beginning of the
+                            simulation.
+                            (Default: None)
+                            *WARNING, Please be very precise on the input
+                             format, there should be a colon (:) between the
+                             two variables and NO whitespaces at all.
+          -x: Number:Number Signal swicher, (FactorConcentration:Timestep) in
+                            this case ALL the factrors on will get the defined
+                            concentration on the defined timestep.
+                            (Default: None)
+                            *WARNING, as above.
   Arguments: <infile>, <outfile>
      infile: A valid transsys program file. (.tra)
     outfile: The output file, the printout.
 
   * Both arguments are optional since the program is able to read/write from
-the STDIN/STDOUT in case of one/two arguments are ommited.
+the STDIN/STDOUT in case of two/one arguments are ommited.
 """
 
 
@@ -66,7 +76,7 @@ a "random" number out of a Gauss distribution"""
 
 
 class ConstantRNG:
-  # Dont take it serious jusyt for fun a random "1" will be produced...)))
+  # A "random" series of "1" will be produced!
     def __init__(self, constValue):
       self.constValue = constValue
 
@@ -99,7 +109,8 @@ __init__.py module. The lattice is in a two dimensional toroidal form."""
 
 
   def generate_factor_concentrations_lattice(self) :
-    """Generates a list of lists with the factor concentrations."""
+    """Generates a list of lists with the factor concentrations. kept for
+legacy reasons this function is not used anymore."""
     factorConcentrationsLattice = []
     for i in xrange(len(self.lattice)) :
       factorConcentrationsLattice.append([])
@@ -124,12 +135,12 @@ __init__.py module. The lattice is in a two dimensional toroidal form."""
     """The update function of the simulator, calculates the instances of the
 next timestep. Careful usage of the factor concentrations..."""
     # First calculate the updated factor concentrations.
-    # All the instances in the lattice are interacting with the 4 neibour
+    # All the instances in the lattice are interacting with the 4 neighbour
     # cells, the instances in the edges are interacting with the opposite
     # cells forming the toroidal.
     latticeFactorConcentrations = []
     # Include some noise or not.
-#    rng = GaussianRNG(rndseed, 0, 0.01)
+#    rng = GaussianRNG(rndseed, 0, 0.1)
     rng = ConstantRNG(0)
     for i in xrange(len(self.lattice)) :
       latticeFactorConcentrations.append([])
@@ -142,7 +153,7 @@ next timestep. Careful usage of the factor concentrations..."""
           raise StandardError, 'Factor number inconsistancy between the new and the old factor concentrations list.'
         for k in xrange(len(factorConcentrationsUpdate)) :
           # The main calculation of the new factor concentrations.
-          # Check the toroidal transformations by using the modulo division %
+          # Check the toroidal transformations by using the modulo division!!!
           fc = (factorConcentrationsOld[k] + (rng.randomValue() + (p * self.lattice[(n + i - 1) % n][j].factor_concentration[k])) + (rng.randomValue() + (p * self.lattice[i][(n + j - 1) % n].factor_concentration[k])) + (rng.randomValue() + (p * self.lattice[i][(j + 1) % n].factor_concentration[k])) + (rng.randomValue() + (p * self.lattice[(i + 1) % n][j].factor_concentration[k]))) / (4 * p + 1)
           factorConcentrationsUpdate[k] = fc
         latticeFactorConcentrations[i].append(factorConcentrationsUpdate)
@@ -167,18 +178,23 @@ next timestep. Careful usage of the factor concentrations..."""
 
   def introduce_signal(self, signalC, xFactor = None) :
     """ """
+    # Check for the existance of the xFactor.
+    if xFactor != None :
+      if not xFactor in self.transsysProgram.factor_names() :
+        raise StandardError, 'Factor %s is not a valid %s factor name. Please specify a valid factor name.' % (xFactor, self.transsysProgram.name)
     # Find the center of the lattice. If the lattice size is an even number,
     # then assume the 4 central cells as center.
     if divmod(self.size, 2)[1] == 1 :
       i = divmod(self.size, 2)[0]
       j = divmod(self.size, 2)[0]
       # Set all the factor concentrations to signalConcentration.
-#      self.lattice[i][j].factor_concentration = [signalC for fc in self.lattice[i][j].factor_concentration]
-      # Alternatively, set a randomly choosen factor concentration to 10.
+      # Alternatively, set a randomly choosen factor concentration.
 #      k = random.randint(0, (self.ranssysProgram.num_factors() - 1))
 #      self.lattice[i][j].factor_concentration[k] = random.gauss(signalC, 1)
-      # Alternatively set a specific factor concentration to a given value.
-      if xFactor :
+      # Set a specific factor concentration to a given value.
+      if xFactor == None :
+        self.lattice[i][j].factor_concentration = [signalC for fc in self.lattice[i][j].factor_concentration]
+      elif xFactor :
         k = self.transsysProgram.find_factor_index(xFactor)
         self.lattice[i][j].factor_concentration[k] = signalC
     elif divmod(self.size, 2)[1] == 0 :
@@ -186,12 +202,13 @@ next timestep. Careful usage of the factor concentrations..."""
       k = random.randint(0, (self.transsysProgram.num_factors() - 1))
       for i in xrange(q - 1, q + 1) :
         for j in xrange(q - 1, q + 1) :
-#          self.lattice[i][j].factor_concentration = [signalC for fc in self.lattice[i][j].factor_concentration]
-          # Alternatively, set a randomly choosen factor concentration to 10.
+          # Alternatively, set a randomly choosen factor concentration.
 #          k = random.randint(0, (self.transsysProgram.num_factors() - 1))
 #          self.lattice[i][j].factor_concentration[k] = random.gauss(signalC, 1)
-          # Alternatively set a specific factor concentration to a given value.
-          if xFactor :
+          # Set a specific factor concentration to a given value.
+          if xFactor == None :
+            self.lattice[i][j].factor_concentration = [signalC for fc in self.lattice[i][j].factor_concentration]
+          elif xFactor :
             k = self.transsysProgram.find_factor_index(xFactor)
             self.lattice[i][j].factor_concentration[k] = signalC
 
@@ -200,12 +217,16 @@ next timestep. Careful usage of the factor concentrations..."""
 class LatticeFigure :
   """Construct an image(in a raw image format) out of a transsys lattice."""
 
-  def __init__(self, transsysLattice) :
-    pass
+  def __init__(self, transsysLattice, cd) :
+    self.figure = self.produce_row_format(transsysLattice, cd)
 
 
+# Function kept for lecgacy reasons after the introduction of the user defined
+# maximum accepted factor concentration value, there is no need for this
+# anymore.
   def flatten_lattice(self, factorConcentrationsLattice) :
-    """Flattens the factor concentration lattice to a single list."""
+    """Flattens the factor concentration lattice to a single list. Kept for
+legacy reasons this function is not called anymore."""
     flatfactorConcentrations = []
     for i in xrange(len(factorConcentrationsLattice)) :
       for j in xrange(len(factorConcentrationsLattice[i])) :
@@ -214,25 +235,37 @@ class LatticeFigure :
     return flatfactorConcentrations
 
 
-  def produce_row_format(self, transsysLattice, cd) :
-   """ """
+  def produce_row_format(self, transsysLattice, maxC) :
+   """Produces the raster image file. Suitable for view/analyse with the
+Netpbm and/or Imagemagick graphics package."""
    # Generate the apropriate .pgm image format.
-   pgmMagic = 'P2'
+   pgmMagic = 'P2' # .pgm file magic line, P2 for .pgm, 
    pgmComment = '# ' + transsysLattice.name + ' .pgm image of ' + ' timestep'
    pgmSize = str(transsysLattice.size)
-   pgmMaxval = cd - 1
+   pgmMaxval = 255
    pgmRaster = ''
-   flattenFCL = self.flatten_lattice(transsysLattice.generate_factor_concentrations_lattice())
-   maxValue = math.ceil(max(flattenFCL))
-   # Not so nice trick to avoid division by zero later.
-   if maxValue == 0.0 :
-     maxValue = 1e-99
+   # Code kept for legacy reasons, after the introduction of the user defined
+   # maximum accepted factor concentration for the image gradient, this rather
+   # strange approach has been replaced by a more resonable one.
+   # All this approach has been substitute with a simplier way to deal with the color range of the images. Check the next code chunks.
+#   flattenFCL = self.flatten_lattice(transsysLattice.generate_factor_concentrations_lattice())
+#   maxValue = math.ceil(max(flattenFCL))
+#   # Not so nice trick to avoid division by zero later.
+#   if maxValue == 0.0 :
+#     maxValue = 1e-99
    for i in xrange(transsysLattice.size) :
      pgmRasterLine = ''
      for j in xrange(transsysLattice.size) :
-       # Calibration within the color interval.
-#       print transsysLattice.lattice[i][j].factor_concentration
-       p = pgmMaxval - int(math.floor(((sum(transsysLattice.lattice[i][j].factor_concentration)) / (len(transsysLattice.lattice[i][j].factor_concentration) * maxValue) * pgmMaxval)))
+#       # Calibration within the color interval.
+#       # The calibration procesure has been simplified now and a user defined 
+#       # maximum printing factor concentration has been introduced, Keeping
+#       # this code for legacy reasons..
+#       p = pgmMaxval - int(math.floor(((sum(transsysLattice.lattice[i][j].factor_concentration)) / (len(transsysLattice.lattice[i][j].factor_concentration) * maxValue) * pgmMaxval)))
+       # The new simplified way to deal with the color gradients versus factor
+       # concentrations.
+       #FIXME: this should simplified more and produce one image file for EACH
+       # factor in more complicated transsys programs.
+       p = pgmMaxval - int(round(((sum(transsysLattice.lattice[i][j].factor_concentration) * pgmMaxval) / maxC)))
        pgmRasterLine = pgmRasterLine + str(p) + ' '
      pgmRaster = pgmRaster + pgmRasterLine + '\n'
    pgmText = pgmMagic + '\n' + pgmComment + '\n' + pgmSize + ' ' + pgmSize + '\n' + str(pgmMaxval)  + '\n' + pgmRaster
@@ -245,9 +278,10 @@ latticeSize           = 5
 noTimesteps           = 30
 interactionPercentage = 0.25
 randomSeed            = 1
-colorDeapth           = 64
+maxConcentration      = 10.0
 signalT               = False
 signalF               = False
+animate               = False
 #signalTimestep        = 10
 #signalConcentration   = 10
 
@@ -255,7 +289,7 @@ signalF               = False
 
 # Command line parsing.
 try :
-  optlist, args = getopt.getopt(sys.argv[1:], 'hc:n:p:r:s:t:x:', ['help'])
+  optlist, args = getopt.getopt(sys.argv[1:], 'a h m: n: p: r: s: t: x:', ['help'])
 except getopt.GetoptError, errorMessage :
   errorMessage = 'Error in arguments parsing, please give -h or --help for help '
   print errorMessage
@@ -273,12 +307,12 @@ for opt, par in optlist :
     interactionPercentage = float(par)
   if opt in ('-r') :
     randomSeed = float(par)
-  if opt in ('-c') :
-    colorDeapth = int(par)
+  if opt in ('-m') :
+    maxConcentration = float(par)
   if opt in ('-x') :
     var = par.split(':')
     if len(var) != 2 :
-      raise TypeError, 'Error in the format of -s input options, please check the help (--help) for more information.'
+      raise TypeError, 'Error in the format of -x input options, please check the help (--help) for more information.'
     if float(var[0]) :
     # No need to raise an exeption Python will raise one for you!!!
 #      raise TypeError, 'Please give a valid floating point representation for the concentration parameter, Check help (--help) for more information.'
@@ -288,16 +322,17 @@ for opt, par in optlist :
   if opt in ('-s') :
     var = par.split(':')
     if len(var) != 2 :
-      raise TypeError, 'Error in the format of -x input options, please check the help (--help) for more information.'
+      raise TypeError, 'Error in the format of -s input options, please check the help (--help) for more information.'
     if float(var[1]) :
       signalF = True
       xFactorName = var[0]
       xFactorConcentration = float(var[1])
-
+  if opt in ('-a') :
+    animate = True
 
 #print optlist
-
 #sys.exit()
+
 
 # I/O manipulation.
 if len(args) > 0 :
@@ -310,12 +345,17 @@ else :
   outfile = sys.stdout
 
 
+###############
 ## Main program.
-# Instantiate the transsys program.
+# Instantiate and parse the transsys program.
 transsysProgram  = transsys.TranssysProgramParser(infile).parse()
+# Close the input file.
+if infile is not sys.stdin :
+  infile.close()
 
-# Generate the lattice of transsys programs.
+# Instantiate the lattice of transsys programs class.
 tpl = TranssysProgramLattice(transsysProgram, latticeSize)
+
 
 ###################
 # Run the simulator
@@ -329,53 +369,63 @@ tpl = TranssysProgramLattice(transsysProgram, latticeSize)
 
 
 # Use the os module to make a directory with all the images of timesteps.
+# First check for the existance of the directory.
 if os.path.exists(transsysProgram.name) :
   shutil.rmtree(transsysProgram.name)
-
 # Make a directory named from the transsys program name, and change to it.
 os.mkdir(transsysProgram.name)
 os.chdir(transsysProgram.name)
 
-
-# Introduce signal.
+# Introduce the signal by specifing a factor and the desired concentration.
 if signalF :
   tpl.introduce_signal(xFactorConcentration, xFactorName)
 
+# Instantiate the figure class.
+figure = LatticeFigure(tpl, maxConcentration)
 
-# Generate the images.
-statList = []
+# The update calculations.
+statList = [] # The statistics list.
 for i in xrange(noTimesteps) :
-  statList.append(tpl.statistics().__str__())
-  filename = '%04d' % (i + 1) + '.pgm'
-  figure = LatticeFigure(tpl)
-  figureFile = open(filename, 'w')
-  s = figure.produce_row_format(tpl, colorDeapth)
-  figureFile.write(s)
-  figureFile.close()
-  # Calculate the new instance.
-  tpl.update_function(interactionPercentage, 1, randomSeed)
   # Introduce the signal in the signal Timestep.
   if signalT :
     if i == (signalTimestep):
       tpl.introduce_signal(signalConcentration)
+  # Calculate the statistics.
+  statList.append(tpl.statistics())
+  filename = '%04d' % (i + 1) + '.pgm'
+  figureFile = open(filename, 'w')
+  # Produce the raster graphics files.
+  s = figure.produce_row_format(tpl, maxConcentration)
+  figureFile.write(s)
+  figureFile.close()
+  # Calculate the new lattice instance.
+  tpl.update_function(interactionPercentage, 1, randomSeed)
 
 
-#  outfile.close()
-# Convert the images to a more readable format.
-for imageFile in os.listdir('./') :
-  os.system('cp ' + str(imageFile) + ' ' + str(imageFile) + '_OLD')
-  os.system('convert -sample 320x320 ' + str(imageFile) + ' ' + str(imageFile))
+# Image file conversion and animation. (Optional)
+if animate :
+  # Convert the images to a more readable format.
+  for imageFile in os.listdir('./') :
+#    os.system('cp ' + str(imageFile) + ' ' + str(imageFile) + '_OLD')
+    os.system('convert -sample 320x320 ' + str(imageFile) + ' ' + str(imageFile) + '.CONV')
+  # Animate.
+  os.system('animate -delay 50 *.pgm.CONV &')
 
-# Animate.
-os.system('animate -delay 100 *.pgm &')
-
-# return to the current directory.
+# Return to the current directory.
 os.chdir(os.pardir)
 
-for i, v in enumerate(statList) :
-  outfile.write('%s %s\n' % (i, v))
 
-infile.close()
-outfile.close()
+# Print the results of statistics to an .R compatible file.
+# Print the header of the file.
+outfile.write('# A header file for further analysis with R.\n')
+outfile.write('timestep:\tfactor:\taverage:\tstddev:\tentropy:\n')
+for i, stat in enumerate(statList) :
+  for f in stat.transsys_program.factor_list :
+    outfile.write('%i\t%s\t%f\t%e\t%e\n' % ((i + 1), f.name, stat.average[stat.transsys_program.find_factor_index(f.name)], stat.standard_deviation[stat.transsys_program.find_factor_index(f.name)], stat.shannon_entropy[stat.transsys_program.find_factor_index(f.name)]))
+
+
+# Close the output file.
+if outfile is not sys.stdout :
+  outfile.close()
 
 sys.exit()
