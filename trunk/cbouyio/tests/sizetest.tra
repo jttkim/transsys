@@ -1,0 +1,9 @@
+transsys sizetest
+# A simple transsys program for testing the lattice interation percentage.
+{
+  factor DECAYTEST
+  {
+    decay: 0.5;
+    diffusibility: 0.0;
+  }
+}
