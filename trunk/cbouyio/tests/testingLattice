@@ -53,10 +53,11 @@ elif [ ! -f timestep.out.expect ]; then
   exit 1
 fi
 
-# Initialise some counters.
-failure=0
-success=0
-notests=0
+####### Don't use anymore, the script exit with an exit code upon any failure.
+## Initialise some counters.
+#failure=0
+#success=0
+#notests=0
 
 # Test No 1: Zero test for the latticeSimulator program.
 # The test is running with the the simulator's default parameters, (Check the 
@@ -67,10 +68,11 @@ let notests++
 if ! diff zero.out.expect zerotestTMP.out ; then
   echo "zero test: failed... 
 files zero.out.expect zerotestTMP.out differ!!!"
-  let failure++
+  exit 1
+#  let failure++
 else
   echo 'zero test: successful!'
-  let success++
+#  let success++
 fi
 
 
@@ -82,10 +84,11 @@ let notests++
 if ! diff decay.out.expect decaytestTMP.out ; then
   echo 'decay test: failed...
 files decay.out.expect decaytestTMP.out differ!!!'
-  let failure++
+  exit 1
+#  let failure++
 else
   echo 'decay test: successful!'
-  let success++
+#  let success++
 fi
 # Conduct some further test with R, to check the exponential deacay rate.
 
@@ -101,25 +104,27 @@ fi
 ../latticeSimulator -x 10:0 -n 10 sizetest.tra sizetestTMP.out
 let notests++
 # Introduce a flag because there are two condition that might result to the failure of test.
-flag=0
+#flag=0
 if ! diff size.out.expect sizetestTMP.out ; then
   echo "size test: failed...
 files decay.out.expect decaytestTMP.out differ!!!"
-  let flag++
+  exit 1
+#  let flag++
 elif cmp -s decay.out.expect sizetestTMP.out ; then
   echo 'size test: failed...
 files decay.out.expect sizetestTMP.out are the same!!!'
-  let flag++
+  exit 1
+#  let flag++
 else
   echo 'size test: successful!'
-  let success++
+#  let success++
 fi
 
-# Check the flag and then increment the failure parameter.
-if [[ $flag != 0 ]]; then
-  let failure++
-fi
-
+## Is not used anymore, intoduce an exit code instead.
+## Check the flag and then increment the failure parameter.
+#if [[ $flag != 0 ]]; then
+#  let failure++
+#fi
 
 
 # Test no 4: Interaction test between the cells on the lattoce.
@@ -135,10 +140,11 @@ let notests++
 if ! diff inter.out.expect intertestTMP.out ; then
   echo 'interaction test: failed...
 files inter.out.expect intertestTMP.out differ!!!'
-  let failure++
+  exit 1
+#  let failure++
 else
   echo 'interaction test: successful!'
-  let success++
+#  let success++
 fi
 # Conduct some further tests with R, to check the 100% diffusion of the factors
 # between the cells on the lattice.
@@ -154,10 +160,11 @@ let notests++
 if ! diff factors.out.expect factorstestTMP.out ; then
   echo 'factors-signal test: failed...
 files factors.out.expect factorstestTMP.out differ!!!'
-  let failure++
+  exit 1
+#  let failure++
 else
   echo 'factors-size test: successful!'
-  let success++
+#  let success++
 fi
 
 
@@ -171,18 +178,20 @@ let notests++
 if ! diff timestep.out.expect timesteptestTMP.out ; then
   echo 'timesteps test failed...
 files timestep.out.expect timesteptestTMP.out differ!!!'
-  let failure++
+  exit 1
+#  let failure++
 else
   echo 'timesteps test: successful!'
-  let success++
+#  let success++
 fi
 
 
 # Print the final message.
 echo
-if [[ $failure = 0 ]] ; then
-  echo "all $success out of $notests tests run successfully!!!"
-else
-  echo "not all tests run succefully. $success out of $notests succeed and $failure out of $notests tests failed...!!!"
-fi
+echo "all $notests tests run succefully!!!"
+#if [[ $failure = 0 ]] ; then
+#  echo "all $success out of $notests tests run successfully!!!"
+#else
+#  echo "not all tests run succefully. $success out of $notests succeed and $failure out of $notests tests failed...!!!"
+#fi
 
