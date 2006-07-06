@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# A script tha constructs a Transsys Programa using RegulonDB data.
+# A script that constructs a Transsys Programme using RegulonDB data.
 # Contributed by CBouyio, at UEA on 27/03/2006
 # Uploaded to the repository on 1/04/2006, version 1.
 
@@ -46,7 +46,8 @@ if len(args) > 1 :
 else :
   outfile = sys.stdout
 
-# Main program.
+
+## Main program.
 # Read the interaction data from the file.
 filedata = infile.readlines()
 for i in xrange(len(filedata)) :
@@ -71,28 +72,59 @@ for element in data :
 glist =[] # The genes list.
 flist = [] # The factor list.
 rglist =[] # The regulated genes list.
-rFunctionlist = []
+rFunctionlist = [] # The interaction function list.
 for element in interactionslist :
   flist.append(element[0])
   glist.append(element[1])
   rglist.append(element[3])
   rFunctionlist.append(element[5])
 
-############ ATTTENTION ##########
-# Replace the dashes ('-') from the genes and factor names with a double underscore... untill now. Problem with the transsys parser.
+
+###############################################################################
+############ ATTTENTION I ##########
+# Replace the dashes ('-') from the genes and factor names with an underscore.
+# FIXME: Introduce a loop to check for the existance of the "underscored" name,
+# and put one more underscore in case that it exists.
 dash = re.compile('\-')
-glist = map(lambda gene: dash.sub('__', gene), glist)
-flist = map(lambda factor: dash.sub('__', factor), flist)
-rglist = map(lambda rgene: dash.sub('__', rgene), rglist)
+glist = map(lambda gene: dash.sub('_', gene), glist)
+flist = map(lambda factor: dash.sub('_', factor), flist)
+rglist = map(lambda rgene: dash.sub('_', rgene), rglist)
+
+############ ATTENTION III ##########
+# Also filter for unknown regulated genes. (empty 4th column in the regulonDB
+# file). (discard them in the first approach)
+dellist = []
+for i in xrange(len(rglist)) :
+  # Check all the lists for empty fields.
+  if (rglist[i] == '' or flist[i] == '' or glist[i] == '') :
+     dellist.append(i)
+
+for i in dellist :
+  rglist[i]        = ''
+  glist[i]         = ''
+  flist[i]         = ''
+  rFunctionlist[i] = ''
+
+def f(x) :
+  if x :
+    return x
+
+glist = filter(f, glist)
+flist = filter(f, flist)
+rglist = filter(f, rglist)
+rFunctionlist = filter(f, rFunctionlist)
+##############################################################################
 
 
-# Generates the sets (non reduntant lists) of the gene list and factor list.
+# Generate the sets (non reduntant lists) of the gene list and factor list.
 genelist = list(set(glist))
+
 # Sort the genelist and pay attention to the Case (case insensitive method, 
 # capitals and lowercase are treated equally).
 genelist.sort(key=str.lower) # This is the incomplete genelist.
 
 factorlist = list(set(flist))
+
 # Same as in genelist.
 factorlist.sort(key=str.lower)
 
@@ -123,15 +155,18 @@ genelist = gfDict.keys()
 # The regulated genes list (non reduntant).
 regGenesList = list(set(rglist))
 
+
 # Build the Gene -> Regulating Factors dictionary.
 regulatoryDict ={}
 flistTMP = copy.copy(flist)
 rlistTMP = copy.copy(rglist)
 rflistTMP = copy.copy(rFunctionlist)
+
 # Check the consistancy of the lists.
 if len(flistTMP) != len(rlistTMP) != len(rflistTMP) :
   raise StandardError, 'Regulatory lists inconsistency, check the input file.'
 
+# Populate the dictionary.
 for gene in sorted(regGenesList) :
   regulationList = []
   k = rlistTMP.count(gene)
@@ -144,28 +179,28 @@ for gene in sorted(regGenesList) :
   regulatoryDict[gene] = regulationList
 
 
+################### ATTENTION II ###########################
 # Filter the regulatoryDict for unknown interactions. (discard them in the
-# first approach).
+# first approach)
 for k, v in regulatoryDict.copy().iteritems() :
   for t in v :
     if t[1] == '?' :
       del regulatoryDict[k]
+###############################################################################
 
 
-# ATTENTION: Most of the genes on the regulated genes list, are not included
-# in the regulatory genes list produced by the regulonDB datafile. All this
-# genes are not having any further regulatory activity so they are considered
-# functional genes untill any further information come across.
-
+# Most of the genes on the regulated genes list, are not included in the 
+# regulatory genes list produced by the regulonDB datafile.
+# All this genes are not having any further regulatory activity so they are
+# considered as functional genes untill any further information come across.
 # The factor names for this genes are following the conversion of capitalizing
 # the first character of the gene name.
-
-# The whole genes list set is the union of the two sets the regulatory genes
+# The whole genes list set is the union of the two sets: the regulatory genes
 # set and the regulated genes set.
 genesSet = list(set(genelist).union(set(regGenesList)))
 
 
-# Builid the complete genes -> transcription factors dictionary.
+# Build the complete genes -> transcription factors dictionary.
 genesfactorDict = {}  # The complete gene -> factors dictionary.
 for gene in genesSet :
   if gfDict.has_key(gene) :
@@ -174,7 +209,7 @@ for gene in genesSet :
     genesfactorDict[gene] = string.upper(gene[0]) + gene[1:]
 
 
-# Begin the transsys implementation.
+## Begin the transsys implementation.
 
 # Parameter Initialization.
 decay         = transsys.ExpressionNodeValue(0.5)
@@ -208,13 +243,19 @@ for gene in sorted(genesSet) :
         promoter.append(transsys.PromoterElementActivate(k_m, v_max, [regulators[0]]))
         promoter.append(transsys.PromoterElementRepress(k_m, v_max, [regulators[0]]))
       else :
-        raise StandardError, 'Unknown type of interaction, please remove these enties from the input file'
+        raise StandardError, 'Unknown type of interaction, check the input file.'
   transsysgenes.append(transsys.Gene(gene, genesfactorDict[gene], promoter))
 
 # Generate the transsys program.
 tp = transsys.TranssysProgram(name, transsysfactors, transsysgenes)
 
-# Print it.
+# Insert some comments regarding several post-data manipulation.
+# Check the ATTENTION part for more info.
+tp.comments.append(" Be aware that the dash (-) in some gene-factor names of the original RegulonDB file, has been substituted by an underscore (_) in the transsys implementation to be consistent with the transsys language formalism.")
+tp.comments.append(" Unknown interactions, those that are described with ? in regulonDB, have been discarded ")
+tp.comments.append(" Regulated genes that haven't determined yet (blank the 4th column of regulonDB) have also been discarded.\n")
+
+# Print the transsys program.
 outfile.write('%s' % tp)
 
 infile.close()
