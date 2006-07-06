@@ -89,7 +89,7 @@ def inner_product(v1, v2) :
 
 @param v1: the first vector (any sequence consisting of numeric elements)
 @param v2: the second vector (a sequence of the same length)
-@result: the inner product of C{v1} and C{v2}
+@return: the inner product of C{v1} and C{v2}
 @rtype: float
 """
   if len(v1) != len(v2) :

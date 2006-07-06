@@ -1660,10 +1660,13 @@ copy.deepcopy on it."""
     return pc
 
 
-  def write_gnuplot(self, f) :
-    f.write('%d' % self.timestep)
+  def write_table_line(self, f) :
+    if self.timestep is None :
+      f.write('NA')
+    else :
+      f.write('%d' % self.timestep)
     for c in self.factor_concentration :
-      f.write(' %f' % c)
+      f.write(' %1.17e' % c)
     f.write('\n')
 
 
@@ -1783,6 +1786,33 @@ are required, the instances should be cloned.
     """
     raise StandardError, 'transsys_instance_list not overridden by subclass'
 
+
+  def write_table_header(self, f) :
+    """Write a header for a table of records describing the instances in this
+collection.
+"""
+    if self.transsys_program is None :
+      raise StandardError, 'no transsys program, cannot write header'
+    f.write('timestep')
+    for factor in self.transsys_program.factor_list :
+      f.write(' %s' % factor.name)
+    f.write('\n')
+
+
+  def write_table(self, f) :
+    """Write a table of records describing the instances in this collection.
+
+The output format should be suitable for reading by the R function
+read.table(file, header = TRUE).
+
+Subclasses can override this method to add more information (e.g.
+symbol name, lattice coordinates etc.). In this case, remember to
+also override write_table_header accordingly.
+"""
+    self.write_table_header(f)
+    for ti in self.transsys_instance_list() :
+      ti.write_table_line(f)
+    
 
   def get_transsys_program(self) :
     """Return the transsys program of which the instances."""
