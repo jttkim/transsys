@@ -6,6 +6,8 @@
 # to simulate the processes described in "Soile V. E. Keranen, 2004. Simulation
 # study on effects of signaling network structure on the developmental
 # increase in complexity."
+# Developed by CBouyio Aprill 2006 UEA
+
 
 import getopt
 import sys
@@ -32,8 +34,6 @@ def usage() :
                             (Default: 5x5)
           -t: Integer       The number of the timesteps for the simulation.
                             (Default: 30)
-          -p: Float         The percentage of interaction between cells.
-                            (Default: 0.25)
           -r: Integer       The rundom number generator seed.
                             (Default: 1)
           -m: Float         The maximum value of factor concentration that can
@@ -49,7 +49,7 @@ def usage() :
                              format, there should be a colon (:) between the
                              two variables and NO whitespaces at all.
           -x: Number:Number Signal swicher, (FactorConcentration:Timestep) in
-                            this case ALL the factrors on will get the defined
+                            this case ALL the factors will get the defined
                             concentration on the defined timestep.
                             (Default: None)
                             *WARNING, as above.
@@ -131,7 +131,7 @@ legacy reasons this function is not used anymore."""
         ti_list.append(self.lattice[i][j])
     return ti_list
 
-  def update_factor_concentrations(self, p, currentState, n, rndseed) :
+  def update_factor_concentrations(self, currentState, n, rndseed) :
     """The update function of the simulator, calculates the instances of the
 next timestep. Careful usage of the factor concentrations..."""
     # First calculate the updated factor concentrations.
@@ -154,17 +154,21 @@ next timestep. Careful usage of the factor concentrations..."""
         for k in xrange(len(factorConcentrationsUpdate)) :
           # The main calculation of the new factor concentrations.
           # Check the toroidal transformations by using the modulo division!!!
+          # Introduce "per factor" diffusibility expression.
+	  #p = 0.25
+          p = self.transsysProgram.factor_list[k].diffusibility_expression.value
+	  #print p
           fc = (factorConcentrationsOld[k] + (rng.randomValue() + (p * self.lattice[(n + i - 1) % n][j].factor_concentration[k])) + (rng.randomValue() + (p * self.lattice[i][(n + j - 1) % n].factor_concentration[k])) + (rng.randomValue() + (p * self.lattice[i][(j + 1) % n].factor_concentration[k])) + (rng.randomValue() + (p * self.lattice[(i + 1) % n][j].factor_concentration[k]))) / (4 * p + 1)
           factorConcentrationsUpdate[k] = fc
         latticeFactorConcentrations[i].append(factorConcentrationsUpdate)
     return latticeFactorConcentrations
 
-  def update_function(self, p, timesteps, rndseed) :
+  def update_function(self, timesteps, rndseed) :
     """Calculates the new transsys instance."""
     for n in xrange(timesteps):
       # Produce a copy of the current state of the simulator.
       currentState = copy.deepcopy(self.lattice)
-      updateFactorConcentrations = self.update_factor_concentrations(p, currentState, self.size, rndseed)
+      updateFactorConcentrations = self.update_factor_concentrations(currentState, self.size, rndseed)
       for i in xrange(len(self.lattice)) :
         for j in xrange(len(self.lattice[i])) :
           if len(self.lattice[i][j].factor_concentration) != len(updateFactorConcentrations[i][j]) :
@@ -173,11 +177,15 @@ next timestep. Careful usage of the factor concentrations..."""
             self.lattice[i][j].factor_concentration = updateFactorConcentrations[i][j]
             # The timeseries doesn't work with timestep 1, returns zero.
             # Thats why a timestep = 2 is used.
+            # FIXME: The number of timesteps of each transsys instance on the
+            # lattice timeseries is awlays one because of the usage of timestep
+            # one all the time. Update it, to take the number of the current
+            # timestep.
             self.lattice[i][j] = self.lattice[i][j].time_series(2)[1]
 
 
   def introduce_signal(self, signalC, xFactor = None) :
-    """ """
+    """Sets the factor concentration of a declared factor to the declared value. """
     # Check for the existance of the xFactor.
     if xFactor != None :
       if not xFactor in self.transsysProgram.factor_names() :
@@ -264,7 +272,7 @@ Netpbm and/or Imagemagick graphics package."""
        # The new simplified way to deal with the color gradients versus factor
        # concentrations.
        #FIXME: this should simplified more and produce one image file for EACH
-       # factor in more complicated transsys programs.
+       # factor at more complicated transsys programs.
        p = pgmMaxval - int(round(((sum(transsysLattice.lattice[i][j].factor_concentration) * pgmMaxval) / maxC)))
        pgmRasterLine = pgmRasterLine + str(p) + ' '
      pgmRaster = pgmRaster + pgmRasterLine + '\n'
@@ -276,7 +284,6 @@ Netpbm and/or Imagemagick graphics package."""
 # Simulation Parameter Initialization.
 latticeSize           = 5
 noTimesteps           = 30
-interactionPercentage = 0.25
 randomSeed            = 1
 maxConcentration      = 10.0
 signalT               = False
@@ -289,7 +296,7 @@ animate               = False
 
 # Command line parsing.
 try :
-  optlist, args = getopt.getopt(sys.argv[1:], 'a h m: n: p: r: s: t: x:', ['help'])
+  optlist, args = getopt.getopt(sys.argv[1:], 'a h m: n: r: s: t: x:', ['help'])
 except getopt.GetoptError, errorMessage :
   errorMessage = 'Error in arguments parsing, please give -h or --help for help '
   print errorMessage
@@ -303,8 +310,6 @@ for opt, par in optlist :
     latticeSize = int(par)
   if opt in ('-t') :
     noTimesteps = int(par)
-  if opt in ('-p') :
-    interactionPercentage = float(par)
   if opt in ('-r') :
     randomSeed = float(par)
   if opt in ('-m') :
@@ -356,6 +361,15 @@ if infile is not sys.stdin :
 # Instantiate the lattice of transsys programs class.
 tpl = TranssysProgramLattice(transsysProgram, latticeSize)
 
+# Check the transsys program for acceptable diffusibility parameters.
+# Diffusibility ought to be a number between 0 and 1 [0, 1] for the
+# update_function to work well.
+for i in transsysProgram.factor_list :
+  if float(i.diffusibility_expression.value) <= 1.0 :
+    continue
+  else :
+    raise StandardError, 'Diffusibility expression error, please check the transsys program, the lattice works only with floating numbers between 0 and 1'
+
 
 ###################
 # Run the simulator
@@ -399,7 +413,7 @@ for i in xrange(noTimesteps) :
   figureFile.write(s)
   figureFile.close()
   # Calculate the new lattice instance.
-  tpl.update_function(interactionPercentage, 1, randomSeed)
+  tpl.update_function(1, randomSeed)
 
 
 # Image file conversion and animation. (Optional)
