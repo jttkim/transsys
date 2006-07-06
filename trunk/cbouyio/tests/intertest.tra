@@ -1,21 +1,40 @@
 transsys intertest
 # A simple transsys program for testing the lattice interation percentage.
 {
-  factor INTERTEST
+  factor INTERTEST_A
+  {
+    decay: 0.5;
+    diffusibility: 1.0;
+  }
+
+  factor INTERTEST_B
   {
     decay: 0.5;
     diffusibility: 0.0;
   }
-  gene intertest
+
+
+  gene intertest_A
   {
     promoter
     {
       constitutive: 0.5;
-      INTERTEST: repress(0.1, 1.5);
     }
     product
     {
-      default: INTERTEST;
+      default: INTERTEST_A;
+    }
+  }
+  
+  gene intertest_B
+  {
+    promoter
+    {
+      constitutive: 0.5;
+    }
+    product
+    {
+      default: INTERTEST_B;
     }
   }
 }

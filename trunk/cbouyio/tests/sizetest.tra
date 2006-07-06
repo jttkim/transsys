@@ -4,6 +4,6 @@ transsys sizetest
   factor DECAYTEST
   {
     decay: 0.5;
-    diffusibility: 0.0;
+    diffusibility: 0.25;
   }
 }
