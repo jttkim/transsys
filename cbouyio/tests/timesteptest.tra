@@ -4,13 +4,13 @@ transsys timestepstest
   factor TIMESTEP_A
   {
     decay: 0.5;
-    diffusibility: 0.0;
+    diffusibility: 0.25;
   }
   
   factor TIMESTEP_B
   {
     decay: 0.5;
-    diffusibility: 0.0;
+    diffusibility: 0.25;
   }
   
   gene timestep_A
