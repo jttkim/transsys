@@ -68,8 +68,8 @@ let notests++
 if ! diff zero.out.expect zerotestTMP.out ; then
   echo "zero test: failed... 
 files zero.out.expect zerotestTMP.out differ!!!"
-  exit 1
   rm *TMP.out
+  exit 1
 #  let failure++
 else
   echo 'zero test: successful!'
@@ -80,13 +80,13 @@ fi
 # Test no 2: Decay test for the latticeSimulator program.
 # The test is running with the simulator's -x parameter (concentration:timestep)
 # The test runs on a geneless transsys program with decay rate = 0.5.
-../latticeSimulator -x 10:0  decaytest.tra decaytestTMP.out
+../latticeSimulator -x 10:0 decaytest.tra decaytestTMP.out
 let notests++
 if ! diff decay.out.expect decaytestTMP.out ; then
   echo 'decay test: failed...
 files decay.out.expect decaytestTMP.out differ!!!'
-  exit 1
   rm *TMP.out
+  exit 1
 #  let failure++
 else
   echo 'decay test: successful!'
@@ -109,7 +109,7 @@ let notests++
 #flag=0
 if ! diff size.out.expect sizetestTMP.out ; then
   echo "size test: failed...
-files decay.out.expect decaytestTMP.out differ!!!"
+files size.out.expect sizetestTMP.out differ!!!"
   rm *TMP.out
   exit 1
 #  let flag++
