@@ -309,6 +309,9 @@ class SimulatedAnnealingRecord :
     return 'obj obj_alt temperature d_state step_mean p_accept accept'
 
 
+  def write_table(self, f) :
+    f.write('%s\n' % self.column_headers())
+
 class ExpressionSeriesObjective(ObjectiveFunction) :
 
   def __init__(self, f = None) :
@@ -378,9 +381,9 @@ class ExpressionSeriesObjective(ObjectiveFunction) :
           print str(tseries[i])
           raise StandardError, 'expression level of factor "%s" is NaN' % factor_name
         v.append(x)
-      x = transsys.utils.inner_product(self.series[factor_name], v)
-      sys.stderr.write('factor "%s": sq = %f = %s dot %s\n' % (factor_name, x, str(self.series[factor_name]), str(v)))
-      sq_sum = sq_sum + x
+      sq = transsys.utils.euclidean_distance_squared(self.series[factor_name], v)
+      sys.stderr.write('factor "%s": sq = %f = %s dot %s\n' % (factor_name, sq, str(self.series[factor_name]), str(v)))
+      sq_sum = sq_sum + sq
     return FitnessResult(sq_sum)
 
 

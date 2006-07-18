@@ -96,20 +96,24 @@ def inner_product(v1, v2) :
     raise StandardError, 'unequal vector lengths'
   s = 0.0
   for i in xrange(len(v1)) :
-    d = v1[i] - v2[i]
-    s = s + d * d
+    s = s + v1[i] * v2[i]
   return s
 
 
-def euclidean_distance(v1, v2) :
-  """Compute the Euclidean distance."""
+def euclidean_distance_squared(v1, v2) :
+  """Compute the square of the Euclidean distance between C{v1} and C{v2}."""
   if len(v1) != len(v2) :
     raise StandardError, 'length mismatch'
   d2 = 0.0
   for i in xrange(len(v1)) :
     d = v1[i] - v2[i]
     d2 = d * d
-  return math.sqrt(d2)
+  return d2
+
+
+def euclidean_distance(v1, v2) :
+  """Compute the Euclidean distance between C{v1} and C{v2}."""
+  return math.sqrt(euclidean_distance_squared(v1, v2))
 
 
 def mean_and_stddev(l) :
