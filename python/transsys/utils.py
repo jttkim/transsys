@@ -17,6 +17,7 @@
 """Miscellaneous utilities.
 """
 
+import types
 import math
 import random
 
@@ -107,13 +108,23 @@ def euclidean_distance_squared(v1, v2) :
   d2 = 0.0
   for i in xrange(len(v1)) :
     d = v1[i] - v2[i]
-    d2 = d * d
+    d2 = d2 + d * d
   return d2
 
 
 def euclidean_distance(v1, v2) :
   """Compute the Euclidean distance between C{v1} and C{v2}."""
   return math.sqrt(euclidean_distance_squared(v1, v2))
+
+
+def euclidean_norm_squared(v) :
+  """Comute the square of the euclidean norm of C{v}."""
+  return sum(map(lambda x: x * x, v))
+
+
+def euclidean_norm(v) :
+  """Comute the euclidean norm of C{v}."""
+  return math.sqrt(euclidean_norm_squared(v))
 
 
 def mean_and_stddev(l) :
@@ -132,6 +143,20 @@ def mean_and_stddev(l) :
   # print v
   sd = math.sqrt(v)
   return m, sd
+
+
+def correlation_coefficient(x, y) :
+  """Compute the Pearson correlation coefficient of C{x} and C{y}."""
+  if len(x) != len(y) :
+    raise StandardError, 'x and y have unequal length'
+  nx = euclidean_norm(x)
+  if nx == 0.0 :
+    raise StandardError, 'standard deviation of x is zero'
+  ny = euclidean_norm(y)
+  if ny == 0.0 :
+    raise StandardError, 'standard deviation of y is zero'
+  r = inner_product(x, y) / euclidean_norm(x) / euclidean_norm(y)
+  return r
 
 
 class UniformRNG :
@@ -310,3 +335,5 @@ class RouletteWheel :
       else :
         j = k
     raise ValueError, 'RouletteWheel::slot: bad value ' % x
+
+
