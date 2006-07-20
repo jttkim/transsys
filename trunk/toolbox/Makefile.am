@@ -81,7 +81,8 @@ htmldoc : $(PYTHONMODULES)
 	epydoc --html -o htmldoc $(PYTHONMODULES)
 
 install-data-local : transarr/R/transarr.r
-	R_LIBS=$(rlibdir) R CMD INSTALL $(srcdir)/transarr
+	if test $(r_program) = yes ; then R_LIBS=$(rlibdir) R CMD INSTALL $(srcdir)/transsys ; fi
+	if test $(r_program) = yes ; then R_LIBS=$(rlibdir) R CMD INSTALL $(srcdir)/transarr ; fi
 	@if echo "$$PYTHONPATH" | grep "$(pylibdir)" ; then true ; else echo ; echo Please include $(pylibdir) in your PYTHONPATH environment variable ; echo ; fi
 
 all-local : htmldoc
