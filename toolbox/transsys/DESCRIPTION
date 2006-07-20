@@ -1,0 +1,11 @@
+Package: transsys
+Version: 0.1
+Title: transsys Utilities
+Date: 2006-07-18
+Author: Jan T. Kim <jtk@cmp.uea.ac.uk>
+Maintainer: Jan T. Kim <jtk@cmp.uea.ac.uk>
+Depends: R (>= 2.0.0), xpipe
+Description: Utilities for analysing transsys data with R.
+License: GPL version 2 or newer
+URL: http://www.cmp.uea.ac.uk/~jtk/transsys/
+
