@@ -213,22 +213,6 @@ def hillclimb(objective_function, decoder, initial_dnaseq, num_generations, muta
   return dnaseq
 
 
-class ObjectiveFunction :
-  """Base class for objective functions.
-
-This is notionally an abstract class. Subclasses should be
-callable and take a transsys program as a parameter. The
-returned value should be an instance of C{FitnessResult} or
-a subclass.
-"""
-  def __init__(self) :
-    pass
-
-
-  def __call__(self, tp) :
-    return None
-
-
 # moving to utils
 def get_value_nodes(transsys_program, gene_name_list, factor_name_list) :
   value_expression_list = []
@@ -255,15 +239,174 @@ def randomise_transsys_values(transsys_program, random_function, gene_name_list 
     n.value = random_function()
 
 
-class OptimisationResult :
-  """Class for returning results of an optimisation.
+class ExponentialFunction(object) :
+  """Exponential parameter transformation.
 
-The detailed structure of C{optimisation_log} member may vary with the
-nature of the particular optimiser. As an emerging standard, the
-first element of each tuple (i.e. the leftmost column) should
-be the objective value of the current solution. (For population
-based optimisers, this might be replaced with the average objective
-value.)
+This is a callable class implementing the transformation function
+y = minValue + exp(scaleFactor * x).
+  """
+
+  def __init__(self, scaleFactor = 1.0, minValue = 0.0) :
+    """Constructor."""
+    self.scaleFactor = scaleFactor
+    self.minValue = minValue
+
+
+  def __call__(self, x) :
+    """Compute function value."""
+    return self.minValue + math.exp(self.scaleFactor * x)
+
+
+  def inverse(self, y) :
+    """Compute inverse.
+
+Notice that the inverse diverges as y approaches minValue.
+Exactly at minValue, the inverse method attempts to return
+the smallest value that can be transformed without a floating
+point overflow.
+"""
+    if y < self.minValue :
+      raise StandardError, 'argument %f < minimal value %f' % (y, self.minValue)
+    if y == self.minValue :
+      # 700 is 300 * log(10), and as floating point ranges typically
+      # extend to around 1e300, this should be ok on normal platforms
+      return 700.0 / self.scaleFactor
+    return 1.0 / self.scaleFactor * math.log(y - self.minValue)
+
+
+class SigmoidFunction(object) :
+  """Sigmoid parameter transformation.
+
+This is a callable class implementing the transformation function
+y = minValue + (maxValue - minValue) / (1.0 + exp(-scaleFactor * x)).
+"""
+  def __init__(self, scaleFactor = 1.0, minValue = 0.0, maxValue = 1.0) :
+    """Constructor."""
+    self.scaleFactor = scaleFactor
+    self.minValue = minValue
+    self.valueRange = maxValue - minValue
+
+
+  def __call__(self, x) :
+    """Compute function value."""
+    return self.minValue + self.valueRange / (1.0 + math.exp(-self.scaleFactor * x))
+
+
+  def inverse(self, y) :
+    """Compute inverse.
+
+Notice that the inverse diverges towards the borders of the sigmoid
+function's range. Exactly at the borders, the inverse method attempts
+to return the closest value that can be transformed without a floating
+point overflow.
+"""
+    maxValue = self.minValue + self.valueRange
+    if y < self.minValue or y > maxValue :
+      raise StandardError, 'argument %f out of range [%f, %f]' % (y, self.minValue, maxValue)
+    # FIXME: proper DBL_MIN, DBL_MAX like values should be used here
+    if y == self.minValue :
+      return -700.0 / self.scaleFactor
+    if y == maxValue :
+      return 700.0 / self.scaleFactor
+    return -1.0 / self.scaleFactor * math.log(self.valueRange / (y - self.minValue) - 1.0)
+
+
+class ParameterTransformer(object) :
+  """Base class for parameter transformers."""
+
+  pass
+
+
+class IdentityParameterTransformer(ParameterTransformer) :
+  """No transformation, simply copy parameters from and to transsys program."""
+
+  def __init__(self) :
+    pass
+
+
+  def getParameters(self, transsys_program) :
+    nodes = transsys_program.getValueNodes()
+    return map(lambda n : n.value, nodes)
+
+
+  def setParameters(self, parameter_list, transsys_program) :
+    nodes = transsys_program.getValueNodes()
+    if len(nodes) != len(parameter_list) :
+      raise StandardError,  'parameter list incompatible with transsys program'
+    for i in xrange(len(parameter_list)) :
+      nodes[i].value = parameter_list[i]
+
+
+class ConstrainedParameterTransformer(ParameterTransformer) :
+  """Transform unconstrained parameters to ranges that are sensible for
+transsys programs.
+
+Unconstrained parameters p in ]-Inf, Inf[ are transformed to
+factor parameters (decay and diffusibility), constrained to ]0, 1[
+by the sigmoid function y = 1 / (1 + exp(-x)), and to gene
+parameters (constitutive, amax, aspec), constrained to ]0, +Inf[
+by the exponential function y = exp(x).
+
+Parameters are passed out and in using lists, and they are matched
+to values in nodes contained within the transsys program by position.
+Therefore, the transsys program must not be altered between getting
+parameters and setting parameters.
+
+Future versions of this class may use a proper indexable and iterable
+class instead of a "flat", unstructured list.
+"""
+
+  # FIXME: should use proper class rather than unstructured list for parameters
+  def __init__(self, scaleFactor = 1.0) :
+    self.factorValueTransformation = SigmoidFunction(scaleFactor)
+    self.geneValueTransformation = ExponentialFunction(scaleFactor)
+
+
+  def getParameters(self, transsys_program) :
+    """Get unconstrained parameters from a transsys program.
+
+@param transsys_program: the program from which to get the parameters
+@return: a list of the unconstrained parameters
+    """
+    parameter_list = []
+    for p in map(lambda n : n.value, transsys_program.getFactorValueNodes()) :
+      parameter_list.append(self.factorValueTransformation.inverse(p))
+    for p in map(lambda n : n.value, transsys_program.getGeneValueNodes()) :
+      parameter_list.append(self.geneValueTransformation.inverse(p))
+    return parameter_list
+
+
+  def setParameters(self, parameter_list, transsys_program) :
+    """Set values in a transsys program based on a list of unconstrained parameters.
+
+Notice that the parameter list must have the same length as that obtained
+by C{getParameters}.
+"""
+    fn = transsys_program.getFactorValueNodes()
+    gn = transsys_program.getGeneValueNodes()
+    if len(parameter_list) != len(fn) + len(gn) :
+      raise StandardError, 'parameter list incompatible with transsys program'
+    i = 0
+    for n in fn :
+      n.value = self.factorValueTransformation(parameter_list[i])
+      i = i + 1
+    for n in gn :
+      n.value = self.geneValueTransformation(parameter_list[i])
+      i = i + 1
+
+
+class OptimisationResult(object) :
+  """Base class for returning results of an optimisation.
+
+An optimisation result consists of the optimised version of the
+transsys program, its objective function value, and, optionally,
+an optimisation log.
+
+The optimisation log is a list of optimisation records with a
+structure that depends on the optimiser. Optimisation records
+can be printed on a line, and they provide a table header. This
+allows the optimisation log to be dumped in a format ready for
+R's \C{read.table} function.
 
 @ivar optimised_transsys_program: The transsys program resulting
   from the optimisation process.
@@ -271,24 +414,31 @@ value.)
   program using the objective function.
 @ivar optimisation_log: A trace of the optimisation process, provided
   as a list of tuples.
-@ivar optimisatino_log_columns: A list of column headers for the optimisation
-  log.
 """
 
-  def __init__(self, tp, objectiveOptimum, optimisation_log, optimisation_log_columns = None) :
+  def __init__(self, tp, objectiveOptimum, optimisation_log = None) :
     self.optimised_transsys_program = tp
     self.objectiveOptimum = objectiveOptimum
     self.optimisation_log = optimisation_log
-    self.optimisation_log_columns = optimisation_log_columns
 
 
   def write_log(self, f) :
-    if self.optimisation_log_columns is not None :
-      f.write('%s\n' % ' '.join(self.optimisation_log_columns))
-    # continue here
+    if self.optimisation_log is None :
+      return
+    if len(self.optimisation_log) > 0 :
+      f.write('%s\n' % self.optimisation_log[0].table_header())
+    for l in self.optimisation_log :
+      f.write('%s\n' % str(l))
+
+
+class AbstractOptimisationRecord(object) :
+  """Abstract base class for optimisation records"""
+
+  def __init__(self) :
+    pass
     
 
-class SimulatedAnnealingRecord :
+class SimulatedAnnealingRecord(AbstractOptimisationRecord) :
 
   def __init__(self, obj = None, obj_alt = None, temperature = None, d_state = None, step_mean = None, p_accept = None, accept = None) :
     self.obj = obj
@@ -305,19 +455,96 @@ class SimulatedAnnealingRecord :
     return s
 
 
-  def column_headers(self) :
+  def table_header(self) :
     return 'obj obj_alt temperature d_state step_mean p_accept accept'
 
 
-  def write_table(self, f) :
-    f.write('%s\n' % self.column_headers())
+class GradientOptimisationRecord(AbstractOptimisationRecord) :
 
-class ExpressionSeriesObjective(ObjectiveFunction) :
+  def __init__(self, obj) :
+    self.obj = obj
+
+
+  def __str__(self) :
+    return utils.tablecell(self.obj)
+
+
+  def table_header(self) :
+    return 'obj'
+
+
+class AbstractObjectiveFunction(object) :
+  """Base class for objective functions.
+
+This is an abstract class, methods just raise exceptions. Subclasses
+should be callable and take a transsys program as a parameter. The
+returned value should be an instance of C{FitnessResult} or a
+subclass.
+"""
+
+  def __init__(self) :
+    """Abstract constructor method, raises exception."""
+    raise StandardError, 'cannot instantiate AbstractObjectiveFunction'
+
+
+  def __call__(self, transsys_program) :
+    """Abstract call method, raises exception.
+
+@param transsys_program: the transsys program to be evaluated
+    """
+    raise StandardError, 'cannot call AbstractObjectiveFunction'
+
+
+class ExpressionSeriesObjective(AbstractObjectiveFunction) :
+  """Abstract base class for objective functions based on comparing observed
+with desired expression profiles.
+
+Inherits unimplemented call method from C{AbstractObjectiveFunction}.
+"""
 
   def __init__(self, f = None) :
+    """Construct an instance holding an empty series."""
     self.series = {}
-    if f is None :
-      return
+    if f is not None :
+      self.readProfiles(f)
+
+
+  def __str__(self) :
+    """Produce a string suitable for saving the profiles."""
+    s = ''
+    for factor_name in self.series.keys() :
+      s = s + '%s:' % factor_name
+      for xlevel in self.series[factor_name] :
+        s = s + ' %f' % xlevel
+      s = s + '\n'
+    return s
+
+
+  def series_length(self) :
+    """Accessor to get the length of the expression profiles.
+
+@return: Length of the expression profiles, or C{None} if no
+  profiles contained in instance data.
+"""
+    if self.series is None :
+      return None
+    if len(self.series) == 0 :
+      return None
+    k = self.series.keys()[0]
+    return len(self.series[k])
+
+
+  def readProfiles(self, f) :
+    """Read expression profiles from a file.
+
+The format expected by this: One line per factor, each line consists
+of whitespace separated words, the first word is the factor, followed
+by the expression levels given as floating point numbers.
+
+All profiles must have the same length.
+
+@param f: file to read from
+"""
     series_length = None
     s = f.readline()
     while s :
@@ -335,26 +562,15 @@ class ExpressionSeriesObjective(ObjectiveFunction) :
         raise StandardError, 'unequal series lengths (%d != %d)' % (series_length, len(xlist))
       self.series[factor_name] = map(float, xlist)
       s = f.readline()
-    print 'series_length:', series_length
+    # print 'series_length:', series_length
 
 
-  def __str__(self) :
-    s = ''
-    for factor_name in self.series.keys() :
-      s = s + '%s:' % factor_name
-      for xlevel in self.series[factor_name] :
-        s = s + ' %f' % xlevel
-      s = s + '\n'
-    return s
+class ExpressionSeriesSquareSumObjective(ExpressionSeriesObjective) :
+  """The sum of squared Euclidean distances to a desired set of
+expression profiles as an objective function."""
 
-
-  def series_length(self) :
-    if self.series is None :
-      return None
-    if len(self.series) == 0 :
-      return None
-    k = self.series.keys()[0]
-    return len(self.series[k])
+  def __init__(self, f = None) :
+    super(ExpressionSeriesSquareSumObjective, self).__init__(f)
 
 
   def __call__(self, transsys_program) :
@@ -367,7 +583,7 @@ class ExpressionSeriesObjective(ObjectiveFunction) :
     # series class is available
     for factor_name in self.series.keys() :
       if transsys_program.find_factor_index(factor_name) == -1 :
-        raise StandardError, 'failed to find factor "%s" in transsys "%s"' % (factor_name, tp.name)
+        raise StandardError, 'failed to find factor "%s" in transsys "%s"' % (factor_name, transsys_program.name)
     ti = transsys.TranssysInstance(transsys_program)
     tseries = ti.time_series(l)
     sq_sum = 0.0
@@ -382,31 +598,137 @@ class ExpressionSeriesObjective(ObjectiveFunction) :
           raise StandardError, 'expression level of factor "%s" is NaN' % factor_name
         v.append(x)
       sq = transsys.utils.euclidean_distance_squared(self.series[factor_name], v)
-      sys.stderr.write('factor "%s": sq = %f = %s dot %s\n' % (factor_name, sq, str(self.series[factor_name]), str(v)))
+      sys.stderr.write('factor "%s": sq = %f = d2(%s, %s)\n' % (factor_name, sq, str(self.series[factor_name]), str(v)))
       sq_sum = sq_sum + sq
     return FitnessResult(sq_sum)
 
 
-class SimulatedAnnealer :
+class ExpressionSeriesCorrelationObjective(ExpressionSeriesObjective) :
+  """Correlation based objective function.
+
+The objective value for each factor is 1 - r, where r is the
+Pearson correlation coefficient of the desired and the observed
+expression profile of the factor. The objective value of a
+transsys program is the sum of the objective values of all
+factors.
+
+If all expression levels of a factor are identical in either
+the desired or the observed profile, the objective value for
+that factor is 2.
+"""
+
+  def __init__(self, f = None) :
+    super(ExpressionSeriesCorrelationObjective, self).__init__(f)
+
+
+  def __call__(self, transsys_program) :
+    l = self.series_length()
+    if l is None :
+      raise StandardError, 'call of uninitialised series objective function'
+    if l == 0 :
+      raise StandardError, 'call of objective function with series length 0'
+    # this is a kludge -- will become much better once a time
+    # series class is available
+    for factor_name in self.series.keys() :
+      if transsys_program.find_factor_index(factor_name) == -1 :
+        raise StandardError, 'failed to find factor "%s" in transsys "%s"' % (factor_name, transsys_program.name)
+    ti = transsys.TranssysInstance(transsys_program)
+    tseries = ti.time_series(l)
+    cc_sum = 0.0
+    for factor_name in self.series.keys() :
+      factor_index = transsys_program.find_factor_index(factor_name)
+      if min(self.series[factor_name]) < max(self.series[factor_name]) :
+        # sys.stderr.write('factor "%s" --> index %d\n' % (factor_name, factor_index))
+        v = []
+        for i in xrange(l) :
+          x = tseries[i].factor_concentration[factor_index]
+          if utils.is_nan(x) :
+            print str(tseries[i])
+            raise StandardError, 'expression level of factor "%s" is NaN' % factor_name
+          v.append(x)
+        if min(v) < max(v) :
+          cc = 1.0 - transsys.utils.correlation_coefficient(self.series[factor_name], v)
+          cc_sum = cc_sum + cc
+        else :
+          cc_sum = cc_sum + 2.0
+    return FitnessResult(cc_sum)
+
+
+class AbstractOptimiser(object) :
+  """Abstract base class for optimisers."""
+
+  def __init__(self) :
+    """Abstract constructor method, raises exception."""
+    raise StandardError, 'AbstractOptimiser cannot be instantiated'
+
+
+  def optimise(self, transsys_program_init, objective_function) :
+    """Abstract optimise method.
+
+Subclasses of C{AbstractOptimiser} must override this method and
+conform to the parameter signature specified by this abstract method
+in doing so. Implementations of the C{optimise} method may take
+additional parameters, which must have suitable defaults so a call
+with just the two parameters defined here remains valid. It is
+generally preferable to provide such parameters through instance
+variables.
+
+@param transsys_program_init: The transsys program to be optimised.
+  Optimisers should not modify this transsys program, modifications
+  should be done to a copy.
+@param objective_function: The objective function used to optimise the
+  transsys program."""
+    raise StandardError, 'call to unimplemented AbstractOptimiser optimise method'
+
+
+class SimulatedAnnealer(AbstractOptimiser) :
   """Simple Simulated Annealing tool.
 
 The parameterisation of stepping is based on the concepts
-outlined in "Mathematical Optimization".
-  """
+outlined in "Mathematical Optimization". A step vector (D) is
+used to scale the width of a uniform distribution for each of
+the parameters under optimisation. The step vector is updated
+upon acceptance of a new solution by computing a weighted mean
+of the current step vector and the difference vector of the
+current and the new parameter vector.
 
-  def __init__(self) :
-    self.stepsize_learning_rate = 0.1 # alpha
-    self.stepsize_scale = 1.0         # omega
-    self.cooling_rate = 0.99
-    self.temperature_init = 1.0
-    self.temperature_min = 1.0e-3
-    self.verbose = False
+@ivar stepsize_learning_rate: weight of the difference vector
+  when updating the step vector (alpha)
+@ivar stepsize_scale: scaling factor for the difference vector
+  in updating (omega)
+@ivar cooling_rate: current temperature is multiplied by this
+  value in each iteration
+@ivar temperature_init: initial temperature. May be set to C{None},
+  in this case, the initial value is the objective function
+  value of the transsys program to be optimised.
+@ivar temperature_min: temperature threshold below which the annealing
+  process is terminated.
+@rng: random number generator
+@verbose: controls verbosity
+"""
+
+  def __init__(self, stepsize_learning_rate = 0.001, stepsize_scale = 1.0, cooling_rate = 0.995, temperature_init = None, temperature_min = 1.0e-3, rng = None, verbose = False) :
+    """Constructor."""
+    self.stepsize_learning_rate = stepsize_learning_rate # alpha
+    self.stepsize_scale = stepsize_scale                 # omega
+    self.cooling_rate = cooling_rate
+    self.temperature_init = temperature_init
+    self.temperature_min = temperature_min
+    self.verbose = verbose
+    if rng is None :
+      self.rng = random.Random(1)
+    else :
+      self.rng = rng
 
 
-  def optimise(self, objective_function, transsys_program_init, rng, stepvector_init = None) :
+  def optimise(self, transsys_program_init, objective_function, stepvector_init = None, rndseed = None) :
+    """Simulated annealing optimise method."""
+    if rndseed is not None :
+      self.rng.seed(rndseed)
     transsys_program = copy.deepcopy(transsys_program_init)
-    records = []
-    state = map(lambda n : n.value, transsys_program.getValueNodes())
+    value_expression_list = transsys_program.getValueNodes()
+    transformer = ConstrainedParameterTransformer()
+    state = transformer.getParameters(transsys_program)
     if stepvector_init is None :
       stepvector = [1.0] * len(state)
     elif type(stepvector_init) is types.FloatType :
@@ -414,8 +736,12 @@ outlined in "Mathematical Optimization".
     else :
       stepvector = stepvector_init[:]
     step_mean = sum(stepvector) / len(stepvector)
-    temperature = self.temperature_init
+    records = []
     obj = objective_function(transsys_program).fitness
+    if self.temperature_init is None :
+      temperature = obj
+    else :
+      temperature = self.temperature_init
     while temperature >= self.temperature_min :
       if self.verbose :
         sys.stderr.write('starting: temp = %f, obj = %f\n' % (temperature, obj))
@@ -424,14 +750,13 @@ outlined in "Mathematical Optimization".
       for i in xrange(len(state)) :
         # FIXME: this is marginally biased because the range of random
         # values includes -stepvector[i], but excludes +stepvector[i].
-        state_alt.append(state[i] + rng.uniform(-stepvector[i], stepvector[i]))
+        state_alt.append(state[i] + self.rng.uniform(-stepvector[i], stepvector[i]))
       d_state = utils.euclidean_distance(state, state_alt)
-      value_expression_list = transsys_program.getValueNodes()
-      for i in xrange(len(state)) :
-        value_expression_list[i].value = state[i]
+      transformer.setParameters(state_alt, transsys_program)
       obj_alt = objective_function(transsys_program).fitness
       if self.verbose :
         sys.stderr.write('  state_alt: %s, obj_alt = %f\n' % (str(state_alt), obj_alt))
+        sys.stderr.write(str(transsys_program))
       accept = obj_alt <= obj
       if accept :
         p_accept = 1.0
@@ -439,7 +764,7 @@ outlined in "Mathematical Optimization".
         p_accept = math.exp((obj - obj_alt) / temperature / step_mean)
         if self.verbose :
           sys.stderr.write('step_mean = %f, delta_obj = %f, temperature = %f, p_accept = %f\n' % (step_mean, obj_alt - obj, temperature, p_accept))
-        accept = rng.random() < p_accept
+        accept = self.rng.random() < p_accept
       records.append(SimulatedAnnealingRecord(obj, obj_alt, temperature, d_state, step_mean, p_accept, accept))
       if accept :
         if self.verbose :
@@ -452,10 +777,11 @@ outlined in "Mathematical Optimization".
         state = state_alt
         obj = obj_alt
       temperature = temperature * self.cooling_rate
+    transformer.setParameters(state, transsys_program)
     return OptimisationResult(transsys_program, obj, records)
 
 
-class GradientOptimiser :
+class GradientOptimiser(AbstractOptimiser) :
 
   def __init__(self, initial_stepsize, delta = 1.0e-6, stepsize_shrink = 0.5, stepsize_min = 1.0e-30, stepsize_max = 1.0e30, improvement_threshold = 0.0) :
     """
@@ -483,15 +809,13 @@ class GradientOptimiser :
 
 
   def optimise(self, transsys_program, objective_function, gene_name_list = None, factor_name_list = None) :
-    optimisation_log = []
     tp = copy.deepcopy(transsys_program)
-    value_expression_list = get_value_nodes(tp, gene_name_list, factor_name_list)
+    transformer = IdentityParameterTransformer()
+    current_values = transformer.getParameters(tp)
     if self.verbose :
-      sys.stderr.write('optimising %d values\n' % len(value_expression_list))
-    initial_values = map(lambda n : n.value, value_expression_list)
-    current_values = initial_values[:]
+      sys.stderr.write('optimising %d values\n' % len(current_values))
     current_obj = objective_function(tp).fitness
-    optimisation_log = [current_obj]
+    optimisation_log = [GradientOptimisationRecord(current_obj)]
     stepsize = self.initial_stepsize
     old_gradient = [1.0] * len(current_values)
     while stepsize > self.stepsize_min :
@@ -502,15 +826,19 @@ class GradientOptimiser :
           gradient.append(0.0)
           num_zeros = num_zeros + 1
         else :
-          node = value_expression_list[i]
-          node.value = current_values[i] - self.delta
+          v = current_values[:]
+          v[i] = current_values[i] - self.delta
+          transformer.setParameters(v, tp)
           o_minus = objective_function(tp).fitness
-          node.value = current_values[i] + self.delta
+          v[i] = current_values[i] + self.delta
+          transformer.setParameters(v, tp)
           o_plus = objective_function(tp).fitness
           gradient.append(o_plus - o_minus)
-          node.value = current_values[i]
-      # print 'num_zeros: %d' % num_zeros
-      gradient_norm = math.sqrt(reduce(lambda x, y : x + y * y, gradient, 0.0))
+          # restore current state
+          transformer.setParameters(current_values, tp)
+      if self.verbose and self.eliminateFlatComponents :
+        sys.stderr.write('num_zeros: %d\n' % num_zeros)
+      gradient_norm = utils.euclidean_norm(gradient)
       old_gradient = gradient
       if gradient_norm == 0.0 :
         if self.verbose :
@@ -521,14 +849,18 @@ class GradientOptimiser :
       if self.verbose :
         sys.stderr.write('obj = %g, values: %s\n' % (current_obj, str(current_values)))
         sys.stderr.write('  gradient = %s\n' % str(gradient))
+      v = []
       for i in xrange(len(current_values)) :
-        value_expression_list[i].value = current_values[i] - gradient[i] * stepsize
+        v.append(current_values[i] - gradient[i] * stepsize)
+      transformer.setParameters(v, tp)
       new_obj = objective_function(tp).fitness
       if new_obj < current_obj :
-        v = map(lambda n : n.value, value_expression_list)
+        new_values = v[:]
         stepsize2 = stepsize / self.stepsize_shrink
+        v = []
         for i in xrange(len(current_values)) :
-          value_expression_list[i].value = current_values[i] - gradient[i] * stepsize2
+          v.append(current_values[i] - gradient[i] * stepsize2)
+        transformer.setParameters(v, tp)
         new_obj2 = objective_function(tp).fitness
         if self.verbose :
           sys.stderr.write('growth branch: tried stepsize %g, new_obj = %g, new_obj2 = %g\n' % (stepsize2, new_obj, new_obj2))
@@ -537,31 +869,34 @@ class GradientOptimiser :
           if self.verbose :
             sys.stderr.write('growing stepsize to %g\n' % stepsize)
           new_obj = new_obj2
-          v = map(lambda n : n.value, value_expression_list)
+          new_values = v[:]
           stepsize2 = stepsize / self.stepsize_shrink
+          v = []
           for i in xrange(len(current_values)) :
-            value_expression_list[i].value = current_values[i] - gradient[i] * stepsize2
+            v.append(current_values[i] - gradient[i] * stepsize2)
+          transformer.setParameters(v, tp)
           new_obj2 = objective_function(tp).fitness
           if self.verbose :
             sys.stderr.write('growth branch: tried stepsize %g, new_obj = %g, new_obj2 = %g\n' % (stepsize2, new_obj, new_obj2))
         if not new_obj2 < new_obj :
-          for i in xrange(len(value_expression_list)) :
-            value_expression_list[i].value = v[i]
+          transformer.setParameters(new_values, tp)
       else :
         while new_obj >= current_obj and stepsize > self.stepsize_min :
           stepsize = stepsize * self.stepsize_shrink
           if self.verbose :
             sys.stderr.write('  %g: obj: current = %g, new = %g, d = %g\n' % (stepsize, current_obj, new_obj, current_obj - new_obj))
+          new_values = []
           for i in xrange(len(current_values)) :
-            value_expression_list[i].value = current_values[i] - gradient[i] * stepsize
+            new_values.append(current_values[i] - gradient[i] * stepsize)
+          transformer.setParameters(new_values, tp)
           new_obj = objective_function(tp).fitness
       if stepsize > self.stepsize_min :
         d_obj = current_obj - new_obj
         if self.verbose :
           sys.stderr.write('  making step %g: d_obj = %g, new_obj = %g\n' % (stepsize, d_obj, new_obj))
         current_obj = new_obj
-        optimisation_log.append(current_obj)
-        current_values = map(lambda n : n.value, value_expression_list)
+        current_values = new_values[:]
+        optimisation_log.append(GradientOptimisationRecord(current_obj))
         if d_obj < self.improvement_threshold :
           if self.verbose :
             sys.stderr.write('  terminating because d_obj = %f < threshold %f\n' % (d_obj, self.improvement_threshold))
@@ -569,7 +904,7 @@ class GradientOptimiser :
     return OptimisationResult(tp, current_obj, optimisation_log)
 
 
-class LsysObjectiveFunction(ObjectiveFunction) :
+class LsysObjectiveFunction(AbstractObjectiveFunction) :
 
   def __init__(self, lsys, control_transsys, disparity_function, num_timesteps) :
     self.lsys = copy.deepcopy(lsys)
