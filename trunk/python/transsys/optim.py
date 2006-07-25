@@ -8,6 +8,7 @@ import os
 import popen2
 import random
 import string
+import collections
 
 import transsys
 import utils
@@ -440,23 +441,22 @@ class AbstractOptimisationRecord(object) :
 
 class SimulatedAnnealingRecord(AbstractOptimisationRecord) :
 
-  def __init__(self, obj = None, obj_alt = None, temperature = None, d_state = None, step_mean = None, p_accept = None, accept = None) :
+  def __init__(self, obj = None, obj_alt = None, temperature = None, stepsize = None, state_distance = None, p_accept = None, accept = None) :
     self.obj = obj
     self.obj_alt = obj_alt
     self.temperature = temperature
-    self.d_state = d_state
-    self.step_mean = step_mean
+    self.stepsize = stepsize
+    self.state_distance = state_distance
     self.p_accept = p_accept
     self.accept = accept
 
 
   def __str__(self) :
-    s = '%s %s %s %s %s %s %s' % (utils.tablecell(self.obj), utils.tablecell(self.obj_alt), utils.tablecell(self.temperature), utils.tablecell(self.d_state), utils.tablecell(self.step_mean), utils.tablecell(self.p_accept), utils.tablecell(self.accept))
-    return s
+    return utils.table_row([self.obj, self.obj_alt, self.temperature, self.stepsize, self.state_distance, self. p_accept, self.accept])
 
 
   def table_header(self) :
-    return 'obj obj_alt temperature d_state step_mean p_accept accept'
+    return 'obj obj_alt temperature stepsize state_distance p_accept accept'
 
 
 class GradientOptimisationRecord(AbstractOptimisationRecord) :
@@ -598,7 +598,7 @@ expression profiles as an objective function."""
           raise StandardError, 'expression level of factor "%s" is NaN' % factor_name
         v.append(x)
       sq = transsys.utils.euclidean_distance_squared(self.series[factor_name], v)
-      sys.stderr.write('factor "%s": sq = %f = d2(%s, %s)\n' % (factor_name, sq, str(self.series[factor_name]), str(v)))
+      # sys.stderr.write('factor "%s": sq = %f = d2(%s, %s)\n' % (factor_name, sq, str(self.series[factor_name]), str(v)))
       sq_sum = sq_sum + sq
     return FitnessResult(sq_sum)
 
@@ -684,36 +684,39 @@ variables.
 class SimulatedAnnealer(AbstractOptimiser) :
   """Simple Simulated Annealing tool.
 
-The parameterisation of stepping is based on the concepts
-outlined in "Mathematical Optimization". A step vector (D) is
-used to scale the width of a uniform distribution for each of
-the parameters under optimisation. The step vector is updated
-upon acceptance of a new solution by computing a weighted mean
-of the current step vector and the difference vector of the
-current and the new parameter vector.
+The parameterisation of stepping is based on the concepts outlined in
+"Mathematical Optimization", with modifications.
 
-@ivar stepsize_learning_rate: weight of the difference vector
-  when updating the step vector (alpha)
-@ivar stepsize_scale: scaling factor for the difference vector
-  in updating (omega)
+@ivar stepsize_learning_rate: learning rate for stepsize
+@ivar target_improvement_ratio: target ratio of improvements in
+  objective value among candidate solutions generated
+@ivar stepsize_init: initial step size
+@ivar stepvector_learning_rate: learning rate for updating stepvector
 @ivar cooling_rate: current temperature is multiplied by this
-  value in each iteration
+  value in each iteration.
 @ivar temperature_init: initial temperature. May be set to C{None},
   in this case, the initial value is the objective function
   value of the transsys program to be optimised.
 @ivar temperature_min: temperature threshold below which the annealing
   process is terminated.
-@rng: random number generator
-@verbose: controls verbosity
+@ivar transformer: parameter transformer.
+@rng: random number generator.
+@verbose: controls verbosity.
 """
 
-  def __init__(self, stepsize_learning_rate = 0.001, stepsize_scale = 1.0, cooling_rate = 0.995, temperature_init = None, temperature_min = 1.0e-3, rng = None, verbose = False) :
+  def __init__(self, cooling_rate = 0.995, temperature_init = None, temperature_min = 1.0e-3, stepsize_learning_rate = 0.0, target_improvement_ratio = 0.2, stepsize_init = 1.0, stepvector_learning_rate = 0.0, transformer = None, rng = None, verbose = False) :
     """Constructor."""
-    self.stepsize_learning_rate = stepsize_learning_rate # alpha
-    self.stepsize_scale = stepsize_scale                 # omega
+    self.stepsize_learning_rate = stepsize_learning_rate
+    self.target_improvement_ratio = target_improvement_ratio
+    self.stepsize_init = stepsize_init
+    self.stepvector_learning_rate = stepvector_learning_rate
     self.cooling_rate = cooling_rate
     self.temperature_init = temperature_init
     self.temperature_min = temperature_min
+    if transformer is None :
+      self.transformer = IdentityParameterTransformer()
+    else :
+      self.transformer = transformer
     self.verbose = verbose
     if rng is None :
       self.rng = random.Random(1)
@@ -726,16 +729,15 @@ current and the new parameter vector.
     if rndseed is not None :
       self.rng.seed(rndseed)
     transsys_program = copy.deepcopy(transsys_program_init)
-    value_expression_list = transsys_program.getValueNodes()
-    transformer = ConstrainedParameterTransformer()
-    state = transformer.getParameters(transsys_program)
+    state = self.transformer.getParameters(transsys_program)
+    num_dimensions = len(state)
     if stepvector_init is None :
-      stepvector = [1.0] * len(state)
-    elif type(stepvector_init) is types.FloatType :
-      stepvector = [stepvector_init] * len(state)
+      stepvector = utils.normalised_vector([1.0] * num_dimensions)
     else :
-      stepvector = stepvector_init[:]
-    step_mean = sum(stepvector) / len(stepvector)
+      if len(stepvector_init) != num_dimensions :
+        raise StandardError, 'stepvector incompatible with transsys program'
+      stepvector = utils.normalised_vector(stepvector_init)
+    stepsize = self.stepsize_init
     records = []
     obj = objective_function(transsys_program).fitness
     if self.temperature_init is None :
@@ -747,12 +749,15 @@ current and the new parameter vector.
         sys.stderr.write('starting: temp = %f, obj = %f\n' % (temperature, obj))
         sys.stderr.write('  state: %s\n' % str(state))
       state_alt = []
-      for i in xrange(len(state)) :
+      for i in xrange(num_dimensions) :
         # FIXME: this is marginally biased because the range of random
         # values includes -stepvector[i], but excludes +stepvector[i].
-        state_alt.append(state[i] + self.rng.uniform(-stepvector[i], stepvector[i]))
-      d_state = utils.euclidean_distance(state, state_alt)
-      transformer.setParameters(state_alt, transsys_program)
+        state_alt.append(self.rng.gauss(state[i], stepsize * stepvector[i]))
+      delta_state = []
+      for i in xrange(num_dimensions) :
+        delta_state.append(state_alt[i] - state[i])
+      state_distance = utils.euclidean_norm(delta_state)
+      self.transformer.setParameters(state_alt, transsys_program)
       obj_alt = objective_function(transsys_program).fitness
       if self.verbose :
         sys.stderr.write('  state_alt: %s, obj_alt = %f\n' % (str(state_alt), obj_alt))
@@ -760,30 +765,84 @@ current and the new parameter vector.
       accept = obj_alt <= obj
       if accept :
         p_accept = 1.0
+        stepsize = stepsize * (1.0 + self.stepsize_learning_rate / self.target_improvement_ratio)
       else :
-        p_accept = math.exp((obj - obj_alt) / temperature / step_mean)
+        p_accept = math.exp((obj - obj_alt) / temperature)
         if self.verbose :
-          sys.stderr.write('step_mean = %f, delta_obj = %f, temperature = %f, p_accept = %f\n' % (step_mean, obj_alt - obj, temperature, p_accept))
+          sys.stderr.write('delta_obj = %f, temperature = %f, p_accept = %f\n' % (obj_alt - obj, temperature, p_accept))
         accept = self.rng.random() < p_accept
-      records.append(SimulatedAnnealingRecord(obj, obj_alt, temperature, d_state, step_mean, p_accept, accept))
+        stepsize = stepsize * (1.0 - self.stepsize_learning_rate)
+      records.append(SimulatedAnnealingRecord(obj, obj_alt, temperature, stepsize, state_distance, p_accept, accept))
       if accept :
         if self.verbose :
           sys.stderr.write('  state_alt accepted (obj = %f, obj_alt = %f)\n' % (obj, obj_alt))
-        for i in xrange(len(stepvector)) :
-          stepvector[i] = (1.0 - self.stepsize_learning_rate) * stepvector[i] + self.stepsize_learning_rate * self.stepsize_scale * abs(state[i] - state_alt[i])
-        step_mean = sum(stepvector) / len(stepvector)
+        for i in xrange(num_dimensions) :
+          sdn = utils.normalised_vector(delta_state)
+          v = []
+          for i in xrange(num_dimensions) :
+            v.append((1.0 - self.stepvector_learning_rate) * stepvector[i] + self.stepvector_learning_rate * abs(sdn[i]))
+          stepvector = utils.normalised_vector(v)
         if self.verbose :
           sys.stderr.write('  new stepvector: %s\n' % str(stepvector))
         state = state_alt
         obj = obj_alt
       temperature = temperature * self.cooling_rate
-    transformer.setParameters(state, transsys_program)
+    self.transformer.setParameters(state, transsys_program)
     return OptimisationResult(transsys_program, obj, records)
 
 
 class GradientOptimiser(AbstractOptimiser) :
+  """Gradient descent optimiser.
 
-  def __init__(self, initial_stepsize, delta = 1.0e-6, stepsize_shrink = 0.5, stepsize_min = 1.0e-30, stepsize_max = 1.0e30, improvement_threshold = 0.0) :
+This optimiser operates by iterating these steps until a termination
+criterion is reached:
+
+  1. Generate variants of the current state by adding or subtracting
+      C{delta} to each component (unless C{eliminateFlatComponents} is
+      set, see below) while keeping the remainding components
+      fixed, and use these samples to estimate the local gradient.
+
+  2. Construct a new state by adding C{stepsize} * the normalised
+      gradient to the current state.
+
+  3. If the new state improves the objective function, accept it. Then
+      try whether performing a step of C{stepsize / stepsize_shrink}
+      yields further improvement. If so, let
+      C{stepsize = stepsize / stepsize_shrink} and iteratively continue
+      doing so until no further improvement is attained or C{stepsize}
+      exceeds C{stepsize_max}.
+
+      If the new state does not improve the objective function, iteratively
+      let C{stepsize = stepsize * stepsize_shrink} until improvement
+      occurs or C{stepsize} falls below C{stepsize_min}.
+
+  4. Terminate if C{stepsize} has fallen below C{stepsize_min} or if
+      the improvement attained was below C{improvement_threshold},
+      otherwise start next cycle.
+
+@ivar initial_stepsize: distance initially stepped in gradient
+  direction. Subject to subsequent adaptation
+@ivar delta: offset from current point in search space used
+  for gradient computation (estimation)
+@ivar stepsize_shrink: factor by which stepsize is multiplied / divided
+  in stepsize adaptation
+@ivar stepsize_min: minimal stepsize, optimisation terminates if
+  stepsize falls below this limit
+@ivar stepsize_max: maximal stepsize, adaptation will not make
+  stepsize exceed this limit
+@ivar improvement_threshold: optimisation terminates if improvement
+  drops below this threshold.
+@ivar transformer: parameter transformer
+@ivar eliminateFlatComponents: whether components for which the
+  partial derivative was 0 once should be excluded from subsequent
+  optimisation iterations. This effectively freezes a component
+  once its partial derivative becomes "flat", thus speeding up
+  subsequent iterations but incurring the risk of freezing in a
+  suboptimal state.
+@ivar verbose: controls verbosity.
+"""
+
+  def __init__(self, initial_stepsize, delta = 1.0e-6, stepsize_shrink = 0.5, stepsize_min = 1.0e-30, stepsize_max = 1.0e30, improvement_threshold = 0.0, transformer = None) :
     """
 @param initial_stepsize: distance initially stepped in gradient
   direction. Subject to subsequent adaptation
@@ -797,6 +856,7 @@ class GradientOptimiser(AbstractOptimiser) :
   stepsize exceed this limit
 @param improvement_threshold: optimisation terminates if improvement
   drops below this threshold.
+@param transformer: parameter transformer
 """
     self.initial_stepsize = initial_stepsize
     self.delta = delta
@@ -804,14 +864,17 @@ class GradientOptimiser(AbstractOptimiser) :
     self.stepsize_min = stepsize_min
     self.stepsize_max = stepsize_max
     self.improvement_threshold = improvement_threshold
+    if transformer is None :
+      self.transformer = IdentityParameterTransformer()
+    else :
+      self.transformer = transformer
     self.eliminateFlatComponents = False
     self.verbose = False
 
 
   def optimise(self, transsys_program, objective_function, gene_name_list = None, factor_name_list = None) :
     tp = copy.deepcopy(transsys_program)
-    transformer = IdentityParameterTransformer()
-    current_values = transformer.getParameters(tp)
+    current_values = self.transformer.getParameters(tp)
     if self.verbose :
       sys.stderr.write('optimising %d values\n' % len(current_values))
     current_obj = objective_function(tp).fitness
@@ -828,14 +891,14 @@ class GradientOptimiser(AbstractOptimiser) :
         else :
           v = current_values[:]
           v[i] = current_values[i] - self.delta
-          transformer.setParameters(v, tp)
+          self.transformer.setParameters(v, tp)
           o_minus = objective_function(tp).fitness
           v[i] = current_values[i] + self.delta
-          transformer.setParameters(v, tp)
+          self.transformer.setParameters(v, tp)
           o_plus = objective_function(tp).fitness
           gradient.append(o_plus - o_minus)
           # restore current state
-          transformer.setParameters(current_values, tp)
+          self.transformer.setParameters(current_values, tp)
       if self.verbose and self.eliminateFlatComponents :
         sys.stderr.write('num_zeros: %d\n' % num_zeros)
       gradient_norm = utils.euclidean_norm(gradient)
@@ -852,7 +915,7 @@ class GradientOptimiser(AbstractOptimiser) :
       v = []
       for i in xrange(len(current_values)) :
         v.append(current_values[i] - gradient[i] * stepsize)
-      transformer.setParameters(v, tp)
+      self.transformer.setParameters(v, tp)
       new_obj = objective_function(tp).fitness
       if new_obj < current_obj :
         new_values = v[:]
@@ -860,7 +923,7 @@ class GradientOptimiser(AbstractOptimiser) :
         v = []
         for i in xrange(len(current_values)) :
           v.append(current_values[i] - gradient[i] * stepsize2)
-        transformer.setParameters(v, tp)
+        self.transformer.setParameters(v, tp)
         new_obj2 = objective_function(tp).fitness
         if self.verbose :
           sys.stderr.write('growth branch: tried stepsize %g, new_obj = %g, new_obj2 = %g\n' % (stepsize2, new_obj, new_obj2))
@@ -874,12 +937,12 @@ class GradientOptimiser(AbstractOptimiser) :
           v = []
           for i in xrange(len(current_values)) :
             v.append(current_values[i] - gradient[i] * stepsize2)
-          transformer.setParameters(v, tp)
+          self.transformer.setParameters(v, tp)
           new_obj2 = objective_function(tp).fitness
           if self.verbose :
             sys.stderr.write('growth branch: tried stepsize %g, new_obj = %g, new_obj2 = %g\n' % (stepsize2, new_obj, new_obj2))
         if not new_obj2 < new_obj :
-          transformer.setParameters(new_values, tp)
+          self.transformer.setParameters(new_values, tp)
       else :
         while new_obj >= current_obj and stepsize > self.stepsize_min :
           stepsize = stepsize * self.stepsize_shrink
@@ -888,7 +951,7 @@ class GradientOptimiser(AbstractOptimiser) :
           new_values = []
           for i in xrange(len(current_values)) :
             new_values.append(current_values[i] - gradient[i] * stepsize)
-          transformer.setParameters(new_values, tp)
+          self.transformer.setParameters(new_values, tp)
           new_obj = objective_function(tp).fitness
       if stepsize > self.stepsize_min :
         d_obj = current_obj - new_obj
@@ -902,6 +965,21 @@ class GradientOptimiser(AbstractOptimiser) :
             sys.stderr.write('  terminating because d_obj = %f < threshold %f\n' % (d_obj, self.improvement_threshold))
           break
     return OptimisationResult(tp, current_obj, optimisation_log)
+
+
+def read_optimiser(f) :
+  l = f.readline()
+  if l == '' :
+    return None
+  l = l.strip()
+  if l == 'GradientOptimiser' :
+    o = GradientOptimiser()
+  elif l == 'SimulatedAnnealer' :
+    o = SimulatedAnnealer
+  else :
+    raise StandardError, 'unknown optimiser "%s"' % l
+  o.read(f)
+  return o
 
 
 class LsysObjectiveFunction(AbstractObjectiveFunction) :

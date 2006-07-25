@@ -64,6 +64,16 @@ Currently supported types are:
   raise StandardError, 'unsupported type %s' % str(type(x))
 
 
+def table_row(l) :
+  """Render elements of C{l} as a whitespace separated row."""
+  s = ''
+  glue = ''
+  for x in l :
+    s = s + glue + tablecell(x)
+    glue = ' '
+  return s
+
+
 def hamming_distance(s1, s2) :
   """Compute the Hamming distance (number of different elements)
 between two strings (or other sequence types).
@@ -118,13 +128,26 @@ def euclidean_distance(v1, v2) :
 
 
 def euclidean_norm_squared(v) :
-  """Comute the square of the euclidean norm of C{v}."""
+  """Compute the square of the euclidean norm of C{v}."""
   return sum(map(lambda x: x * x, v))
 
 
 def euclidean_norm(v) :
-  """Comute the euclidean norm of C{v}."""
+  """Compute the euclidean norm of C{v}."""
   return math.sqrt(euclidean_norm_squared(v))
+
+
+def normalised_vector(v) :
+  """Normalise a vector.
+
+Computes a vector colinear with C{v} and with unit length.
+
+@return: the normalised vector
+"""
+  n = float(euclidean_norm(v))
+  if n == 0 :
+    raise StandardError, 'cannot normalise a vector of length 0'
+  return map(lambda x : x / n, v)
 
 
 def mean_and_stddev(l) :
