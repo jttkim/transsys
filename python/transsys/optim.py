@@ -687,6 +687,10 @@ class SimulatedAnnealer(AbstractOptimiser) :
 The parameterisation of stepping is based on the concepts outlined in
 "Mathematical Optimization", with modifications.
 
+@cvar PERTURBATION_METHOD_UNIFORM: specifies local search by perturbation of
+  current state by uniformly distributed random values
+@cvar PERTURBATION_MOETHO_GAUSS: specifies local search by perturbation of
+  current state by random values with Gaussian distribution
 @ivar stepsize_learning_rate: learning rate for stepsize
 @ivar target_improvement_ratio: target ratio of improvements in
   objective value among candidate solutions generated
@@ -700,11 +704,15 @@ The parameterisation of stepping is based on the concepts outlined in
 @ivar temperature_min: temperature threshold below which the annealing
   process is terminated.
 @ivar transformer: parameter transformer.
-@rng: random number generator.
+@ivar rng: random number generator.
+@ivar perturbation_method: perturbation method for local search
 @verbose: controls verbosity.
 """
 
-  def __init__(self, cooling_rate = 0.995, temperature_init = None, temperature_min = 1.0e-3, stepsize_learning_rate = 0.0, target_improvement_ratio = 0.2, stepsize_init = 1.0, stepvector_learning_rate = 0.0, transformer = None, rng = None, verbose = False) :
+  PERTURBATION_METHOD_UNIFORM = 1
+  PERTURBATION_METHOD_GAUSS = 2
+
+  def __init__(self, cooling_rate = 0.995, temperature_init = None, temperature_min = 1.0e-3, stepsize_learning_rate = 0.0, target_improvement_ratio = 0.2, stepsize_init = 1.0, stepvector_learning_rate = 0.0, transformer = None, rng = None, perturbation_method = PERTURBATION_METHOD_UNIFORM, verbose = False) :
     """Constructor."""
     self.stepsize_learning_rate = stepsize_learning_rate
     self.target_improvement_ratio = target_improvement_ratio
@@ -713,6 +721,7 @@ The parameterisation of stepping is based on the concepts outlined in
     self.cooling_rate = cooling_rate
     self.temperature_init = temperature_init
     self.temperature_min = temperature_min
+    self.perturbation_method = perturbation_method
     if transformer is None :
       self.transformer = IdentityParameterTransformer()
     else :
@@ -750,9 +759,14 @@ The parameterisation of stepping is based on the concepts outlined in
         sys.stderr.write('  state: %s\n' % str(state))
       state_alt = []
       for i in xrange(num_dimensions) :
-        # FIXME: this is marginally biased because the range of random
-        # values includes -stepvector[i], but excludes +stepvector[i].
-        state_alt.append(self.rng.gauss(state[i], stepsize * stepvector[i]))
+        if self.perturbation_method == self.PERTURBATION_METHOD_UNIFORM :
+          # FIXME: this is marginally biased because the range of random
+          # values includes -stepvector[i], but excludes +stepvector[i].
+          state_alt.append(state[i] + (self.rng.random() - 0.5) * 2.0 * stepsize * stepvector[i])
+        elif self.perturbation_method == self.PERTURBATION_METHOD_GAUSS :
+          state_alt.append(self.rng.gauss(state[i], stepsize * stepvector[i]))
+        else :
+          raise StandardError, 'unimplemented perturbation method'
       delta_state = []
       for i in xrange(num_dimensions) :
         delta_state.append(state_alt[i] - state[i])
