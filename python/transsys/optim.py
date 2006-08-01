@@ -441,22 +441,24 @@ class AbstractOptimisationRecord(object) :
 
 class SimulatedAnnealingRecord(AbstractOptimisationRecord) :
 
-  def __init__(self, obj = None, obj_alt = None, temperature = None, stepsize = None, state_distance = None, p_accept = None, accept = None) :
+  def __init__(self, obj = None, obj_alt = None, temperature = None, stepsize = None, stepvector_entropy = None, stepvector_max = None, state_distance = None, p_accept = None, accept = None) :
     self.obj = obj
     self.obj_alt = obj_alt
     self.temperature = temperature
     self.stepsize = stepsize
+    self.stepvector_entropy = stepvector_entropy
+    self.stepvector_max = stepvector_max
     self.state_distance = state_distance
     self.p_accept = p_accept
     self.accept = accept
 
 
   def __str__(self) :
-    return utils.table_row([self.obj, self.obj_alt, self.temperature, self.stepsize, self.state_distance, self. p_accept, self.accept])
+    return utils.table_row([self.obj, self.obj_alt, self.temperature, self.stepsize, self.stepvector_entropy, self.stepvector_max, self.state_distance, self.p_accept, self.accept])
 
 
   def table_header(self) :
-    return 'obj obj_alt temperature stepsize state_distance p_accept accept'
+    return 'obj obj_alt temperature stepsize stepvector_entropy stepvector_max state_distance p_accept accept'
 
 
 class GradientOptimisationRecord(AbstractOptimisationRecord) :
@@ -746,6 +748,7 @@ The parameterisation of stepping is based on the concepts outlined in
       if len(stepvector_init) != num_dimensions :
         raise StandardError, 'stepvector incompatible with transsys program'
       stepvector = utils.normalised_vector(stepvector_init)
+    stepvector_entropy = utils.shannon_entropy(stepvector)
     stepsize = self.stepsize_init
     records = []
     obj = objective_function(transsys_program).fitness
@@ -786,7 +789,7 @@ The parameterisation of stepping is based on the concepts outlined in
           sys.stderr.write('delta_obj = %f, temperature = %f, p_accept = %f\n' % (obj_alt - obj, temperature, p_accept))
         accept = self.rng.random() < p_accept
         stepsize = stepsize * (1.0 - self.stepsize_learning_rate)
-      records.append(SimulatedAnnealingRecord(obj, obj_alt, temperature, stepsize, state_distance, p_accept, accept))
+      records.append(SimulatedAnnealingRecord(obj, obj_alt, temperature, stepsize, stepvector_entropy, max(stepvector), state_distance, p_accept, accept))
       if accept :
         if self.verbose :
           sys.stderr.write('  state_alt accepted (obj = %f, obj_alt = %f)\n' % (obj, obj_alt))
@@ -796,6 +799,7 @@ The parameterisation of stepping is based on the concepts outlined in
           for i in xrange(num_dimensions) :
             v.append((1.0 - self.stepvector_learning_rate) * stepvector[i] + self.stepvector_learning_rate * abs(sdn[i]))
           stepvector = utils.normalised_vector(v)
+          stepvector_entropy = utils.shannon_entropy(stepvector)
         if self.verbose :
           sys.stderr.write('  new stepvector: %s\n' % str(stepvector))
         state = state_alt
