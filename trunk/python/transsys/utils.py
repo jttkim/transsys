@@ -168,6 +168,20 @@ def mean_and_stddev(l) :
   return m, sd
 
 
+def shannon_entropy(v) :
+  """Compute the Shannon entropy of C{v}, normalised so components add up to 1, in bits.
+"""
+  if min(v) < 0.0 :
+    raise StandardError, 'negative components in entropy computation'
+  s = sum(v)
+  v1 = map(lambda x : x / s, v)
+  e = 0
+  for p in v1 :
+    if p > 0.0 :
+      e = e - p * math.log(p, 2.0)
+  return e
+  
+
 def correlation_coefficient(x, y) :
   """Compute the Pearson correlation coefficient of C{x} and C{y}."""
   if len(x) != len(y) :
