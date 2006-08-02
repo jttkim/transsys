@@ -490,8 +490,8 @@ constitutive: 0.333
       self.assertEqual(i, ts[i].timestep)
     ti99 = """transsys instance of cycler
 timestep: 99
-  A: 4.16144e-05
-  R: 0.00406464
+  A: 4.16143791406925470e-05
+  R: 4.06464135795106454e-03
 """
     self.assertEqual(ti99, str(ts[99]))
 

@@ -698,6 +698,8 @@ The parameterisation of stepping is based on the concepts outlined in
   objective value among candidate solutions generated
 @ivar stepsize_init: initial step size
 @ivar stepvector_learning_rate: learning rate for updating stepvector
+@ivar stepvector_learning_decay: parameter for decaying the "learned"
+  stepvector direction by "learning" the unbiased stepvector
 @ivar cooling_rate: current temperature is multiplied by this
   value in each iteration.
 @ivar temperature_init: initial temperature. May be set to C{None},
@@ -713,13 +715,15 @@ The parameterisation of stepping is based on the concepts outlined in
 
   PERTURBATION_METHOD_UNIFORM = 1
   PERTURBATION_METHOD_GAUSS = 2
+  savefile_magic = 'SimulatedAnnealer-0.1'
 
-  def __init__(self, cooling_rate = 0.995, temperature_init = None, temperature_min = 1.0e-3, stepsize_learning_rate = 0.0, target_improvement_ratio = 0.2, stepsize_init = 1.0, stepvector_learning_rate = 0.0, transformer = None, rng = None, perturbation_method = PERTURBATION_METHOD_UNIFORM, verbose = False) :
+  def __init__(self, cooling_rate = 0.995, temperature_init = None, temperature_min = 1.0e-3, stepsize_learning_rate = 0.0, target_improvement_ratio = 0.2, stepsize_init = 1.0, stepvector_learning_rate = 0.0, stepvector_learning_decay = 0.0, transformer = None, rng = None, perturbation_method = PERTURBATION_METHOD_UNIFORM, verbose = False) :
     """Constructor."""
     self.stepsize_learning_rate = stepsize_learning_rate
     self.target_improvement_ratio = target_improvement_ratio
     self.stepsize_init = stepsize_init
     self.stepvector_learning_rate = stepvector_learning_rate
+    self.stepvector_learning_decay = stepvector_learning_decay
     self.cooling_rate = cooling_rate
     self.temperature_init = temperature_init
     self.temperature_min = temperature_min
@@ -735,6 +739,44 @@ The parameterisation of stepping is based on the concepts outlined in
       self.rng = rng
 
 
+  def setPerturbationMethod(self, pMethodString) :
+    """Set the perturbation method, 'uniform' or 'gauss'."""
+    if pMethodString == 'uniform' :
+      self.perturbation_method = self.PERTURBATION_METHOD_UNIFORM
+    elif pMethodString == 'gauss' :
+      self.perturbationMethod = self.PERTURBATION_METHOD_GAUSS
+    else :
+      raise StandardError, 'unsupported perturbation method "%s"' % pMethodString
+
+
+  def parse(self, f) :
+    line = f.readline()
+    if line.strip() != self.savefile_magic :
+      raise StandardError, 'bad magic "%s"' % line.strip()
+    self.stepsize_learning_rate = utils.parse_float(f, 'stepsize_learning_rate')
+    self.target_improvement_ratio = utils.parse_float(f, 'target_improvement_ratio')
+    self.stepsize_init = utils.parse_float(f, 'stepsize_init')
+    self.stepvector_learning_rate = utils.parse_float(f, 'stepvector_learning_rate')
+    self.stepvector_learning_decay = utils.parse_float(f, 'stepvector_learning_decay')
+    self.cooling_rate = utils.parse_float(f, 'cooling_rate')
+    s = utils.parse_string(f, 'temperature_init').strip()
+    if s == 'None' :
+      self.temperature_init = None
+    else :
+      self.temperature_init = float(s)
+    self.temperature_min = utils.parse_float(f, 'temperature_min')
+    self.setPerturbationMethod(utils.parse_string(f, 'perturbation_method').strip())
+    rndseed = utils.parse_int(f, 'rndseed')
+    self.rng = random.Random(rndseed)
+    s = utils.parse_string(f, 'transformer').strip()
+    if s == 'identity' :
+      self.transformer = IdentityParameterTransformer()
+    elif s == 'constrained' :
+      self.transformer = ConstrainedParameterTransformer()
+    else :
+      raise StandardError, 'unknown parameter transformer "%s"' % s
+
+
   def optimise(self, transsys_program_init, objective_function, stepvector_init = None, rndseed = None) :
     """Simulated annealing optimise method."""
     if rndseed is not None :
@@ -742,13 +784,13 @@ The parameterisation of stepping is based on the concepts outlined in
     transsys_program = copy.deepcopy(transsys_program_init)
     state = self.transformer.getParameters(transsys_program)
     num_dimensions = len(state)
+    unbiased_stepvector_component = 1.0 / math.sqrt(float(num_dimensions))
     if stepvector_init is None :
-      stepvector = utils.normalised_vector([1.0] * num_dimensions)
+      stepvector = [unbiased_stepvector_component] * num_dimensions
     else :
       if len(stepvector_init) != num_dimensions :
         raise StandardError, 'stepvector incompatible with transsys program'
       stepvector = utils.normalised_vector(stepvector_init)
-    stepvector_entropy = utils.shannon_entropy(stepvector)
     stepsize = self.stepsize_init
     records = []
     obj = objective_function(transsys_program).fitness
@@ -782,24 +824,26 @@ The parameterisation of stepping is based on the concepts outlined in
       accept = obj_alt <= obj
       if accept :
         p_accept = 1.0
-        stepsize = stepsize * (1.0 + self.stepsize_learning_rate / self.target_improvement_ratio)
       else :
         p_accept = math.exp((obj - obj_alt) / temperature)
         if self.verbose :
           sys.stderr.write('delta_obj = %f, temperature = %f, p_accept = %f\n' % (obj_alt - obj, temperature, p_accept))
         accept = self.rng.random() < p_accept
+      records.append(SimulatedAnnealingRecord(obj, obj_alt, temperature, stepsize, utils.shannon_entropy(stepvector), max(stepvector), state_distance, p_accept, accept))
+      if obj_alt <= obj :
+        stepsize = stepsize * (1.0 + self.stepsize_learning_rate / self.target_improvement_ratio)
+        sdn = utils.normalised_vector(delta_state)
+        v = []
+        for i in xrange(num_dimensions) :
+          v.append((1.0 - self.stepvector_learning_rate) * stepvector[i] + self.stepvector_learning_rate * abs(sdn[i]))
+      else :
         stepsize = stepsize * (1.0 - self.stepsize_learning_rate)
-      records.append(SimulatedAnnealingRecord(obj, obj_alt, temperature, stepsize, stepvector_entropy, max(stepvector), state_distance, p_accept, accept))
+        v = map(lambda x : (1.0 - self.stepvector_learning_decay) * x + self.stepvector_learning_decay * unbiased_stepvector_component, stepvector)
+        stepvector = utils.normalised_vector(v)
+      stepvector = utils.normalised_vector(v)
       if accept :
         if self.verbose :
           sys.stderr.write('  state_alt accepted (obj = %f, obj_alt = %f)\n' % (obj, obj_alt))
-        for i in xrange(num_dimensions) :
-          sdn = utils.normalised_vector(delta_state)
-          v = []
-          for i in xrange(num_dimensions) :
-            v.append((1.0 - self.stepvector_learning_rate) * stepvector[i] + self.stepvector_learning_rate * abs(sdn[i]))
-          stepvector = utils.normalised_vector(v)
-          stepvector_entropy = utils.shannon_entropy(stepvector)
         if self.verbose :
           sys.stderr.write('  new stepvector: %s\n' % str(stepvector))
         state = state_alt
@@ -985,7 +1029,7 @@ criterion is reached:
     return OptimisationResult(tp, current_obj, optimisation_log)
 
 
-def read_optimiser(f) :
+def parse_optimiser(f) :
   l = f.readline()
   if l == '' :
     return None

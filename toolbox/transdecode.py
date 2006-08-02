@@ -11,6 +11,7 @@
 import re
 
 import transsys
+import transsys.utils
 
 
 def baseToInt(b) :
@@ -215,19 +216,19 @@ strength in this decoder."""
     line = f.readline()
     if line.strip() != self.savefile_magic :
       raise StandardError, 'TranssysDNADecode::parse: bad magic "%s"' % line.strip()
-    self.thresholdBase = transsys.parse_float(f, 'thresholdBase')
-    self.thresholdIncrement = transsys.parse_float(f, 'thresholdIncrement')
-    self.factorNameTemplate = transsys.parse_string(f, 'factorNameTemplate').strip()
-    self.geneNameTemplate = transsys.parse_string(f, 'geneNameTemplate').strip()
-    self.setGeneStartRE(transsys.parse_string(f, 'geneStartRE').strip())
-    self.setGeneEndRE(transsys.parse_string(f, 'geneEndRE').strip())
-    self.repressorAreaLength = transsys.parse_int(f, 'repressorAreaLength')
-    self.activatorAreaLength = transsys.parse_int(f, 'activatorAreaLength')
-    self.decay = transsys.parse_float(f, 'decay')
-    self.diffusibility = transsys.parse_float(f, 'diffusibility')
-    self.a_spec = transsys.parse_float(f, 'a_spec')
-    self.a_max = transsys.parse_float(f, 'a_max')
-    self.constitutive = transsys.parse_float(f, 'constitutive')
+    self.thresholdBase = transsys.utils.parse_float(f, 'thresholdBase')
+    self.thresholdIncrement = transsys.utils.parse_float(f, 'thresholdIncrement')
+    self.factorNameTemplate = transsys.utils.parse_string(f, 'factorNameTemplate').strip()
+    self.geneNameTemplate = transsys.utils.parse_string(f, 'geneNameTemplate').strip()
+    self.setGeneStartRE(transsys.utils.parse_string(f, 'geneStartRE').strip())
+    self.setGeneEndRE(transsys.utils.parse_string(f, 'geneEndRE').strip())
+    self.repressorAreaLength = transsys.utils.parse_int(f, 'repressorAreaLength')
+    self.activatorAreaLength = transsys.utils.parse_int(f, 'activatorAreaLength')
+    self.decay = transsys.utils.parse_float(f, 'decay')
+    self.diffusibility = transsys.utils.parse_float(f, 'diffusibility')
+    self.a_spec = transsys.utils.parse_float(f, 'a_spec')
+    self.a_max = transsys.utils.parse_float(f, 'a_max')
+    self.constitutive = transsys.utils.parse_float(f, 'constitutive')
 
 
   def setGeneStartRE(self, r) :

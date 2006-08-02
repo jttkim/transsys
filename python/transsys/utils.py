@@ -20,6 +20,7 @@
 import types
 import math
 import random
+import re
 
 
 def is_nan(x) :
@@ -35,6 +36,56 @@ but cannot be guaranteed to work generally.
 @rtype: boolean
 """
   return x != x
+
+
+def parse_int(f, label) :
+  """retrieves an int from a line of the form::
+
+<label>: <int>
+
+Raises an error if label is not matched or not followed by a
+colon (optionally flanked by whitespace) and an int.
+"""
+  r = '%s\\s*:\\s*([0-9]+)' % label
+  line = f.readline()
+  m = re.match(r, line.strip())
+  if m is None :
+    raise StandardError, 'parse_int: failed to obtain int "%s" in "%s"' % (label, line.strip())
+  return int(m.group(1))
+
+
+def parse_float(f, label) :
+  """retrieves a float from a line of the form::
+
+<label>: <float>
+
+Raises an error if label is not matched or not followed by a
+colon (optionally flanked by whitespace) and a float.
+"""
+  r = '%s\\s*:\\s*([+-]?([0-9]+(\\.[0-9]+)?)|(\\.[0-9]+)([Ee][+-]?[0-9]+)?)' % label
+  line = f.readline()
+  m = re.match(r, line.strip())
+  if m is None :
+    raise StandardError, 'parse_float: failed to obtain float "%s" in "%s"' % (label, line.strip())
+  return float(m.group(1))
+
+
+def parse_string(f, label) :
+  """retrieves a string from a line of the form::
+
+<label>:<string>
+
+Raises an error if label is not matched or not followed by a
+colon (optionally preceded by whitespace) and a (possibly empty) string.
+"""
+  r = '%s\\s*:(.*)' % label
+  line = f.readline()
+  if len(line) > 0 :
+    line = line[:-1]
+  m = re.match(r, line)
+  if m is None :
+    raise StandardError, 'parse_string: failed to obtain string "%s" in "%s"' % (label, line.strip())
+  return m.group(1)
 
 
 def tablecell(x) :
