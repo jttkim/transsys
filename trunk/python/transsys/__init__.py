@@ -1976,56 +1976,6 @@ class DotParameters :
 
 
 
-def parse_int(f, label) :
-  """retrieves an int from a line of the form::
-
-<label>: <int>
-
-Raises an error if label is not matched or not followed by a
-colon (optionally flanked by whitespace) and an int.
-"""
-  r = '%s\\s*:\\s*([0-9]+)' % label
-  line = f.readline()
-  m = re.match(r, line.strip())
-  if m is None :
-    raise StandardError, 'ParserSupport::parse_int: failed to obtain int "%s" in "%s"' % (label, line.strip())
-  return int(m.group(1))
-
-
-def parse_float(f, label) :
-  """retrieves a float from a line of the form::
-
-<label>: <float>
-
-Raises an error if label is not matched or not followed by a
-colon (optionally flanked by whitespace) and a float.
-"""
-  r = '%s\\s*:\\s*([+-]?([0-9]+(\\.[0-9]+)?)|(\\.[0-9]+)([Ee][+-]?[0-9]+)?)' % label
-  line = f.readline()
-  m = re.match(r, line.strip())
-  if m is None :
-    raise StandardError, 'ParserSupport::parse_float: failed to obtain float "%s" in "%s"' % (label, line.strip())
-  return float(m.group(1))
-
-
-def parse_string(f, label) :
-  """retrieves a string from a line of the form::
-
-<label>:<string>
-
-Raises an error if label is not matched or not followed by a
-colon (optionally preceded by whitespace) and a (possibly empty) string.
-"""
-  r = '%s\\s*:(.*)' % label
-  line = f.readline()
-  if len(line) > 0 :
-    line = line[:-1]
-  m = re.match(r, line)
-  if m is None :
-    raise StandardError, 'ParserSupport::parse_string: failed to obtain string "%s" in "%s"' % (label, line.strip())
-  return m.group(1)
-
-
 class CyclicSequence :
   """A convenience class for use with RandomTranssysParameters. Implements an
 object from which numerical values can be pulled out indefinitely using the
@@ -2204,16 +2154,16 @@ so it's best to require explicit specification of all parameters."""
     # print 'topology type: "%s"' % m.group(1)
     self.topology = m.group(1)
     if self.topology == 'random_nk' :
-      self.n = parse_int(f, 'n')
-      self.k = parse_int(f, 'k')
+      self.n = utils.parse_int(f, 'n')
+      self.k = utils.parse_int(f, 'k')
     elif self.topology == 'random_uniform' :
-      self.n = parse_int(f, 'n')
-      self.num_edges = parse_int(f, 'num_edges')
+      self.n = utils.parse_int(f, 'n')
+      self.num_edges = utils.parse_int(f, 'num_edges')
     elif self.topology == 'random_powerlaw' :
-      self.n = parse_int(f, 'n')
-      self.num_edges = parse_int(f, 'num_edges')
-      self.power_exp = parse_float(f, 'power_exp')
-      self.power_base = parse_float(f, 'power_base')
+      self.n = utils.parse_int(f, 'n')
+      self.num_edges = utils.parse_int(f, 'num_edges')
+      self.power_exp = utils.parse_float(f, 'power_exp')
+      self.power_base = utils.parse_float(f, 'power_base')
     elif self.topology == 'linklist' :
       self.topology = 'linklist'
       in_list_re = re.compile('in_list\\s*:\\s*\\[([-0-9,\\s]*)\\]')
@@ -2244,7 +2194,7 @@ so it's best to require explicit specification of all parameters."""
     self.vmax_repression = parse_cyclicseq(f, 'vmax_repression')
     self.decay = parse_cyclicseq(f, 'decay')
     self.diffusibility = parse_cyclicseq(f, 'diffusibility')
-    rndseed = parse_int(f, 'rndseed')
+    rndseed = utils.parse_int(f, 'rndseed')
     self.set_seed(rndseed)
     line = f.readline()
     if line.strip() != '' :
