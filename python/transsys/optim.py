@@ -683,6 +683,20 @@ variables.
     raise StandardError, 'call to unimplemented AbstractOptimiser optimise method'
 
 
+  def check_savefile_magic(self, s) :
+    raise StandardError, 'unimplemented abstract method'
+
+
+  def parse_variables(self) :
+    raise StandardError, 'unimplemented abstract method'
+
+
+  def parse(self, f) :
+    if not self.check_savefile_magic(f.readline().strip()) :
+      raise StandardError, 'bad magic'
+    self.parse_variables(f)
+
+
 class SimulatedAnnealer(AbstractOptimiser) :
   """Simple Simulated Annealing tool.
 
@@ -705,8 +719,12 @@ The parameterisation of stepping is based on the concepts outlined in
 @ivar temperature_init: initial temperature. May be set to C{None},
   in this case, the initial value is the objective function
   value of the transsys program to be optimised.
-@ivar temperature_min: temperature threshold below which the annealing
+@ivar termination_temperature: temperature threshold below which the annealing
   process is terminated.
+@ivar termination_objective: objective function value at or below which
+  process is terminated
+@ivar termination_iteration: number of iteration after which process
+  is terminated
 @ivar transformer: parameter transformer.
 @ivar rng: random number generator.
 @ivar perturbation_method: perturbation method for local search
@@ -715,9 +733,8 @@ The parameterisation of stepping is based on the concepts outlined in
 
   PERTURBATION_METHOD_UNIFORM = 1
   PERTURBATION_METHOD_GAUSS = 2
-  savefile_magic = 'SimulatedAnnealer-0.1'
 
-  def __init__(self, cooling_rate = 0.995, temperature_init = None, temperature_min = 1.0e-3, stepsize_learning_rate = 0.0, target_improvement_ratio = 0.2, stepsize_init = 1.0, stepvector_learning_rate = 0.0, stepvector_learning_decay = 0.0, transformer = None, rng = None, perturbation_method = PERTURBATION_METHOD_UNIFORM, verbose = False) :
+  def __init__(self, cooling_rate = 0.995, temperature_init = None, termination_temperature = None, termination_objective = None, termination_iteration = None, stepsize_learning_rate = 0.0, target_improvement_ratio = 0.2, stepsize_init = 1.0, stepvector_learning_rate = 0.0, stepvector_learning_decay = 0.0, transformer = None, rng = None, perturbation_method = PERTURBATION_METHOD_UNIFORM, verbose = False) :
     """Constructor."""
     self.stepsize_learning_rate = stepsize_learning_rate
     self.target_improvement_ratio = target_improvement_ratio
@@ -726,7 +743,9 @@ The parameterisation of stepping is based on the concepts outlined in
     self.stepvector_learning_decay = stepvector_learning_decay
     self.cooling_rate = cooling_rate
     self.temperature_init = temperature_init
-    self.temperature_min = temperature_min
+    self.termination_temperature = termination_temperature
+    self.termination_objective = termination_objective
+    self.termination_iteration = termination_iteration
     self.perturbation_method = perturbation_method
     if transformer is None :
       self.transformer = IdentityParameterTransformer()
@@ -749,22 +768,24 @@ The parameterisation of stepping is based on the concepts outlined in
       raise StandardError, 'unsupported perturbation method "%s"' % pMethodString
 
 
-  def parse(self, f) :
-    line = f.readline()
-    if line.strip() != self.savefile_magic :
-      raise StandardError, 'bad magic "%s"' % line.strip()
+  def check_savefile_magic(self, s) :
+    """Check whether C{s} is the "magic word" indicating the
+beginning of a valid save file.
+"""
+    return s == 'SimulatedAnnealer-0.1'
+
+
+  def parse_variables(self, f) :
     self.stepsize_learning_rate = utils.parse_float(f, 'stepsize_learning_rate')
     self.target_improvement_ratio = utils.parse_float(f, 'target_improvement_ratio')
     self.stepsize_init = utils.parse_float(f, 'stepsize_init')
     self.stepvector_learning_rate = utils.parse_float(f, 'stepvector_learning_rate')
     self.stepvector_learning_decay = utils.parse_float(f, 'stepvector_learning_decay')
     self.cooling_rate = utils.parse_float(f, 'cooling_rate')
-    s = utils.parse_string(f, 'temperature_init').strip()
-    if s == 'None' :
-      self.temperature_init = None
-    else :
-      self.temperature_init = float(s)
-    self.temperature_min = utils.parse_float(f, 'temperature_min')
+    self.temperature_init = utils.parse_float(f, 'temperature_init', allowNone = True)
+    self.termination_temperature = utils.parse_float(f, 'termination_temperature', allowNone = True)
+    self.termination_objective = utils.parse_float(f, 'termination_objective', allowNone = True)
+    self.termination_iteration = utils.parse_int(f, 'termination_iteration', allowNone = True)
     self.setPerturbationMethod(utils.parse_string(f, 'perturbation_method').strip())
     rndseed = utils.parse_int(f, 'rndseed')
     self.rng = random.Random(rndseed)
@@ -777,8 +798,32 @@ The parameterisation of stepping is based on the concepts outlined in
       raise StandardError, 'unknown parameter transformer "%s"' % s
 
 
+  def verifyTermination(self) :
+    if self.termination_temperature is not None :
+      return
+    if self.termination_objective is not None :
+      return
+    if self.termination_iteration is not None :
+      return
+    raise StandardError, 'no termination condition set'
+
+
+  def terminationCondition(self, temperature, objective, iteration) :
+    if self.termination_temperature is not None :
+      if temperature <= self.termination_temperature :
+        return True
+    if self.termination_objective is not None :
+      if objective <= self.termination_objective :
+        return True
+    if self.termination_iteration is not None :
+      if iteration >= self.termination_iteration :
+        return True
+    return False
+
+
   def optimise(self, transsys_program_init, objective_function, stepvector_init = None, rndseed = None) :
     """Simulated annealing optimise method."""
+    self.verifyTermination()
     if rndseed is not None :
       self.rng.seed(rndseed)
     transsys_program = copy.deepcopy(transsys_program_init)
@@ -798,7 +843,8 @@ The parameterisation of stepping is based on the concepts outlined in
       temperature = obj
     else :
       temperature = self.temperature_init
-    while temperature >= self.temperature_min :
+    iteration = 0
+    while not self.terminationCondition(temperature, obj, iteration) :
       if self.verbose :
         sys.stderr.write('starting: temp = %f, obj = %f\n' % (temperature, obj))
         sys.stderr.write('  state: %s\n' % str(state))
@@ -849,6 +895,7 @@ The parameterisation of stepping is based on the concepts outlined in
         state = state_alt
         obj = obj_alt
       temperature = temperature * self.cooling_rate
+      iteration = iteration + 1
     self.transformer.setParameters(state, transsys_program)
     return OptimisationResult(transsys_program, obj, records)
 
@@ -904,7 +951,7 @@ criterion is reached:
 @ivar verbose: controls verbosity.
 """
 
-  def __init__(self, initial_stepsize, delta = 1.0e-6, stepsize_shrink = 0.5, stepsize_min = 1.0e-30, stepsize_max = 1.0e30, improvement_threshold = 0.0, transformer = None) :
+  def __init__(self, initial_stepsize = 1.0, delta = 1.0e-6, stepsize_shrink = 0.5, stepsize_min = 1.0e-30, stepsize_max = 1.0e30, improvement_threshold = 0.0, transformer = None) :
     """
 @param initial_stepsize: distance initially stepped in gradient
   direction. Subject to subsequent adaptation
@@ -932,6 +979,30 @@ criterion is reached:
       self.transformer = transformer
     self.eliminateFlatComponents = False
     self.verbose = False
+
+
+  def check_savefile_magic(self, s) :
+    """Check whether C{s} is the "magic word" indicating the
+beginning of a valid save file.
+"""
+    return s == 'GradientOptimiser-0.1'
+
+
+  def parse_variables(self, f) :
+    self.initial_stepsize = utils.parse_float(f, 'initial_stepsize')
+    self.delta = utils.parse_float(f, 'delta')
+    self.stepsize_shrink = utils.parse_float(f, 'stepsize_shrink')
+    self.stepsize_min = utils.parse_float(f, 'stepsize_min')
+    self.stepsize_max = utils.parse_float(f, 'stepsize_max')
+    self.improvement_threshold = utils.parse_float(f, 'improvement_threshold')
+    self.eliminateFlatComponents = utils.parse_float(f, 'eliminateFlatComponents')
+    s = utils.parse_string(f, 'transformer').strip()
+    if s == 'identity' :
+      self.transformer = IdentityParameterTransformer()
+    elif s == 'constrained' :
+      self.transformer = ConstrainedParameterTransformer()
+    else :
+      raise StandardError, 'unknown parameter transformer "%s"' % s
 
 
   def optimise(self, transsys_program, objective_function, gene_name_list = None, factor_name_list = None) :
@@ -1034,14 +1105,11 @@ def parse_optimiser(f) :
   if l == '' :
     return None
   l = l.strip()
-  if l == 'GradientOptimiser' :
-    o = GradientOptimiser()
-  elif l == 'SimulatedAnnealer' :
-    o = SimulatedAnnealer
-  else :
-    raise StandardError, 'unknown optimiser "%s"' % l
-  o.read(f)
-  return o
+  for o in [GradientOptimiser(), SimulatedAnnealer()] :
+    if o.check_savefile_magic(l) :
+      o.parse_variables(f)
+      return o
+  raise StandardError, 'unknown optimiser "%s"' % l
 
 
 class LsysObjectiveFunction(AbstractObjectiveFunction) :

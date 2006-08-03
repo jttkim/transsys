@@ -38,7 +38,7 @@ but cannot be guaranteed to work generally.
   return x != x
 
 
-def parse_int(f, label) :
+def parse_int(f, label, allowNone = False) :
   """retrieves an int from a line of the form::
 
 <label>: <int>
@@ -46,15 +46,19 @@ def parse_int(f, label) :
 Raises an error if label is not matched or not followed by a
 colon (optionally flanked by whitespace) and an int.
 """
-  r = '%s\\s*:\\s*([0-9]+)' % label
+  r = '%s\\s*:\\s*(([0-9]+)|(None))' % label
   line = f.readline()
   m = re.match(r, line.strip())
   if m is None :
     raise StandardError, 'parse_int: failed to obtain int "%s" in "%s"' % (label, line.strip())
+  if m.group(2) is None :
+    if allowNone :
+      return None
+    raise StandardError, 'parse_int: None not permitted'
   return int(m.group(1))
 
 
-def parse_float(f, label) :
+def parse_float(f, label, allowNone = False) :
   """retrieves a float from a line of the form::
 
 <label>: <float>
@@ -62,11 +66,15 @@ def parse_float(f, label) :
 Raises an error if label is not matched or not followed by a
 colon (optionally flanked by whitespace) and a float.
 """
-  r = '%s\\s*:\\s*([+-]?([0-9]+(\\.[0-9]+)?)|(\\.[0-9]+)([Ee][+-]?[0-9]+)?)' % label
+  r = '%s\\s*:\\s*(([+-]?([0-9]+(\\.[0-9]+)?)|(\\.[0-9]+)([Ee][+-]?[0-9]+)?)|(None))' % label
   line = f.readline()
   m = re.match(r, line.strip())
   if m is None :
     raise StandardError, 'parse_float: failed to obtain float "%s" in "%s"' % (label, line.strip())
+  if m.group(2) is None :
+    if allowNone :
+      return None
+    raise StandardError, 'parse_float: None not permitted'
   return float(m.group(1))
 
 
