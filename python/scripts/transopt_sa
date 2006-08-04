@@ -27,10 +27,11 @@ num_restarts = None
 optimiser = transsys.optim.SimulatedAnnealer(rng = random.Random(1))
 seriesfile_name = None
 optimisation_logfile_name = None
-options, args = getopt.getopt(sys.argv[1:], 'x:l:t:m:c:r:f:g:L:T:i:j:p:d:vh')
+options, args = getopt.getopt(sys.argv[1:], 'x:l:t:m:c:r:f:g:L:T:P:i:j:p:d:vh')
 for opt, par in options :
   if opt == '-h' :
     print '-f [squaresum | correlation]: specify objective function'
+    print '-P <saspec file>: specify simulated annealer specification file to parse'
     print '-T [identity | constrained]: specify parameter transformer'
     print '-p [uniform | gauss]: specify perturbation method'
     print '-x <expression file>: specify file containing desired expression profiles'
@@ -56,6 +57,10 @@ for opt, par in options :
       transformer = transsys.optim.ConstrainedParameterTransformer()
     else :
       raise StandardError, 'unknown parameter transformer "%s"' % par
+  elif opt == '-P' :
+    f = open(par, 'r')
+    optimiser.parse(f)
+    f.close()
   elif opt == '-o' :
     opt_method_name = par
   elif opt == '-f' :
@@ -93,6 +98,7 @@ for opt, par in options :
     raise StandardError, 'unhandled option "%s"' % opt
 if transformer is not None :
   optimiser.transformer = transformer
+# print str(optimiser)
 if objective_function_name is None :
   raise StandardError, 'no objective function specified'
 if seriesfile_name is None :

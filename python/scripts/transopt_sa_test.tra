@@ -1,0 +1,69 @@
+transsys single5
+{
+  factor f1 { decay: 0.1; diffusibility: 0.0; }
+  factor f2 { decay: 0.1; diffusibility: 0.0; }
+  factor f3 { decay: 0.1; diffusibility: 0.0; }
+  factor f4 { decay: 0.1; diffusibility: 0.0; }
+  factor f5 { decay: 0.1; diffusibility: 0.0; }
+
+  gene g1
+  {
+    promoter
+    {
+      constitutive: 1.0;
+    }
+    product
+    {
+      default: f1;
+    }
+  }
+
+  gene g2
+  {
+    promoter
+    {
+      constitutive: 2.0;
+    }
+    product
+    {
+      default: f2;
+    }
+  }
+
+  gene g3
+  {
+    promoter
+    {
+      constitutive: 3.0;
+    }
+    product
+    {
+      default: f3;
+    }
+  }
+
+  gene g4
+  {
+    promoter
+    {
+      constitutive: 4.0;
+    }
+    product
+    {
+      default: f4;
+    }
+  }
+
+  gene g5
+  {
+    promoter
+    {
+      constitutive: 5.0;
+    }
+    product
+    {
+      default: f5;
+    }
+  }
+}
+
