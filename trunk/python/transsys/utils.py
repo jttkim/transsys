@@ -66,7 +66,7 @@ def parse_float(f, label, allowNone = False) :
 Raises an error if label is not matched or not followed by a
 colon (optionally flanked by whitespace) and a float.
 """
-  r = '%s\\s*:\\s*(([+-]?([0-9]+(\\.[0-9]+)?)|(\\.[0-9]+)([Ee][+-]?[0-9]+)?)|(None))' % label
+  r = '%s\\s*:\\s*(([+-]?([0-9]+((\\.[0-9]+)?)|(\\.[0-9]+))([Ee][+-]?[0-9]+)?)|(None))' % label
   line = f.readline()
   m = re.match(r, line.strip())
   if m is None :
@@ -75,6 +75,7 @@ colon (optionally flanked by whitespace) and a float.
     if allowNone :
       return None
     raise StandardError, 'parse_float: None not permitted'
+  # print m.group(), '-->', float(m.group(1))
   return float(m.group(1))
 
 
@@ -94,6 +95,49 @@ colon (optionally preceded by whitespace) and a (possibly empty) string.
   if m is None :
     raise StandardError, 'parse_string: failed to obtain string "%s" in "%s"' % (label, line.strip())
   return m.group(1)
+
+
+def parse_boolean(f, label, allowNone = False) :
+  """retrieves a boolean value from a line of the form::
+
+<label>: <booleanvalue>
+
+Raises an error if label is not matched or not followed by a
+colon (optionally flanked by whitespace) and a boolean value,
+i.e. C{True}, C{False} or, if allowed, C{None}.
+"""
+  r = '%s\\s*:\\s*((False)|(True)|(None))' % label
+  line = f.readline()
+  m = re.match(r, line.strip())
+  if m is None :
+    raise StandardError, 'parse_boolean: failed to obtain boolean "%s" in "%s"' % (label, line.strip())
+  if m.group(1) == None :
+    if allowNone :
+      return None
+    raise StandardError, 'parse_boolean: None not permitted'
+  return m.group(1) == 'True'
+
+
+def name_value_pair(x, label) :
+  """Encode a labelled quantity in a parseable way.
+
+This function can be thought of as an inverse to C{parse_int},
+C{parse_float} and C{parse_string}.
+
+@param x: the value to be encoded
+@param label: the label to be used
+"""
+  if x is None :
+    return '%s: None' % label
+  elif type(x) is types.IntType :
+    return '%s: %d' % (label, x)
+  elif type(x) is types.FloatType :
+    return '%s: %1.17e' % (label, x)
+  elif type(x) is types.StringType :
+    return '%s: %s' % (label, x)
+  elif type(x) is types.BooleanType :
+    return '%s: %s' % (label, str(x))
+  raise StandardError, 'unsupported type %s' % str(type(x))
 
 
 def tablecell(x) :
