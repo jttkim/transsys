@@ -463,16 +463,21 @@ class SimulatedAnnealingRecord(AbstractOptimisationRecord) :
 
 class GradientOptimisationRecord(AbstractOptimisationRecord) :
 
-  def __init__(self, obj) :
+  def __init__(self, obj, stepsize, numEvaluations, gradient) :
     self.obj = obj
+    self.stepsize = stepsize
+    self.numEvaluations = numEvaluations
+    gradient_abs = map(abs, gradient)
+    self.gradient_entropy = utils.shannon_entropy(gradient_abs)
+    self.gradient_max = max(gradient_abs)
 
 
   def __str__(self) :
-    return utils.tablecell(self.obj)
+    return utils.table_row([self.obj, self.stepsize, self.numEvaluations, self.gradient_entropy, self.gradient_max])
 
 
   def table_header(self) :
-    return 'obj'
+    return 'obj stepsize numEvaluations gradient_entropy, gradient_max'
 
 
 class AbstractObjectiveFunction(object) :
@@ -687,7 +692,7 @@ variables.
     raise StandardError, 'unimplemented abstract method'
 
 
-  def parse_variables(self) :
+  def parse_variables(self, f) :
     raise StandardError, 'unimplemented abstract method'
 
 
@@ -701,7 +706,7 @@ class SimulatedAnnealer(AbstractOptimiser) :
   """Simple Simulated Annealing tool.
 
 The parameterisation of stepping is based on the concepts outlined in
-"Mathematical Optimization", with modifications.
+"Mathematical Optimization", with (rather major) modifications.
 
 @cvar PERTURBATION_METHOD_UNIFORM: specifies local search by perturbation of
   current state by uniformly distributed random values
@@ -728,9 +733,10 @@ The parameterisation of stepping is based on the concepts outlined in
 @ivar transformer: parameter transformer.
 @ivar rng: random number generator.
 @ivar perturbation_method: perturbation method for local search
-@verbose: controls verbosity.
+@ivar verbose: controls verbosity.
 """
 
+  savefile_magic = 'SimulatedAnnealer-0.1'
   PERTURBATION_METHOD_UNIFORM = 1
   PERTURBATION_METHOD_GAUSS = 2
 
@@ -772,10 +778,11 @@ The parameterisation of stepping is based on the concepts outlined in
     """Check whether C{s} is the "magic word" indicating the
 beginning of a valid save file.
 """
-    return s == 'SimulatedAnnealer-0.1'
+    return s == self.savefile_magic
 
 
   def parse_variables(self, f) :
+    """Get the values of instance variables from file C{f}."""
     self.stepsize_learning_rate = utils.parse_float(f, 'stepsize_learning_rate')
     self.target_improvement_ratio = utils.parse_float(f, 'target_improvement_ratio')
     self.stepsize_init = utils.parse_float(f, 'stepsize_init')
@@ -798,7 +805,46 @@ beginning of a valid save file.
       raise StandardError, 'unknown parameter transformer "%s"' % s
 
 
+  def __str__(self) :
+    s = '%s\n' % self.savefile_magic
+    s = s + '%s\n' % utils.name_value_pair(self.stepsize_learning_rate, 'stepsize_learning_rate')
+    s = s + '%s\n' % utils.name_value_pair(self.target_improvement_ratio, 'target_improvement_ratio')
+    s = s + '%s\n' % utils.name_value_pair(self.stepsize_init, 'stepsize_init')
+    s = s + '%s\n' % utils.name_value_pair(self.stepvector_learning_rate, 'stepvector_learning_rate')
+    s = s + '%s\n' % utils.name_value_pair(self.stepvector_learning_decay, 'stepvector_learning_decay')
+    s = s + '%s\n' % utils.name_value_pair(self.cooling_rate, 'cooling_rate')
+    s = s + '%s\n' % utils.name_value_pair(self.temperature_init, 'temperature_init')
+    s = s + '%s\n' % utils.name_value_pair(self.termination_temperature, 'termination_temperature')
+    s = s + '%s\n' % utils.name_value_pair(self.termination_objective, 'termination_objective')
+    s = s + '%s\n' % utils.name_value_pair(self.termination_iteration, 'termination_iteration')
+    if self.perturbation_method == self.PERTURBATION_METHOD_UNIFORM :
+      s = s + '%s\n' % utils.name_value_pair('uniform', 'perturbation_method')
+    elif self.perturbation_method == self.PERTURBATION_METHOD_GAUSS :
+      s = s + '%s\n' % utils.name_value_pair('gauss', 'perturbation_method')
+    else :
+      raise StandardError, 'cannot encode perturbation method'
+    s = s + '%s\n' % utils.name_value_pair('unknown', 'rndseed')
+    if isinstance(self.transformer, IdentityParameterTransformer) :
+      s = s + '%s\n' % utils.name_value_pair('identity', 'transformer')
+    elif isinstance(self.transformer, ConstrainedParameterTransformer) :
+      s = s + '%s\n' % utils.name_value_pair('constrained', 'transformer')
+    else :
+      raise StandardError, 'cannot encode parameter transformer'
+    return s
+
+
   def verifyTermination(self) :
+    """Verify that at least one termination condition is applicable.
+
+If no termination condition is given, the annealer would run indefinitely.
+Notice that setting C{termination_objective} only does constitute a
+termination condition but there is no guarantee that it will ever be
+satisfied. In contrast to this, setting C{termination_temperature}
+implicitly limits the number of iterations and C{termination_iteration}
+explicitly does so.
+
+@raise StandardError: No termination condition applicable.
+    """
     if self.termination_temperature is not None :
       return
     if self.termination_objective is not None :
@@ -809,6 +855,11 @@ beginning of a valid save file.
 
 
   def terminationCondition(self, temperature, objective, iteration) :
+    """Check whether termination condition is satisfied.
+
+@return: C{True} if termination condition is satisfied
+@rtype: bool
+    """
     if self.termination_temperature is not None :
       if temperature <= self.termination_temperature :
         return True
@@ -923,10 +974,10 @@ criterion is reached:
 
       If the new state does not improve the objective function, iteratively
       let C{stepsize = stepsize * stepsize_shrink} until improvement
-      occurs or C{stepsize} falls below C{stepsize_min}.
+      occurs or C{stepsize} falls below C{termination_stepsize}.
 
-  4. Terminate if C{stepsize} has fallen below C{stepsize_min} or if
-      the improvement attained was below C{improvement_threshold},
+  4. Terminate if C{stepsize} has fallen below C{termination_stepsize} or if
+      the improvement attained was below C{termination_improvement},
       otherwise start next cycle.
 
 @ivar initial_stepsize: distance initially stepped in gradient
@@ -935,12 +986,17 @@ criterion is reached:
   for gradient computation (estimation)
 @ivar stepsize_shrink: factor by which stepsize is multiplied / divided
   in stepsize adaptation
-@ivar stepsize_min: minimal stepsize, optimisation terminates if
+@ivar termination_stepsize: minimal stepsize, optimisation terminates if
   stepsize falls below this limit
+@ivar termination_objective: optimisation terminates if objective function
+  value falls to or below this
+@ivar termination_iteration: optimisation terminates at this iteration
+@ivar termination_numEvaluations: optimisation terminates if number of
+  objective function evaluations reaches or exceeds this
+@ivar termination_improvement: optimisation terminates if improvement
+  drops below this threshold.
 @ivar stepsize_max: maximal stepsize, adaptation will not make
   stepsize exceed this limit
-@ivar improvement_threshold: optimisation terminates if improvement
-  drops below this threshold.
 @ivar transformer: parameter transformer
 @ivar eliminateFlatComponents: whether components for which the
   partial derivative was 0 once should be excluded from subsequent
@@ -951,7 +1007,9 @@ criterion is reached:
 @ivar verbose: controls verbosity.
 """
 
-  def __init__(self, initial_stepsize = 1.0, delta = 1.0e-6, stepsize_shrink = 0.5, stepsize_min = 1.0e-30, stepsize_max = 1.0e30, improvement_threshold = 0.0, transformer = None) :
+  savefile_magic = 'GradientOptimiser-0.1'
+
+  def __init__(self, initial_stepsize = 1.0, delta = 1.0e-6, stepsize_shrink = 0.5, termination_stepsize = 1.0e-30, termination_objective = None, termination_iteration = None, termination_numEvaluations = None, termination_improvement = 0.0, stepsize_max = 1.0e30, transformer = None) :
     """
 @param initial_stepsize: distance initially stepped in gradient
   direction. Subject to subsequent adaptation
@@ -959,20 +1017,28 @@ criterion is reached:
   for gradient computation (estimation)
 @param stepsize_shrink: factor by which stepsize is multiplied / divided
   in stepsize adaptation
-@param stepsize_min: minimal stepsize, optimisation terminates if
+@param termination_stepsize: minimal stepsize, optimisation terminates if
   stepsize falls below this limit
+@param termination_objective: optimisation terminates if objective function
+  value falls to or below this
+@param termination_iteration: optimisation terminates at this iteration
+@param termination_numEvaluations: optimisation terminates if number of
+  objective function evaluations reaches or exceeds this
+@param termination_improvement: optimisation terminates if improvement
+  drops below this threshold.
 @param stepsize_max: maximal stepsize, adaptation will not make
   stepsize exceed this limit
-@param improvement_threshold: optimisation terminates if improvement
-  drops below this threshold.
 @param transformer: parameter transformer
 """
     self.initial_stepsize = initial_stepsize
     self.delta = delta
     self.stepsize_shrink = stepsize_shrink
-    self.stepsize_min = stepsize_min
+    self.termination_stepsize = termination_stepsize
+    self.termination_objective = termination_objective
+    self.termination_iteration = termination_iteration
+    self.termination_numEvaluations = termination_numEvaluations
+    self.termination_improvement = termination_improvement
     self.stepsize_max = stepsize_max
-    self.improvement_threshold = improvement_threshold
     if transformer is None :
       self.transformer = IdentityParameterTransformer()
     else :
@@ -985,17 +1051,21 @@ criterion is reached:
     """Check whether C{s} is the "magic word" indicating the
 beginning of a valid save file.
 """
-    return s == 'GradientOptimiser-0.1'
+    return s == self.savefile_magic
 
 
   def parse_variables(self, f) :
+    """Get the values of instance variables from file C{f}."""
     self.initial_stepsize = utils.parse_float(f, 'initial_stepsize')
     self.delta = utils.parse_float(f, 'delta')
     self.stepsize_shrink = utils.parse_float(f, 'stepsize_shrink')
-    self.stepsize_min = utils.parse_float(f, 'stepsize_min')
+    self.termination_stepsize = utils.parse_float(f, 'termination_stepsize', allowNone = True)
+    self.termination_objective = utils.parse_float(f, 'termination_objective', allowNone = True)
+    self.termination_iteration = utils.parse_int(f, 'termination_iteration', allowNone = True)
+    self.termination_numEvaluations = utils.parse_int(f, 'termination_numEvaluations', allowNone = True)
+    self.termination_improvement = utils.parse_float(f, 'termination_improvement')
     self.stepsize_max = utils.parse_float(f, 'stepsize_max')
-    self.improvement_threshold = utils.parse_float(f, 'improvement_threshold')
-    self.eliminateFlatComponents = utils.parse_float(f, 'eliminateFlatComponents')
+    self.eliminateFlatComponents = utils.parse_boolean(f, 'eliminateFlatComponents')
     s = utils.parse_string(f, 'transformer').strip()
     if s == 'identity' :
       self.transformer = IdentityParameterTransformer()
@@ -1005,16 +1075,66 @@ beginning of a valid save file.
       raise StandardError, 'unknown parameter transformer "%s"' % s
 
 
+  def __str__(self) :
+    s = '%s\n' % self.savefile_magic
+    s = s + '%s\n' % utils.name_value_pair(self.initial_stepsize, 'initial_stepsize')
+    s = s + '%s\n' % utils.name_value_pair(self.delta, 'delta')
+    s = s + '%s\n' % utils.name_value_pair(self.stepsize_shrink, 'stepsize_shrink')
+    s = s + '%s\n' % utils.name_value_pair(self.termination_stepsize, 'termination_stepsize')
+    s = s + '%s\n' % utils.name_value_pair(self.termination_objective, 'termination_objective')
+    s = s + '%s\n' % utils.name_value_pair(self.termination_iteration, 'termination_iteration')
+    s = s + '%s\n' % utils.name_value_pair(self.termination_numEvaluations, 'termination_numEvaluations')
+    s = s + '%s\n' % utils.name_value_pair(self.termination_improvement, 'termination_improvement')
+    s = s + '%s\n' % utils.name_value_pair(self.stepsize_max, 'stepsize_max')
+    s = s + '%s\n' % utils.name_value_pair(self.eliminateFlatComponents, 'eliminateFlatComponents')
+    if isinstance(self.transformer, IdentityParameterTransformer) :
+      s = s + '%s\n' % utils.name_value_pair('identity', 'transformer')
+    elif isinstance(self.transformer, ConstrainedParameterTransformer) :
+      s = s + '%s\n' % utils.name_value_pair('constrained', 'transformer')
+    else :
+      raise StandardError, 'cannot encode parameter transformer'
+    return s
+    
+
+  def terminationCondition(self, stepsize, objective, improvement, iteration, numEvaluations, gradient) :
+    """Check whether termination condition is satisfied.
+
+@return: C{True} if termination condition is satisfied
+@rtype: bool
+    """
+    # TODO: print out satisfied condition when they are encountered
+    if self.termination_stepsize is not None :
+      if stepsize <= self.termination_stepsize :
+        return True
+    if self.termination_objective is not None :
+      if objective <= self.termination_objective :
+        return True
+    if self.termination_improvement is not None and improvement is not None :
+      if improvement <= self.termination_improvement :
+        return True
+    if self.termination_iteration is not None :
+      if iteration >= self.termination_iteration :
+        return True
+    if self.termination_numEvaluations is not None :
+      if numEvaluations >= self.termination_numEvaluations :
+        return True
+    if max(map(abs, gradient)) == 0.0 :
+      return True
+    
+
   def optimise(self, transsys_program, objective_function, gene_name_list = None, factor_name_list = None) :
     tp = copy.deepcopy(transsys_program)
     current_values = self.transformer.getParameters(tp)
     if self.verbose :
       sys.stderr.write('optimising %d values\n' % len(current_values))
     current_obj = objective_function(tp).fitness
-    optimisation_log = [GradientOptimisationRecord(current_obj)]
+    numEvaluations = 1
     stepsize = self.initial_stepsize
-    old_gradient = [1.0] * len(current_values)
-    while stepsize > self.stepsize_min :
+    old_gradient = [1.0 / math.sqrt(float(len(current_values)))] * len(current_values)
+    iteration = 0
+    optimisation_log = [GradientOptimisationRecord(current_obj, stepsize, numEvaluations, old_gradient)]
+    improvement = None
+    while not self.terminationCondition(stepsize, current_obj, improvement, iteration, numEvaluations, old_gradient) :
       gradient = []
       num_zeros = 0
       for i in xrange(len(current_values)) :
@@ -1026,30 +1146,33 @@ beginning of a valid save file.
           v[i] = current_values[i] - self.delta
           self.transformer.setParameters(v, tp)
           o_minus = objective_function(tp).fitness
+          numEvaluations = numEvaluations + 1
           v[i] = current_values[i] + self.delta
           self.transformer.setParameters(v, tp)
           o_plus = objective_function(tp).fitness
+          numEvaluations = numEvaluations + 1
           gradient.append(o_plus - o_minus)
           # restore current state
           self.transformer.setParameters(current_values, tp)
       if self.verbose and self.eliminateFlatComponents :
         sys.stderr.write('num_zeros: %d\n' % num_zeros)
       gradient_norm = utils.euclidean_norm(gradient)
-      old_gradient = gradient
       if gradient_norm == 0.0 :
         if self.verbose :
           sys.stderr.write('GradientOptimiser.optimise: flat gradient\n')
         break
+      old_gradient = gradient
       gradient = map(lambda x : x / gradient_norm, gradient)
       # print gradient
-      if self.verbose :
-        sys.stderr.write('obj = %g, values: %s\n' % (current_obj, str(current_values)))
-        sys.stderr.write('  gradient = %s\n' % str(gradient))
+      # if self.verbose :
+      #   sys.stderr.write('obj = %g, values: %s\n' % (current_obj, str(current_values)))
+      #   sys.stderr.write('  gradient = %s\n' % str(gradient))
       v = []
       for i in xrange(len(current_values)) :
         v.append(current_values[i] - gradient[i] * stepsize)
       self.transformer.setParameters(v, tp)
       new_obj = objective_function(tp).fitness
+      numEvaluations = numEvaluations + 1
       if new_obj < current_obj :
         new_values = v[:]
         stepsize2 = stepsize / self.stepsize_shrink
@@ -1058,6 +1181,7 @@ beginning of a valid save file.
           v.append(current_values[i] - gradient[i] * stepsize2)
         self.transformer.setParameters(v, tp)
         new_obj2 = objective_function(tp).fitness
+        numEvaluations = numEvaluations + 1
         if self.verbose :
           sys.stderr.write('growth branch: tried stepsize %g, new_obj = %g, new_obj2 = %g\n' % (stepsize2, new_obj, new_obj2))
         while new_obj2 < new_obj and stepsize < self.stepsize_max :
@@ -1072,12 +1196,13 @@ beginning of a valid save file.
             v.append(current_values[i] - gradient[i] * stepsize2)
           self.transformer.setParameters(v, tp)
           new_obj2 = objective_function(tp).fitness
+          numEvaluations = numEvaluations + 1
           if self.verbose :
             sys.stderr.write('growth branch: tried stepsize %g, new_obj = %g, new_obj2 = %g\n' % (stepsize2, new_obj, new_obj2))
         if not new_obj2 < new_obj :
           self.transformer.setParameters(new_values, tp)
       else :
-        while new_obj >= current_obj and stepsize > self.stepsize_min :
+        while new_obj >= current_obj and stepsize > self.termination_stepsize :
           stepsize = stepsize * self.stepsize_shrink
           if self.verbose :
             sys.stderr.write('  %g: obj: current = %g, new = %g, d = %g\n' % (stepsize, current_obj, new_obj, current_obj - new_obj))
@@ -1086,17 +1211,15 @@ beginning of a valid save file.
             new_values.append(current_values[i] - gradient[i] * stepsize)
           self.transformer.setParameters(new_values, tp)
           new_obj = objective_function(tp).fitness
-      if stepsize > self.stepsize_min :
-        d_obj = current_obj - new_obj
+          numEvaluations = numEvaluations + 1
+      if stepsize > self.termination_stepsize :
+        improvement = current_obj - new_obj
         if self.verbose :
-          sys.stderr.write('  making step %g: d_obj = %g, new_obj = %g\n' % (stepsize, d_obj, new_obj))
+          sys.stderr.write('  making step %g: improvement = %g, new_obj = %g\n' % (stepsize, improvement, new_obj))
         current_obj = new_obj
         current_values = new_values[:]
-        optimisation_log.append(GradientOptimisationRecord(current_obj))
-        if d_obj < self.improvement_threshold :
-          if self.verbose :
-            sys.stderr.write('  terminating because d_obj = %f < threshold %f\n' % (d_obj, self.improvement_threshold))
-          break
+        optimisation_log.append(GradientOptimisationRecord(current_obj, stepsize, numEvaluations, old_gradient))
+        iteration = iteration + 1
     return OptimisationResult(tp, current_obj, optimisation_log)
 
 

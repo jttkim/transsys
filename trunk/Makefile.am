@@ -9,6 +9,10 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 # $Id$
+# $Revision$
+# $Author$
+# $Date$
+
 # $Log$
 # Revision 1.2  2005/03/29 17:32:39  jtk
 # introduced arrayed lsys string, with symbol distance matrix.

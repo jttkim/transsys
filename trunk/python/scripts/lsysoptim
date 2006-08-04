@@ -74,9 +74,10 @@ eval_only = False
 improvement_threshold = 0.0
 disparity_function = transsys.optim.stddev_disparity
 verbose = False
+optimiserfile_name = None
 optimiser_parameter_list = []
 logfile = None
-options, args = getopt.getopt(sys.argv[1:], '-f:o:n:t:s:l:D:r:vh')
+options, args = getopt.getopt(sys.argv[1:], '-f:o:n:t:s:l:P:r:vh')
 for opt, par in options :
   if opt == '-h' :
     usage()
@@ -110,6 +111,8 @@ for opt, par in options :
       improvement_threshold = float(par[8:])
     else :
       raise StandardError, 'optimiser parameter "%s" not recognised' % par
+  elif opt == '-P' :
+    optimiserfile_name = par
   else :
     raise StandardError, 'unknown option "%s"' % opt
 if frameworkfile_name is None :
@@ -133,9 +136,14 @@ else :
     optimiser = transsys.optim.GradientOptimiser(1.0)
   else :
     optimiser = transsys.optim.GradientOptimiser(1.0, delta)
+  if optimiserfile_name is not None :
+    f = open(optimiserfile_name, 'r')
+    optimiser.parse(f)
+    f.close()
   optimiser.eliminateFlatComponents = eliminateFlatComponents
   optimiser.improvement_threshold = improvement_threshold
   optimiser.verbose = verbose
+# print str(optimiser)
 p = transsys.TranssysProgramParser(infile)
 outfile.write('// cmdline: %s\n' % ' '.join(sys.argv))
 transsys_program = p.parse()
