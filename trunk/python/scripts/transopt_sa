@@ -1,0 +1,145 @@
+#!/usr/bin/env python
+
+# $Id$
+# $Revision$
+# $Author$
+# $Date$ 
+
+import sys
+import getopt
+import random
+import copy
+import math
+
+import transsys
+import transsys.optim
+
+
+def write_result(f, optResult) :
+  f.write('// objective: %g\n' % optResult.objectiveOptimum)
+  f.write('%s\n' %  str(optResult.optimised_transsys_program))
+
+
+opt_method_name = None
+transformer = None
+objective_function_name = None
+num_restarts = None
+optimiser = transsys.optim.SimulatedAnnealer(rng = random.Random(1))
+seriesfile_name = None
+optimisation_logfile_name = None
+options, args = getopt.getopt(sys.argv[1:], 'x:l:t:m:c:r:f:g:L:T:i:j:p:d:vh')
+for opt, par in options :
+  if opt == '-h' :
+    print '-f [squaresum | correlation]: specify objective function'
+    print '-T [identity | constrained]: specify parameter transformer'
+    print '-p [uniform | gauss]: specify perturbation method'
+    print '-x <expression file>: specify file containing desired expression profiles'
+    print '-i <float>: specify initial stepsize'
+    print '-l <float>: specify stepsize learning rate'
+    print '-g <float>: specify target improvement ratio'
+    print '-t <float>: specify initial temperature'
+    print '-c <float>: specify cooling rate'
+    print '-j <float>: specify stepvector learning rate'
+    print '-d <float>: specify stepvector unlearning rate'
+    print '-m <float>: specify minimal temparture (termination criterion)'
+    print '-r <int>: specify number of random restarts'
+    print '-L <filename>: specify optimisation log file'
+    print '-v: verbose'
+    print '-h: print this help and exit'
+    sys.exit()
+  elif opt == '-x' :
+    seriesfile_name = par
+  elif opt == '-T' :
+    if par == 'identity' :
+      transformer = transsys.optim.IdentityParameterTransformer()
+    elif par == 'constrained' :
+      transformer = transsys.optim.ConstrainedParameterTransformer()
+    else :
+      raise StandardError, 'unknown parameter transformer "%s"' % par
+  elif opt == '-o' :
+    opt_method_name = par
+  elif opt == '-f' :
+    objective_function_name = par
+  elif opt == '-l' :
+    optimiser.stepsize_learning_rate = float(par)
+  elif opt == '-i' :
+    optimiser.stepsize_init = float(par)
+  elif opt == '-g' :
+    optimiser.target_improvement_ratio = float(par)
+  elif opt == '-t' :
+    optimiser.temperature_init = float(par)
+  elif opt == '-m' :
+    optimiser.termination_temperature = float(par)
+  elif opt == '-c' :
+    optimiser.cooling_rate = float(par)
+  elif opt == '-j' :
+    optimiser.stepvector_learning_rate = float(par)
+  elif opt == '-d' :
+    optimiser.stepvector_learning_decay = float(par)
+  elif opt == '-p' :
+    if par == 'uniform' :
+      optimiser.perturbation_method = transsys.optim.SimulatedAnnealer.PERTURBATION_METHOD_UNIFORM
+    elif par == 'gauss' :
+      optimiser.perturbation_method = transsys.optim.SimulatedAnnealer.PERTURBATION_METHOD_GAUSS
+    else :
+      raise StandardError, 'unknown perturbation method "%s"' % par
+  elif opt == '-v' :
+    optimiser.verbose = True
+  elif opt == '-r' :
+    num_restarts = int(par)
+  elif opt == '-L' :
+    optimisation_logfile_name = par
+  else :
+    raise StandardError, 'unhandled option "%s"' % opt
+if transformer is not None :
+  optimiser.transformer = transformer
+if objective_function_name is None :
+  raise StandardError, 'no objective function specified'
+if seriesfile_name is None :
+  raise StandardError, 'no series file specified'
+f = open(seriesfile_name, 'r')
+if objective_function_name == 'squaresum' :
+  objective = transsys.optim.ExpressionSeriesSquareSumObjective(f)
+elif objective_function_name == 'correlation' :
+  objective = transsys.optim.ExpressionSeriesCorrelationObjective(f)
+else :
+  raise StandardError, 'unknown objective function "%s"' % objective_function_name
+f.close()
+if len(args) > 0 :
+  infile = open(args[0], 'r')
+else :
+  infile = sys.stdin
+if len(args) > 1 :
+  outfile = open(args[1], 'w')
+else :
+  outfile = sys.stdout
+# print str(objective)
+p = transsys.TranssysProgramParser(infile)
+transsys_program = p.parse()
+# print objective(transsys_program)
+if num_restarts is None :
+  optResult = optimiser.optimise(transsys_program, objective)
+  sys.stderr.write('%s\n' % str(objective(optResult.optimised_transsys_program)))
+  write_result(outfile, optResult)
+  if optimisation_logfile_name is not None :
+    f = open(optimisation_logfile_name, 'w')
+    optResult.write_log(f)
+    f.close()
+else :
+  random_function = transsys.utils.UniformRNG(1)
+  tr = copy.deepcopy(transsys_program)
+  if optimisation_logfile_name is not None :
+    f = open(optimisation_logfile_name, 'w')
+    if num_restarts > 1 :
+      f.write('obj num_records\n')
+  for i in xrange(num_restarts) :
+    transsys.utils.randomise_transsys_values(tr, random_function)
+    optResult = optimiser.optimise(tr, objective)
+    sys.stderr.write('%s\n' % str(objective(optResult.optimised_transsys_program)))
+    write_result(outfile, optResult)
+    if num_restarts == 1 :
+      optResult.write_log(f)
+    else :
+      f.write('%1.17e %d\n' % (optResult.objectiveOptimum, len(optResult.optimisation_log)))
+  if optimisation_logfile_name is not None :
+    f.close()
