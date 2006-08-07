@@ -14,6 +14,7 @@ import copy
 import random
 import string
 import math
+import re
 
 import transsys
 import transsys.clib
@@ -52,13 +53,8 @@ def usage() :
   print '-r <int>: specify number of random restarts'
   print '-s <int>: specify random seed'
   print '-f <lsysfile>: specify lsys framework'
-  print '-o <par>: set optimiser parameter; supported parameters are:'
-  print '    eval: no optimisation, just evaluation'
-  print '    e: eliminate components with zero gradient from further optimisation'
-  print '    stddev: use standard deviation based disparity'
-  print '    overlap: user overlap based disparity'
-  print '    delta=<val>: specify delta for gradient computation'
-  print '    ithresh=<val>: specify improvement threshold for optimisation'
+  print '-o [stddev | overlap]: set objective function'
+  print '-P <optspecfile>: specify file with optimiser specification'
   print '-l <logfile>: specify optimisation log file'
   print '-v: verbose'
   print '-h: print this help and exit'
@@ -75,8 +71,7 @@ improvement_threshold = 0.0
 disparity_function = transsys.optim.stddev_disparity
 verbose = False
 optimiserfile_name = None
-optimiser_parameter_list = []
-logfile = None
+logfile_name = None
 options, args = getopt.getopt(sys.argv[1:], '-f:o:n:t:s:l:P:r:vh')
 for opt, par in options :
   if opt == '-h' :
@@ -92,25 +87,16 @@ for opt, par in options :
   elif opt == '-s' :
     rndseed = int(par)
   elif opt == '-l' :
-    logfile = open(par, 'w')
+    logfile_name = par
   elif opt == '-r' :
     num_restarts = int(par)
   elif opt == '-o' :
-    optimiser_parameter_list.append(par)
-    if par == 'e' :
-      eliminateFlatComponents = True
-    elif par == 'eval' :
-      eval_only = True
-    elif par == 'stddev' :
+    if par == 'stddev' :
       disparity_function = transsys.optim.stddev_disparity
     elif par == 'overlap' :
       disparity_function = transsys.optim.overlap_disparity
-    elif par[:6] == 'delta=' :
-      delta = float(par[6:])
-    elif par[:8] == 'ithresh=' :
-      improvement_threshold = float(par[8:])
     else :
-      raise StandardError, 'optimiser parameter "%s" not recognised' % par
+      raise StandardError, 'objective function "%s" not recognised' % par
   elif opt == '-P' :
     optimiserfile_name = par
   else :
@@ -132,44 +118,40 @@ objective_function = transsys.optim.LsysObjectiveFunction(lsys_frame, transsys_f
 if eval_only :
   optimiser = None
 else :
-  if delta is None :
-    optimiser = transsys.optim.GradientOptimiser(1.0)
-  else :
-    optimiser = transsys.optim.GradientOptimiser(1.0, delta)
-  if optimiserfile_name is not None :
-    f = open(optimiserfile_name, 'r')
-    optimiser.parse(f)
-    f.close()
-  optimiser.eliminateFlatComponents = eliminateFlatComponents
-  optimiser.improvement_threshold = improvement_threshold
+  if optimiserfile_name is None :
+    raise StandardError, 'no optimiser file specified'
+  f = open(optimiserfile_name, 'r')
+  optimiser = transsys.optim.parse_optimiser(f)
+  f.close()
   optimiser.verbose = verbose
 # print str(optimiser)
 p = transsys.TranssysProgramParser(infile)
 outfile.write('// cmdline: %s\n' % ' '.join(sys.argv))
 transsys_program = p.parse()
+tp_index = 0
+if logfile_name is not None :
+  logfile = open(logfile_name, 'w')
+else :
+  logfile = None
 while transsys_program is not None :
-  if optimiser is None :
-    obj = objective_function(transsys_program)
-    write_transopt_comments(outfile, transsys_program, obj, 'evaluated')
-  else :
+  if num_restarts == 0 :
     optResult = optimiser.optimise(transsys_program, objective_function)
     obj_opt = objective_function(optResult.optimised_transsys_program)
     write_transopt_comments(outfile, optResult.optimised_transsys_program, obj_opt, 'optimised, original')
     if logfile is not None :
-      for obj in optResult.optimisation_log :
-        logfile.write('original %g\n' % obj)
+      optResult.write_log(logfile, '%d' % tp_index, True, 'tp_index')
+      logfile.flush()
+  else :
+    random_function = transsys.utils.UniformRNG(rndseed, 0.0, 1.0)
+    tr = copy.deepcopy(transsys_program)
+    for restart_index in xrange(num_restarts) :
+      transsys.utils.randomise_transsys_values(tr, random_function)
+      optResult = optimiser.optimise(tr, objective_function)
+      obj_opt = objective_function(optResult.optimised_transsys_program)
+      write_transopt_comments(outfile, optResult.optimised_transsys_program, obj_opt, 'optimised, restart %d' % restart_index)
+      if logfile is not None :
+        optResult.write_log(logfile, '%d %d' % (tp_index, restart_index), tp_index == 0 and restart_index == 0, 'tp_index restart_index')
         logfile.flush()
-    if num_restarts > 0 :
-      random_function = transsys.utils.UniformRNG(rndseed, 0.0, 1.0)
-      tr = copy.deepcopy(transsys_program)
-      for i in xrange(num_restarts) :
-        transsys.utils.randomise_transsys_values(tr, random_function)
-        optResult = optimiser.optimise(tr, objective_function)
-        obj_opt = objective_function(optResult.optimised_transsys_program)
-        write_transopt_comments(outfile, optResult.optimised_transsys_program, obj_opt, 'optimised, restart %d' %i)
-        if logfile is not None :
-          for obj in optResult.optimisation_log :
-            logfile.write('restart_%d %g\n' % (i, obj))
-            logfile.flush()
   outfile.write('\n')
   transsys_program = p.parse()
+  tp_index = tp_index + 1

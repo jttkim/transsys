@@ -1,12 +1,12 @@
 GradientOptimiser-0.1
 initial_stepsize: 1.00000000000000000e+00
-delta: 9.99999999999999955e-07
+delta: 0.001
 stepsize_shrink: 5.00000000000000000e-01
 termination_stepsize: 1.00000000000000008e-30
 termination_objective: None
 termination_iteration: None
 termination_numEvaluations: None
+termination_improvement: 0.0001
 stepsize_max: 1.00000000000000002e+30
-improvement_threshold: 0.00000000000000000e+00
 eliminateFlatComponents: False
 transformer: identity
