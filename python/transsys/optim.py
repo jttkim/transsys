@@ -8,7 +8,7 @@ import os
 import popen2
 import random
 import string
-import collections
+# import collections
 
 import transsys
 import utils
@@ -396,6 +396,96 @@ by C{getParameters}.
       i = i + 1
 
 
+class TranssysTypedParameterTransformer(ParameterTransformer) :
+  """
+Parameter transformer differentiating decay, diffusibility, constitutive,
+aspec, amax, rspec and rmax nodes.
+"""
+  def __init__(self, decayTransformation, diffusibilityTransformation, constitutiveTransformation, aspecTransformation, amaxTransformation, rspecTransformation, rmaxTransformation) :
+    self.decayTransformation = decayTransformation
+    self.diffusibilityTransformation = diffusibilityTransformation
+    self.constitutiveTransformation = constitutiveTransformation
+    self.aspecTransformation = aspecTransformation
+    self.amaxTransformation = amaxTransformation
+    self.rspecTransformation = rspecTransformation
+    self.rmaxTransformation = rmaxTransformation
+    self.transsys_program = None
+
+
+  def getParameters(self, transsys_program) :
+    """Get unconstrained parameters from a transsys program.
+
+The C{transsys_program} is remembered and subsequent calls to
+C{setParameters} are only accepted for the same C{TranssysProgram}
+instance.
+
+@param transsys_program: the program from which to get the parameters
+@return: a list of the unconstrained parameters
+    """
+    parameter_list = []
+    for p in map(lambda n : n.value, transsys_program.getDecayValueNodes()) :
+      parameter_list.append(self.decayTransformation.inverse(p))
+    for p in map(lambda n : n.value, transsys_program.getDiffusibilityValueNodes()) :
+      parameter_list.append(self.diffusibilityTransformation.inverse(p))
+    for p in map(lambda n : n.value, transsys_program.getConstitutiveValueNodes()) :
+      parameter_list.append(self.constitutiveTransformation.inverse(p))
+    for p in map(lambda n : n.value, transsys_program.getActivateSpecValueNodes()) :
+      parameter_list.append(self.aspecTransformation.inverse(p))
+    for p in map(lambda n : n.value, transsys_program.getActivateMaxValueNodes()) :
+      parameter_list.append(self.amaxTransformation.inverse(p))
+    for p in map(lambda n : n.value, transsys_program.getRepressSpecValueNodes()) :
+      parameter_list.append(self.rspecTransformation.inverse(p))
+    for p in map(lambda n : n.value, transsys_program.getRepressMaxValueNodes()) :
+      parameter_list.append(self.rmaxTransformation.inverse(p))
+    self.transsys_program = transsys_program
+    return parameter_list
+
+
+  def setParameters(self, parameter_list, transsys_program) :
+    """Set values in a transsys program based on a list of unconstrained parameters.
+
+Notice that the parameter list must have the same length as that obtained
+by C{getParameters}.
+
+@raise StandardError: when the C{transsys_program} is not the one used
+  in the last C{getParameters} call or the parameter list is too long or
+  too short
+"""
+    if transsys_program is not self.transsys_program :
+      raise StandardError, 'parameters must be set on same program from which they were got'
+    decay_nodes = transsys_program.getDecayValueNodes()
+    diffusibility_nodes = transsys_program.getDiffusibilityValueNodes()
+    constitutive_nodes = transsys_program.getConstitutiveValueNodes()
+    aspec_nodes = transsys_program.getActivateSpecValueNodes()
+    amax_nodes = transsys_program.getActivateMaxValueNodes()
+    rspec_nodes = transsys_program.getRepressSpecValueNodes()
+    rmax_nodes = transsys_program.getRepressMaxValueNodes()
+    if len(parameter_list) != len(decay_nodes) + len(diffusibility_nodes) + len(constitutive_nodes) + len(aspec_nodes) + len(amax_nodes) + len(rspec_nodes) + len(rmax_nodes):
+      raise StandardError, 'parameter list incompatible with transsys program'
+    i = 0
+    for n in decay_nodes :
+      n.value = self.decayTransformation(parameter_list[i])
+      i = i + 1
+    for n in diffusibility_nodes :
+      n.value = self.diffusibilityTransformation(parameter_list[i])
+      i = i + 1
+    for n in constitutive_nodes :
+      n.value = self.constitutiveTransformation(parameter_list[i])
+      i = i + 1
+    for n in aspec_nodes :
+      n.value = self.aspecTransformation(parameter_list[i])
+      i = i + 1
+    for n in amax_nodes :
+      n.value = self.amaxTransformation(parameter_list[i])
+      i = i + 1
+    for n in rspec_nodes :
+      n.value = self.rspecTransformation(parameter_list[i])
+      i = i + 1
+    for n in rmax_nodes :
+      n.value = self.rmaxTransformation(parameter_list[i])
+      i = i + 1
+
+
 class OptimisationResult(object) :
   """Base class for returning results of an optimisation.
 
@@ -423,13 +513,20 @@ R's \C{read.table} function.
     self.optimisation_log = optimisation_log
 
 
-  def write_log(self, f) :
+  def write_log(self, f, column_prefix = '', write_header = True, header_prefix = '') :
     if self.optimisation_log is None :
       return
     if len(self.optimisation_log) > 0 :
-      f.write('%s\n' % self.optimisation_log[0].table_header())
-    for l in self.optimisation_log :
-      f.write('%s\n' % str(l))
+      if header_prefix != '' :
+        if not header_prefix[-1].isspace() :
+          header_prefix = header_prefix + ' '
+      if column_prefix != '' :
+        if not column_prefix[-1].isspace() :
+          column_prefix = column_prefix + ' '
+      if write_header :
+        f.write('%s%s\n' % (header_prefix, self.optimisation_log[0].table_header()))
+      for l in self.optimisation_log :
+        f.write('%s%s\n' % (column_prefix, str(l)))
 
 
 class AbstractOptimisationRecord(object) :
@@ -477,7 +574,7 @@ class GradientOptimisationRecord(AbstractOptimisationRecord) :
 
 
   def table_header(self) :
-    return 'obj stepsize numEvaluations gradient_entropy, gradient_max'
+    return 'obj stepsize numEvaluations gradient_entropy gradient_max'
 
 
 class AbstractObjectiveFunction(object) :
@@ -570,6 +667,7 @@ All profiles must have the same length.
       self.series[factor_name] = map(float, xlist)
       s = f.readline()
     # print 'series_length:', series_length
+    # continue here -- with work on trip to London...
 
 
 class ExpressionSeriesSquareSumObjective(ExpressionSeriesObjective) :
@@ -662,11 +760,17 @@ that factor is 2.
 
 
 class AbstractOptimiser(object) :
-  """Abstract base class for optimisers."""
+  """Abstract base class for optimisers.
 
-  def __init__(self) :
-    """Abstract constructor method, raises exception."""
-    raise StandardError, 'AbstractOptimiser cannot be instantiated'
+@ivar verbose: controls verbosity (of optimisation process)
+  """
+
+  def __init__(self, verbose = False) :
+    """Partial constructor method.
+
+This constructor just sets the C{verbose} instance variable
+    """
+    self.verbose = verbose
 
 
   def optimise(self, transsys_program_init, objective_function) :
@@ -697,8 +801,13 @@ variables.
 
 
   def parse(self, f) :
-    if not self.check_savefile_magic(f.readline().strip()) :
-      raise StandardError, 'bad magic'
+    """Parse optimiser parameters from file C{f}."""
+    l = f.readline()
+    if l == '' :
+      raise StandardError, 'expected magic but got EOF'
+    l = l.strip()
+    if not self.check_savefile_magic(l) :
+      raise StandardError, 'bad magic "%s"' % l
     self.parse_variables(f)
 
 
@@ -742,6 +851,7 @@ The parameterisation of stepping is based on the concepts outlined in
 
   def __init__(self, cooling_rate = 0.995, temperature_init = None, termination_temperature = None, termination_objective = None, termination_iteration = None, stepsize_learning_rate = 0.0, target_improvement_ratio = 0.2, stepsize_init = 1.0, stepvector_learning_rate = 0.0, stepvector_learning_decay = 0.0, transformer = None, rng = None, perturbation_method = PERTURBATION_METHOD_UNIFORM, verbose = False) :
     """Constructor."""
+    super(SimulatedAnnealer, self).__init__(verbose)
     self.stepsize_learning_rate = stepsize_learning_rate
     self.target_improvement_ratio = target_improvement_ratio
     self.stepsize_init = stepsize_init
@@ -757,7 +867,6 @@ The parameterisation of stepping is based on the concepts outlined in
       self.transformer = IdentityParameterTransformer()
     else :
       self.transformer = transformer
-    self.verbose = verbose
     if rng is None :
       self.rng = random.Random(1)
     else :
@@ -862,12 +971,18 @@ explicitly does so.
     """
     if self.termination_temperature is not None :
       if temperature <= self.termination_temperature :
+        if self.verbose :
+          sys.stderr.write('SimulatedAnnealer: terminating because temperature %f <= %f\n' % (temperature, self.termination_temperature))
         return True
     if self.termination_objective is not None :
       if objective <= self.termination_objective :
+        if self.verbose :
+          sys.stderr.write('SimulatedAnnealer: terminating because objective %f <= %f\n' % (objective, self.termination_objective))
         return True
     if self.termination_iteration is not None :
       if iteration >= self.termination_iteration :
+        if self.verbose :
+          sys.stderr.write('SimulatedAnnealer: terminating because iteration %d >= %d\n' % (iteration, self.termination_iteration))
         return True
     return False
 
@@ -879,6 +994,8 @@ explicitly does so.
       self.rng.seed(rndseed)
     transsys_program = copy.deepcopy(transsys_program_init)
     state = self.transformer.getParameters(transsys_program)
+    if self.verbose :
+      sys.stderr.write('SimulatedAnnealer: optimising %d values\n' % len(state))
     num_dimensions = len(state)
     unbiased_stepvector_component = 1.0 / math.sqrt(float(num_dimensions))
     if stepvector_init is None :
@@ -898,7 +1015,7 @@ explicitly does so.
     while not self.terminationCondition(temperature, obj, iteration) :
       if self.verbose :
         sys.stderr.write('starting: temp = %f, obj = %f\n' % (temperature, obj))
-        sys.stderr.write('  state: %s\n' % str(state))
+        # sys.stderr.write('  state: %s\n' % str(state))
       state_alt = []
       for i in xrange(num_dimensions) :
         if self.perturbation_method == self.PERTURBATION_METHOD_UNIFORM :
@@ -916,8 +1033,9 @@ explicitly does so.
       self.transformer.setParameters(state_alt, transsys_program)
       obj_alt = objective_function(transsys_program).fitness
       if self.verbose :
-        sys.stderr.write('  state_alt: %s, obj_alt = %f\n' % (str(state_alt), obj_alt))
-        sys.stderr.write(str(transsys_program))
+        # sys.stderr.write('  state_alt: %s, obj_alt = %f\n' % (str(state_alt), obj_alt))
+        sys.stderr.write('  obj_alt = %f\n' % obj_alt)
+        # sys.stderr.write(str(transsys_program))
       accept = obj_alt <= obj
       if accept :
         p_accept = 1.0
@@ -941,8 +1059,7 @@ explicitly does so.
       if accept :
         if self.verbose :
           sys.stderr.write('  state_alt accepted (obj = %f, obj_alt = %f)\n' % (obj, obj_alt))
-        if self.verbose :
-          sys.stderr.write('  new stepvector: %s\n' % str(stepvector))
+          # sys.stderr.write('  new stepvector: %s\n' % str(stepvector))
         state = state_alt
         obj = obj_alt
       temperature = temperature * self.cooling_rate
@@ -1009,7 +1126,7 @@ criterion is reached:
 
   savefile_magic = 'GradientOptimiser-0.1'
 
-  def __init__(self, initial_stepsize = 1.0, delta = 1.0e-6, stepsize_shrink = 0.5, termination_stepsize = 1.0e-30, termination_objective = None, termination_iteration = None, termination_numEvaluations = None, termination_improvement = 0.0, stepsize_max = 1.0e30, transformer = None) :
+  def __init__(self, initial_stepsize = 1.0, delta = 1.0e-6, stepsize_shrink = 0.5, termination_stepsize = 1.0e-30, termination_objective = None, termination_iteration = None, termination_numEvaluations = None, termination_improvement = 0.0, stepsize_max = 1.0e30, transformer = None, verbose = False) :
     """
 @param initial_stepsize: distance initially stepped in gradient
   direction. Subject to subsequent adaptation
@@ -1030,6 +1147,7 @@ criterion is reached:
   stepsize exceed this limit
 @param transformer: parameter transformer
 """
+    super(GradientOptimiser, self).__init__(verbose)
     self.initial_stepsize = initial_stepsize
     self.delta = delta
     self.stepsize_shrink = stepsize_shrink
@@ -1044,7 +1162,6 @@ criterion is reached:
     else :
       self.transformer = transformer
     self.eliminateFlatComponents = False
-    self.verbose = False
 
 
   def check_savefile_magic(self, s) :
@@ -1063,7 +1180,7 @@ beginning of a valid save file.
     self.termination_objective = utils.parse_float(f, 'termination_objective', allowNone = True)
     self.termination_iteration = utils.parse_int(f, 'termination_iteration', allowNone = True)
     self.termination_numEvaluations = utils.parse_int(f, 'termination_numEvaluations', allowNone = True)
-    self.termination_improvement = utils.parse_float(f, 'termination_improvement')
+    self.termination_improvement = utils.parse_float(f, 'termination_improvement', allowNone = True)
     self.stepsize_max = utils.parse_float(f, 'stepsize_max')
     self.eliminateFlatComponents = utils.parse_boolean(f, 'eliminateFlatComponents')
     s = utils.parse_string(f, 'transformer').strip()

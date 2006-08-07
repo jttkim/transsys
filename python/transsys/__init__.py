@@ -627,6 +627,18 @@ class PromoterElementLink(PromoterElement) :
     return self.expression1.getValueNodes() + self.expression2.getValueNodes()
 
 
+  # FIXME: should intercalate a PromoterElementMichaelisMenten and put these
+  # methods there
+  def getSpecValueNodes(self) :
+    """Get the constant value expressions involved Michaelis-Menten spec parameter."""
+    return self.expression1.getValueNodes()
+
+
+  def getMaxValueNodes(self) :
+    """Get the constant value expressions involved Michaelis-Menten max parameter."""
+    return self.expression2.getValueNodes()
+
+
   def getIdentifierNodes(self) :
     """Get all identifier nodes that control this promoter element.
 The list includes the factors mentioned in activate and repress as well as
@@ -665,6 +677,7 @@ any identifier nodes that may appear in the parameters to the link element."""
 
 class PromoterElementActivate(PromoterElementLink) :
 
+  # FIXME: not a "new" python class like superclass constructor call
   def __init__(self, expr1, expr2, factor_list, dot_attrs = None) :
     PromoterElementLink.__init__(self, expr1, expr2, factor_list, dot_attrs)
 
@@ -828,6 +841,46 @@ promoter elements of this gene."""
     for p in self.promoter :
       if isinstance(p, PromoterElementConstitutive) :
         vn = vn + p.getValueNodes()
+    return vn
+
+
+  def getActivateSpecValueNodes(self) :
+    """Get a list of constant value nodes from all spec ("K_M")
+parameters to activate promoter elements."""
+    vn = []
+    for p in self.promoter :
+      if isinstance(p, PromoterElementActivate) :
+        vn = vn + p.getSpecValueNodes()
+    return vn
+
+
+  def getActivateMaxValueNodes(self) :
+    """Get a list of constant value nodes from all max ("v_max")
+parameters to activate promoter elements."""
+    vn = []
+    for p in self.promoter :
+      if isinstance(p, PromoterElementActivate) :
+        vn = vn + p.getMaxValueNodes()
+    return vn
+
+
+  def getRepressSpecValueNodes(self) :
+    """Get a list of constant value nodes from all spec ("K_M")
+parameters to repress promoter elements."""
+    vn = []
+    for p in self.promoter :
+      if isinstance(p, PromoterElementRepress) :
+        vn = vn + p.getSpecValueNodes()
+    return vn
+
+
+  def getRepressMaxValueNodes(self) :
+    """Get a list of constant value nodes from all max ("v_max")
+parameters to repress promoter elements."""
+    vn = []
+    for p in self.promoter :
+      if isinstance(p, PromoterElementRepress) :
+        vn = vn + p.getMaxValueNodes()
     return vn
 
 
@@ -1010,18 +1063,78 @@ gene names and factor names can be altered without changing the network."""
     return TranssysProgram(self.name, factor_list, gene_list, False)
 
 
+  def getDecayValueNodes(self) :
+    """Get all constant value nodes pertaining to decay attributes in factors."""
+    valueNodes = []
+    for factor in self.factor_list :
+      valueNodes = valueNodes + factor.getDecayValueNodes()
+    return valueNodes
+
+
+  def getDiffusibilityValueNodes(self) :
+    """Get all constant value nodes pertaining to diffusibility attributes in factors."""
+    valueNodes = []
+    for factor in self.factor_list :
+      valueNodes = valueNodes + factor.getDiffusibilityValueNodes()
+    return valueNodes
+
+
   def getFactorValueNodes(self, decayNodes = True, diffusibilityNodes = True) :
     """Get all constant value nodes pertaining to factors
 in this transsys program."""
     valueNodes = []
-    for factor in self.factor_list :
-      if decayNodes :
-        valueNodes = valueNodes + factor.getDecayValueNodes()
-      if diffusibilityNodes :
-        valueNodes = valueNodes + factor.getDiffusibilityValueNodes()
+    if decayNodes :
+      valueNodes = valueNodes + self.getDecayValueNodes()
+    if diffusibilityNodes :
+      valueNodes = valueNodes + self.getDiffusibilityValueNodes()
     return valueNodes
 
- 
+
+  def getConstitutiveValueNodes(self) :
+    """Get all constant value nodes pertaining to constitutive promoter
+elements in this transsys program."""
+    valueNodes = []
+    for gene in self.gene_list :
+      valueNodes = valueNodes + gene.getConstitutiveValueNodes()
+    return valueNodes
+
+
+  def getActivateSpecValues(self) :
+    """Get all constant value nodes pertaining to aspec in
+activate promoter elements in this transsys program."""
+    valueNodes = []
+    for gene in self.gene_list :
+      valueNodes = valueNodes + gene.getActivateSpecValueNodes()
+    return valueNodes
+
+
+  def getActivateMaxValues(self) :
+    """Get all constant value nodes pertaining to amax in
+activate promoter elements in this transsys program."""
+    valueNodes = []
+    for gene in self.gene_list :
+      valueNodes = valueNodes + gene.getActivateMaxValueNodes()
+    return valueNodes
+
+
+  def getRepressSpecValues(self) :
+    """Get all constant value nodes pertaining to aspec in
+repress promoter elements in this transsys program."""
+    valueNodes = []
+    for gene in self.gene_list :
+      valueNodes = valueNodes + gene.getRepressSpecValueNodes()
+    return valueNodes
+
+
+  def getRepressMaxValues(self) :
+    """Get all constant value nodes pertaining to amax in
+repress promoter elements in this transsys program."""
+    valueNodes = []
+    for gene in self.gene_list :
+      valueNodes = valueNodes + gene.getRepressMaxValueNodes()
+    return valueNodes
+
+
   def getGeneValueNodes(self, constitutiveNodes = True, linkNodes = True) :
     """Get all constant value nodes pertaining to genes
 in this transsys program."""

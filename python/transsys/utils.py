@@ -259,12 +259,14 @@ def mean_and_stddev(l) :
 @return: the mean and the standard deviation
 @rtype: tuple
 """
-  if len(l) == 1 :
-    return l[0], 0.0
+  if len(l) <= 1 :
+    raise StandardError, 'cannot compute the standard deviation of less than 2 values (%d values given)' % len(l)
+    # return l[0], 0.0
   m = sum(l) / float(len(l))
   d = map(lambda x : x - m, l)
   d2 = map(lambda x : x * x, d)
   v = sum(d2) / float(len(l) - 1)
+  # print 'v = %f' % v
   # print l
   # print v
   sd = math.sqrt(v)
