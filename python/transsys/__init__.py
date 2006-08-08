@@ -1099,7 +1099,7 @@ elements in this transsys program."""
     return valueNodes
 
 
-  def getActivateSpecValues(self) :
+  def getActivateSpecValueNodes(self) :
     """Get all constant value nodes pertaining to aspec in
 activate promoter elements in this transsys program."""
     valueNodes = []
@@ -1108,7 +1108,7 @@ activate promoter elements in this transsys program."""
     return valueNodes
 
 
-  def getActivateMaxValues(self) :
+  def getActivateMaxValueNodes(self) :
     """Get all constant value nodes pertaining to amax in
 activate promoter elements in this transsys program."""
     valueNodes = []
@@ -1117,7 +1117,7 @@ activate promoter elements in this transsys program."""
     return valueNodes
 
 
-  def getRepressSpecValues(self) :
+  def getRepressSpecValueNodes(self) :
     """Get all constant value nodes pertaining to aspec in
 repress promoter elements in this transsys program."""
     valueNodes = []
@@ -1126,7 +1126,7 @@ repress promoter elements in this transsys program."""
     return valueNodes
 
 
-  def getRepressMaxValues(self) :
+  def getRepressMaxValueNodes(self) :
     """Get all constant value nodes pertaining to amax in
 repress promoter elements in this transsys program."""
     valueNodes = []

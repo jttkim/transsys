@@ -21,6 +21,7 @@ import os
 import unittest
 
 import transsys
+import transsys.optim
 import transdecode
 
 
@@ -385,14 +386,52 @@ a_max: 1
 constitutive: 0.333
 """
 
+    self.transfunc_exp = """ExponentialFunction
+exponentMultiplier: 2.29999999999999982e+00
+coefficient: 4.00000000000000022e-01
+minValue: -1.10000000000000009e+00"""
+
+    self.transfunc_sig = """SigmoidFunction
+exponentMultiplier: 5.50000000000000044e-01
+minValue: -2.20000000000000018e+00
+maxValue: 3.29999999999999982e+00"""
+
+
   def getTestTranssys(self) :
     f = open('test.tra', 'w')
-    f.write(self.tp_check)
+    f.write('%s\n' % self.tp_check)
     f.close()
     t = transsys.TranssysProgramParser(open('test.tra', 'r')).parse()
     os.unlink('test.tra')
     return t
 
+
+  def testTransformationFunctions(self) :
+
+    def read_tf(fname, s, tf) :
+      f = open(fname, 'w')
+      f.write(s)
+      f.close()
+      f = open(fname, 'r')
+      tf.parse(f)
+      f.close()
+      os.unlink(fname)
+
+    fname = 'tfunc.txt'
+    xlist = map(float, range(-10, 50))
+    tf = transsys.optim.ExponentialFunction()
+    read_tf(fname, self.transfunc_exp, tf)
+    self.assertEqual(self.transfunc_exp, str(tf))
+    for x in xlist :
+      dx = x - tf.inverse(tf(x))
+      self.failUnless(abs(dx) < 1e-6)
+    tf = transsys.optim.SigmoidFunction()
+    read_tf(fname, self.transfunc_sig, tf)
+    self.assertEqual(self.transfunc_sig, str(tf))
+    for x in xlist :
+      dx = x - tf.inverse(tf(x))
+      self.failUnless(abs(dx) < 1e-4)
+    
 
   def testTranssysDNADecoder(self) :
     f = open('test.tdc', 'w')

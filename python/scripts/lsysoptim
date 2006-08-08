@@ -17,7 +17,7 @@ import math
 import re
 
 import transsys
-import transsys.clib
+# import transsys.clib
 import transdecode
 import transsys.optim
 
@@ -46,8 +46,17 @@ def write_transopt_comments(f, tp_opt, obj_opt, opt_descriptor) :
   f.flush()
 
 
+def write_combined(f, transsys_frame, lsys_frame, transsys_program) :
+  lsys = copy.deepcopy(lsys_frame)
+  lsys.dissociate_transsys()
+  tp = copy.deepcopy(transsys_frame)
+  tp.merge(transsys_program)
+  lsys.associate_transsys(tp)
+  f.write(str(tp))
+  f.write(str(lsys))
+
+
 def usage() :
-  print 'usage: lsysoptim <lsysfile> <transsysfile> <outfile>'
   print 'command line options:'
   print '-n <int>: specify number of time steps (derivations)'
   print '-r <int>: specify number of random restarts'
@@ -55,7 +64,8 @@ def usage() :
   print '-f <lsysfile>: specify lsys framework'
   print '-o [stddev | overlap]: set objective function'
   print '-P <optspecfile>: specify file with optimiser specification'
-  print '-l <logfile>: specify optimisation log file'
+  print '-T <transformerspecfile>: specify file with parameter transformer specification'
+  print '-L <logfile>: specify optimisation log file'
   print '-v: verbose'
   print '-h: print this help and exit'
 
@@ -66,30 +76,19 @@ num_restarts = 0
 frameworkfile_name = None
 eliminateFlatComponents = False
 delta = None
-eval_only = False
 improvement_threshold = 0.0
-disparity_function = transsys.optim.stddev_disparity
-verbose = False
+disparity_function = None
+verbose = 0
 optimiserfile_name = None
+transformererfile_name = None
 logfile_name = None
-options, args = getopt.getopt(sys.argv[1:], '-f:o:n:t:s:l:P:r:vh')
+options, args = getopt.getopt(sys.argv[1:], '-f:o:n:s:L:P:T:r:vh')
 for opt, par in options :
   if opt == '-h' :
     usage()
     sys.exit()
-  elif opt == '-v' :
-    verbose = True
-    # transsys.clib.setverbose(0)
   elif opt == '-f' :
     frameworkfile_name = par
-  elif opt == '-n' :
-    num_timesteps = int(par)
-  elif opt == '-s' :
-    rndseed = int(par)
-  elif opt == '-l' :
-    logfile_name = par
-  elif opt == '-r' :
-    num_restarts = int(par)
   elif opt == '-o' :
     if par == 'stddev' :
       disparity_function = transsys.optim.stddev_disparity
@@ -97,15 +96,41 @@ for opt, par in options :
       disparity_function = transsys.optim.overlap_disparity
     else :
       raise StandardError, 'objective function "%s" not recognised' % par
+  elif opt == '-n' :
+    num_timesteps = int(par)
+  elif opt == '-s' :
+    rndseed = int(par)
+  elif opt == '-L' :
+    logfile_name = par
   elif opt == '-P' :
     optimiserfile_name = par
+  elif opt == '-T' :
+    transformerfile_name = par
+  elif opt == '-r' :
+    num_restarts = int(par)
+  elif opt == '-v' :
+    verbose = 1
+    # transsys.clib.setverbose(0)
   else :
     raise StandardError, 'unknown option "%s"' % opt
 if frameworkfile_name is None :
   raise StandardError, 'no framework lsysfile specified'
+if optimiserfile_name is None and num_restarts > 0 :
+  raise StandardError, 'no optimiser file given but %d restarts requested' % num_restarts
+if optimiserfile_name is None and logfile_name is not None :
+    raise StandardError, 'no optimiser file given but optimisation logfile "%s" requested' % logfile_name
 f = open(frameworkfile_name, 'r')
 transsys_frame, lsys_frame = read_framework(f)
 f.close()
+if optimiserfile_name is not None :
+  f = open(optimiserfile_name, 'r')
+  optimiser = transsys.optim.parse_optimiser(f)
+  f.close()
+  optimiser.verbose = verbose
+  if transformerfile_name is not None :
+    f = open(transformerfile_name, 'r')
+    optimiser.transformer = transsys.optim.parse_parameter_transformer(f)
+    f.close()
 if len(args) > 0 :
   infile = open(args[0], 'r')
 else :
@@ -115,38 +140,30 @@ if len(args) > 1 :
 else :
   outfile = sys.stdout
 objective_function = transsys.optim.LsysObjectiveFunction(lsys_frame, transsys_frame, disparity_function, num_timesteps)
-if eval_only :
-  optimiser = None
-else :
-  if optimiserfile_name is None :
-    raise StandardError, 'no optimiser file specified'
-  f = open(optimiserfile_name, 'r')
-  optimiser = transsys.optim.parse_optimiser(f)
-  f.close()
-  optimiser.verbose = verbose
 # print str(optimiser)
 p = transsys.TranssysProgramParser(infile)
 outfile.write('// cmdline: %s\n' % ' '.join(sys.argv))
-transsys_program = p.parse()
-tp_index = 0
 if logfile_name is not None :
   logfile = open(logfile_name, 'w')
 else :
   logfile = None
+transsys_program = p.parse()
+tp_index = 0
 while transsys_program is not None :
   if num_restarts == 0 :
-    optResult = optimiser.optimise(transsys_program, objective_function)
-    obj_opt = objective_function(optResult.optimised_transsys_program)
-    write_transopt_comments(outfile, optResult.optimised_transsys_program, obj_opt, 'optimised, original')
-    if logfile is not None :
-      optResult.write_log(logfile, '%d' % tp_index, True, 'tp_index')
-      logfile.flush()
+    if optimiser is None :
+      obj_opt = objective_function(transsys_program)
+      write_transopt_comments(outfile, transsys_program, obj_opt, 'evaluated')
+    else :
+      optResult = optimiser.optimise(transsys_program, objective_function)
+      obj_opt = objective_function(optResult.optimised_transsys_program)
+      write_transopt_comments(outfile, optResult.optimised_transsys_program, obj_opt, 'optimised, original')
+      if logfile is not None :
+        optResult.write_log(logfile, '%d' % tp_index, True, 'tp_index')
+        logfile.flush()
   else :
-    random_function = transsys.utils.UniformRNG(rndseed, 0.0, 1.0)
-    tr = copy.deepcopy(transsys_program)
     for restart_index in xrange(num_restarts) :
-      transsys.utils.randomise_transsys_values(tr, random_function)
-      optResult = optimiser.optimise(tr, objective_function)
+      optResult = optimiser.optimise(transsys_program, objective_function)
       obj_opt = objective_function(optResult.optimised_transsys_program)
       write_transopt_comments(outfile, optResult.optimised_transsys_program, obj_opt, 'optimised, restart %d' % restart_index)
       if logfile is not None :
