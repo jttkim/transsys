@@ -21,18 +21,16 @@ def write_result(f, optResult) :
 
 
 opt_method_name = None
-transformer = None
 objective_function_name = None
 num_restarts = None
 optimiser = transsys.optim.SimulatedAnnealer(rng = random.Random(1))
 seriesfile_name = None
 optimisation_logfile_name = None
-options, args = getopt.getopt(sys.argv[1:], 'x:l:t:m:c:r:f:g:L:T:P:i:j:p:d:vh')
+options, args = getopt.getopt(sys.argv[1:], 'x:l:t:m:c:r:f:g:L:P:i:j:p:d:vh')
 for opt, par in options :
   if opt == '-h' :
     print '-f [squaresum | correlation]: specify objective function'
     print '-P <saspec file>: specify simulated annealer specification file to parse'
-    print '-T [identity | constrained]: specify parameter transformer'
     print '-p [uniform | gauss]: specify perturbation method'
     print '-x <expression file>: specify file containing desired expression profiles'
     print '-i <float>: specify initial stepsize'
@@ -50,13 +48,6 @@ for opt, par in options :
     sys.exit()
   elif opt == '-x' :
     seriesfile_name = par
-  elif opt == '-T' :
-    if par == 'identity' :
-      transformer = transsys.optim.IdentityParameterTransformer()
-    elif par == 'constrained' :
-      transformer = transsys.optim.ConstrainedParameterTransformer()
-    else :
-      raise StandardError, 'unknown parameter transformer "%s"' % par
   elif opt == '-P' :
     f = open(par, 'r')
     optimiser.parse(f)
@@ -96,8 +87,6 @@ for opt, par in options :
     optimisation_logfile_name = par
   else :
     raise StandardError, 'unhandled option "%s"' % opt
-if transformer is not None :
-  optimiser.transformer = transformer
 # print str(optimiser)
 if objective_function_name is None :
   raise StandardError, 'no objective function specified'
@@ -132,15 +121,13 @@ if num_restarts is None :
     optResult.write_log(f)
     f.close()
 else :
-  random_function = transsys.utils.UniformRNG(1)
-  tr = copy.deepcopy(transsys_program)
+  optimiser.randomInitRange = 1.0
   if optimisation_logfile_name is not None :
     f = open(optimisation_logfile_name, 'w')
     if num_restarts > 1 :
       f.write('obj num_records\n')
   for i in xrange(num_restarts) :
-    transsys.utils.randomise_transsys_values(tr, random_function)
-    optResult = optimiser.optimise(tr, objective)
+    optResult = optimiser.optimise(transsys_program, objective)
     sys.stderr.write('%s\n' % str(objective(optResult.optimised_transsys_program)))
     write_result(outfile, optResult)
     if num_restarts == 1 :
