@@ -11,7 +11,8 @@ import string
 # import collections
 
 import transsys
-import utils
+import transsys.optim
+import transsys.utils
 
 
 class Interval :
@@ -75,8 +76,8 @@ def stddev_disparity(rule, instance_series, factor_index) :
   active_set, inactive_set = active_and_inactive_set(rule, instance_series, factor_index)
   if len(active_set) == 0 or len(inactive_set) == 0 :
     return 0.0
-  m_active, s_active = utils.mean_and_stddev(active_set)
-  m_inactive, s_inactive = utils.mean_and_stddev(inactive_set)
+  m_active, s_active = transsys.utils.mean_and_stddev(active_set)
+  m_inactive, s_inactive = transsys.utils.mean_and_stddev(inactive_set)
   m_diff = abs(m_active - m_inactive)
   if m_diff == 0.0 :
     return 1.0
@@ -206,7 +207,7 @@ def hillclimb(objective_function, decoder, initial_dnaseq, num_generations, muta
     print '%d: %f' % (g, fitness)
     mutant_dnaseq = mutator.mutate(dnaseq)
     mutant_fitness = objective_function(decoder.decode_transsys('implant', mutant_dnaseq)).fitness
-    d = utils.hamming_distance(dnaseq, mutant_dnaseq)
+    d = transsys.utils.hamming_distance(dnaseq, mutant_dnaseq)
     # print 'current: %f, mutant: %f, distance: %d (rel: %f)' % (fitness, mutant_fitness, d, float(d) / float(len(dnaseq)))
     if mutant_fitness <= fitness :
       dnaseq = mutant_dnaseq
@@ -240,22 +241,93 @@ def randomise_transsys_values(transsys_program, random_function, gene_name_list 
     n.value = random_function()
 
 
-class ExponentialFunction(object) :
+class TransformationFunction(object) :
+  """Base class for transformation functions.
+
+This base class implements the identity transformation.
+"""
+
+  functionName = 'TransformationFunction'
+
+
+  def __call__(self, x) :
+    """Compute the transformed value of C{x}."""
+    return x
+
+
+  def __str__(self) :
+    return self.functionName
+
+
+  def clip(self, y) :
+    """Clip ${y} to the nearest admissible value."""
+    return y
+
+
+  def inverse(self, y) :
+    """Compute the inverse value of C{y}.
+
+This method should return the untransformed value C{x} corresponding to
+C{y}, such that f(x) = y.
+"""
+    return y
+
+
+  def check_savefile_magic(self, s) :
+    return s.strip() == self.functionName
+
+
+  def parse_variables(self, f) :
+    pass
+
+
+  def parse(self, f) :
+    l = f.readline()
+    if l == '' :
+      raise StandardError, 'expected magic but got EOF'
+    l = l.strip()
+    if not self.check_savefile_magic(l) :
+      raise StandardError, 'bad magic "%s" instead of "%s"' % (l, self.functionName)
+    self.parse_variables(f)
+
+
+class ExponentialFunction(TransformationFunction) :
   """Exponential parameter transformation.
 
 This is a callable class implementing the transformation function
-y = minValue + exp(scaleFactor * x).
-  """
+y = minValue + coefficient * exp(exponentMultiplier * x).
+"""
 
-  def __init__(self, scaleFactor = 1.0, minValue = 0.0) :
+  functionName = 'ExponentialFunction'
+
+  def __init__(self, exponentMultiplier = 1.0, coefficient = 1.0, minValue = 0.0) :
     """Constructor."""
-    self.scaleFactor = scaleFactor
+    self.exponentMultiplier = exponentMultiplier
+    self.coefficient = coefficient
     self.minValue = minValue
 
 
   def __call__(self, x) :
     """Compute function value."""
-    return self.minValue + math.exp(self.scaleFactor * x)
+    return self.minValue + self.coefficient * math.exp(self.exponentMultiplier * x)
+
+
+  def __str__(self) :
+    s = '%s\n' % self.functionName
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.exponentMultiplier, 'exponentMultiplier')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.coefficient, 'coefficient')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.minValue, 'minValue')
+    return s[:-1]
+
+
+  def parse_variables(self, f) :
+    self.exponentMultiplier = transsys.utils.parse_float(f, 'exponentMultiplier')
+    self.coefficient = transsys.utils.parse_float(f, 'coefficient')
+    self.minValue = transsys.utils.parse_float(f, 'minValue')
+
+
+  def clip(self, y) :
+    return max(self.minValue, y)
 
 
   def inverse(self, y) :
@@ -265,32 +337,72 @@ Notice that the inverse diverges as y approaches minValue.
 Exactly at minValue, the inverse method attempts to return
 the smallest value that can be transformed without a floating
 point overflow.
+
+
+@return: inverse function value, or C{None} if ${y} is out of admissible range
+@rtype: float or None
 """
+    if self.coefficient == 0.0 :
+      raise StandardError, 'exponential function with coefficient 0 cannot be inverted'
+    if self.exponentMultiplier == 0.0 :
+      raise StandardError, 'exponential function with exponentMultiplier 0 cannot be inverted'
     if y < self.minValue :
-      raise StandardError, 'argument %f < minimal value %f' % (y, self.minValue)
-    if y == self.minValue :
+      return None
+      # raise StandardError, 'argument %f < minimal value %f' % (y, self.minValue)
+    xmin = -700.0 / self.exponentMultiplier 
+    v = (y - self.minValue) / self.coefficient
+    # print '%1.17e %1.17e %s' % (y, v, str(v == 0.0))
+    if v == 0.0 :
       # 700 is 300 * log(10), and as floating point ranges typically
       # extend to around 1e300, this should be ok on normal platforms
-      return 700.0 / self.scaleFactor
-    return 1.0 / self.scaleFactor * math.log(y - self.minValue)
+      return xmin
+    return max(xmin, 1.0 / self.exponentMultiplier * math.log(v))
 
 
-class SigmoidFunction(object) :
+class SigmoidFunction(TransformationFunction) :
   """Sigmoid parameter transformation.
 
 This is a callable class implementing the transformation function
-y = minValue + (maxValue - minValue) / (1.0 + exp(-scaleFactor * x)).
+y = minValue + (maxValue - minValue) / (1.0 + exp(-exponentMultiplier * x)).
 """
-  def __init__(self, scaleFactor = 1.0, minValue = 0.0, maxValue = 1.0) :
+
+  # FIXME: this function may have a further parameter x0, a more general form
+  # is minValue + valueRange / exp(-exponentMultiplier * x - x0)
+  functionName = 'SigmoidFunction'
+
+  def __init__(self, exponentMultiplier = 1.0, minValue = 0.0, maxValue = 1.0) :
     """Constructor."""
-    self.scaleFactor = scaleFactor
+    self.exponentMultiplier = exponentMultiplier
     self.minValue = minValue
     self.valueRange = maxValue - minValue
 
 
   def __call__(self, x) :
     """Compute function value."""
-    return self.minValue + self.valueRange / (1.0 + math.exp(-self.scaleFactor * x))
+    return self.minValue + self.valueRange / (1.0 + math.exp(-self.exponentMultiplier * x))
+
+
+  def __str__(self) :
+    s = '%s\n' % self.functionName
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.exponentMultiplier, 'exponentMultiplier')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.minValue, 'minValue')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.getMaxValue(), 'maxValue')
+    return s[:-1]
+
+
+  def parse_variables(self, f) :
+    self.exponentMultiplier = transsys.utils.parse_float(f, 'exponentMultiplier')
+    self.minValue = transsys.utils.parse_float(f, 'minValue')
+    maxValue = transsys.utils.parse_float(f, 'maxValue')
+    self.valueRange = maxValue - self.minValue
+
+
+  def getMaxValue(self) :
+    return self.minValue + self.valueRange
+
+
+  def clip(self, y) :
+    return min(self.getMaxValue(), max(self.minValue, y))
 
 
   def inverse(self, y) :
@@ -300,37 +412,83 @@ Notice that the inverse diverges towards the borders of the sigmoid
 function's range. Exactly at the borders, the inverse method attempts
 to return the closest value that can be transformed without a floating
 point overflow.
+
+@return: inverse function value, or C{None} if ${y} is out of admissible range
+@rtype: float or None
 """
     maxValue = self.minValue + self.valueRange
     if y < self.minValue or y > maxValue :
-      raise StandardError, 'argument %f out of range [%f, %f]' % (y, self.minValue, maxValue)
+      return None
+      # raise StandardError, 'argument %f out of range [%f, %f]' % (y, self.minValue, maxValue)
     # FIXME: proper DBL_MIN, DBL_MAX like values should be used here
     if y == self.minValue :
-      return -700.0 / self.scaleFactor
+      return -700.0 / self.exponentMultiplier
     if y == maxValue :
-      return 700.0 / self.scaleFactor
-    return -1.0 / self.scaleFactor * math.log(self.valueRange / (y - self.minValue) - 1.0)
+      return 700.0 / self.exponentMultiplier
+    return -1.0 / self.exponentMultiplier * math.log(self.valueRange / (y - self.minValue) - 1.0)
+
+
+def parse_transformation_function(f) :
+  l = f.readline()
+  if l == '' :
+    return None
+  l = l.strip()
+  for tf in [TransformationFunction(), ExponentialFunction(), SigmoidFunction()] :
+    if tf.check_savefile_magic(l) :
+      tf.parse_variables(f)
+      return tf
+  raise StandardError, 'unknown transformation function "%s"' % l
 
 
 class ParameterTransformer(object) :
-  """Base class for parameter transformers."""
+  """Base class for parameter transformers.
 
-  pass
+No transformation, this base class implements an identity transformer.
+"""
+
+  savefile_magic = 'ParameterTransformer'
 
 
-class IdentityParameterTransformer(ParameterTransformer) :
-  """No transformation, simply copy parameters from and to transsys program."""
+  def __str__(self) :
+    return self.savefile_magic
 
-  def __init__(self) :
+
+  def check_savefile_magic(self, s) :
+    return s.strip() == self.savefile_magic
+
+
+  def parse_variables(self, f) :
+    pass
+
+
+  def parse(self, f) :
+    l = f.readline()
+    if l == '' :
+      raise StandardError, 'expected magic but got EOF'
+    l = l.strip()
+    if not self.check_savefile_magic(l) :
+      raise StandardError, 'bad magic "%s" instead of "%s"' % (l, self.savefile_magic)
+    self.parse_variables(f)
+
+
+  def clipParameters(self, transsys_program) :
+    """Clip the parameters in C{transsys_program} to the range
+required by the respective transformer."""
     pass
 
 
   def getParameters(self, transsys_program) :
+    """Get numeric parameters from the C{transsys_program}, converted to
+the unconstrained optimiser space.
+"""
     nodes = transsys_program.getValueNodes()
     return map(lambda n : n.value, nodes)
 
 
   def setParameters(self, parameter_list, transsys_program) :
+    """Set parameters in C{transsys_program} according to the optimiser space
+values provided by C{parameter_list}.
+"""
     nodes = transsys_program.getValueNodes()
     if len(nodes) != len(parameter_list) :
       raise StandardError,  'parameter list incompatible with transsys program'
@@ -338,70 +496,24 @@ class IdentityParameterTransformer(ParameterTransformer) :
       nodes[i].value = parameter_list[i]
 
 
-class ConstrainedParameterTransformer(ParameterTransformer) :
-  """Transform unconstrained parameters to ranges that are sensible for
-transsys programs.
-
-Unconstrained parameters p in ]-Inf, Inf[ are transformed to
-factor parameters (decay and diffusibility), constrained to ]0, 1[
-by the sigmoid function y = 1 / (1 + exp(-x)), and to gene
-parameters (constitutive, amax, aspec), constrained to ]0, +Inf[
-by the exponential function y = exp(x).
-
-Parameters are passed out and in using lists, and they are matched
-to values in nodes contained within the transsys program by position.
-Therefore, the transsys program must not be altered between getting
-parameters and setting parameters.
-
-Future versions of this class may use a proper indexable and iterable
-class instead of a "flat", unstructured list.
-"""
-
-  # FIXME: should use proper class rather than unstructured list for parameters
-  def __init__(self, scaleFactor = 1.0) :
-    self.factorValueTransformation = SigmoidFunction(scaleFactor)
-    self.geneValueTransformation = ExponentialFunction(scaleFactor)
-
-
-  def getParameters(self, transsys_program) :
-    """Get unconstrained parameters from a transsys program.
-
-@param transsys_program: the program from which to get the parameters
-@return: a list of the unconstrained parameters
-    """
-    parameter_list = []
-    for p in map(lambda n : n.value, transsys_program.getFactorValueNodes()) :
-      parameter_list.append(self.factorValueTransformation.inverse(p))
-    for p in map(lambda n : n.value, transsys_program.getGeneValueNodes()) :
-      parameter_list.append(self.geneValueTransformation.inverse(p))
-    return parameter_list
-
-
-  def setParameters(self, parameter_list, transsys_program) :
-    """Set values in a transsys program based on a list of unconstrained parameters.
-
-Notice that the parameter list must have the same length as that obtained
-by C{getParameters}.
-"""
-    fn = transsys_program.getFactorValueNodes()
-    gn = transsys_program.getGeneValueNodes()
-    if len(parameter_list) != len(fn) + len(gn) :
-      raise StandardError, 'parameter list incompatible with transsys program'
-    i = 0
-    for n in fn :
-      n.value = self.factorValueTransformation(parameter_list[i])
-      i = i + 1
-    for n in gn :
-      n.value = self.geneValueTransformation(parameter_list[i])
-      i = i + 1
-
-
 class TranssysTypedParameterTransformer(ParameterTransformer) :
   """
 Parameter transformer differentiating decay, diffusibility, constitutive,
 aspec, amax, rspec and rmax nodes.
+
+This transformer keeps track of the instance of C{TranssysProgram} that
+was used to to C{getParameters} and allows C{setParameters} only for
+the same instance. Upon changing state of the transformer (i.e. by
+altering transformations), the remembered C{TranssysProgram} is
+forgotten. Obviously, this mechanism is only triggered when accessing
+the transformer's state through methods, not when altering it by
+direct assignment to its members.
 """
-  def __init__(self, decayTransformation, diffusibilityTransformation, constitutiveTransformation, aspecTransformation, amaxTransformation, rspecTransformation, rmaxTransformation) :
+
+  savefile_magic = 'TranssysTypedParameterTransformer'
+
+  
+  def __init__(self, decayTransformation = TransformationFunction(), diffusibilityTransformation = TransformationFunction(), constitutiveTransformation = TransformationFunction(), aspecTransformation = TransformationFunction(), amaxTransformation = TransformationFunction(), rspecTransformation = TransformationFunction(), rmaxTransformation = TransformationFunction()) :
     self.decayTransformation = decayTransformation
     self.diffusibilityTransformation = diffusibilityTransformation
     self.constitutiveTransformation = constitutiveTransformation
@@ -410,6 +522,99 @@ aspec, amax, rspec and rmax nodes.
     self.rspecTransformation = rspecTransformation
     self.rmaxTransformation = rmaxTransformation
     self.transsys_program = None
+
+
+  def __str__(self) :
+    s = '%s\n' % self.savefile_magic
+    s = s + 'decayTransformation\n'
+    s = s + '%s\n' % str(self.decayTransformation)
+    s = s + 'diffusibilityTransformation\n'
+    s = s + '%s\n' % str(self.diffusibilityTransformation)
+    s = s + 'constitutiveTransformation\n'
+    s = s + '%s\n' % str(self.constitutiveTransformation)
+    s = s + 'aspecTransformation\n'
+    s = s + '%s\n' % str(self.aspecTransformation)
+    s = s + 'amaxTransformation\n'
+    s = s + '%s\n' % str(self.amaxTransformation)
+    s = s + 'rspecTransformation\n'
+    s = s + '%s\n' % str(self.rspecTransformation)
+    s = s + 'rmaxTransformation\n'
+    s = s + '%s\n' % str(self.rmaxTransformation)
+    return s[:-1]
+
+
+  def setAllTransformations(self, transformation) :
+    """Set all transformations to C{transformation}."""
+    self.decayTransformation = transformation
+    self.diffusibilityTransformation = transformation
+    self.constitutiveTransformation = transformation
+    self.aspecTransformation = transformation
+    self.amaxTransformation = transformation
+    self.rspecTransformation = transformation
+    self.rmaxTransformation = transformation
+    self.transsys_program = None
+
+
+  def setConstrainedTransformations(self) :
+    """Configure transformer to be equivalent to the abandoned C{ConstrainedTransformer}."""
+    self.decayTransformation = SigmoidFunction()
+    self.diffusibilityTransformation = SigmoidFunction()
+    self.constitutiveTransformation = ExponentialFunction()
+    self.aspecTransformation = ExponentialFunction()
+    self.amaxTransformation = ExponentialFunction()
+    self.rspecTransformation = ExponentialFunction()
+    self.rmaxTransformation = ExponentialFunction()
+    self.transsys_program = None
+
+
+  def parse_variables(self, f) :
+    """Parse instance variables from file C{f}."""
+    l = f.readline().strip()
+    if l != 'decayTransformation' :
+      raise StandardError, 'expected "decauTransformation", got "%s"' % l
+    self.decayTransformation = parse_transformation_function(f)
+    l = f.readline().strip()
+    if l != 'diffusibilityTransformation' :
+      raise StandardError, 'expected "diffusibilityTransformation", got "%s"' % l
+    self.diffusibilityTransformation = parse_transformation_function(f)
+    l = f.readline().strip()
+    if l != 'constitutiveTransformation' :
+      raise StandardError, 'expected "constitutiveTransformation", got "%s"' % l
+    self.constitutiveTransformation = parse_transformation_function(f)
+    l = f.readline().strip()
+    if l != 'aspecTransformation' :
+      raise StandardError, 'expected "aspecTransformation", got "%s"' % l
+    self.aspecTransformation = parse_transformation_function(f)
+    l = f.readline().strip()
+    if l != 'amaxTransformation' :
+      raise StandardError, 'expected "amaxTransformation", got "%s"' % l
+    self.amaxTransformation = parse_transformation_function(f)
+    l = f.readline().strip()
+    if l != 'rspecTransformation' :
+      raise StandardError, 'expected "rspecTransformation", got "%s"' % l
+    self.rspecTransformation = parse_transformation_function(f)
+    l = f.readline().strip()
+    if l != 'rmaxTransformation' :
+      raise StandardError, 'expected "rmaxTransformation", got "%s"' % l
+    self.rmaxTransformation = parse_transformation_function(f)
+    self.transsys_program = None
+
+
+  def clipParameters(self, transsys_program) :
+    for n in transsys_program.getDecayValueNodes() :
+      n.value = self.decayTransformation.clip(n.value)
+    for n in transsys_program.getDiffusibilityValueNodes() :
+      n.value = self.diffusibilityTransformation.clip(n.value)
+    for n in transsys_program.getConstitutiveValueNodes() :
+      n.value = self.constitutiveTransformation.clip(n.value)
+    for n in transsys_program.getActivateSpecValueNodes() :
+      n.value = self.aspecTransformation.clip(n.value)
+    for n in transsys_program.getActivateMaxValueNodes() :
+      n.value = self.amaxTransformation.clip(n.value)
+    for n in transsys_program.getRepressSpecValueNodes() :
+      n.value = self.rspecTransformation.clip(n.value)
+    for n in transsys_program.getRepressMaxValueNodes() :
+      n.value = self.rmaxTransformation.clip(n.value)
 
 
   def getParameters(self, transsys_program) :
@@ -486,6 +691,18 @@ by C{getParameters}.
       i = i + 1
 
 
+def parse_parameter_transformer(f) :
+  l = f.readline()
+  if l == '' :
+    return None
+  l = l.strip()
+  for tf in [ParameterTransformer(), TranssysTypedParameterTransformer()] :
+    if tf.check_savefile_magic(l) :
+      tf.parse_variables(f)
+      return tf
+  raise StandardError, 'unknown parameter transformer "%s"' % l
+
+
 class OptimisationResult(object) :
   """Base class for returning results of an optimisation.
 
@@ -551,7 +768,7 @@ class SimulatedAnnealingRecord(AbstractOptimisationRecord) :
 
 
   def __str__(self) :
-    return utils.table_row([self.obj, self.obj_alt, self.temperature, self.stepsize, self.stepvector_entropy, self.stepvector_max, self.state_distance, self.p_accept, self.accept])
+    return transsys.utils.table_row([self.obj, self.obj_alt, self.temperature, self.stepsize, self.stepvector_entropy, self.stepvector_max, self.state_distance, self.p_accept, self.accept])
 
 
   def table_header(self) :
@@ -565,12 +782,12 @@ class GradientOptimisationRecord(AbstractOptimisationRecord) :
     self.stepsize = stepsize
     self.numEvaluations = numEvaluations
     gradient_abs = map(abs, gradient)
-    self.gradient_entropy = utils.shannon_entropy(gradient_abs)
+    self.gradient_entropy = transsys.utils.shannon_entropy(gradient_abs)
     self.gradient_max = max(gradient_abs)
 
 
   def __str__(self) :
-    return utils.table_row([self.obj, self.stepsize, self.numEvaluations, self.gradient_entropy, self.gradient_max])
+    return transsys.utils.table_row([self.obj, self.stepsize, self.numEvaluations, self.gradient_entropy, self.gradient_max])
 
 
   def table_header(self) :
@@ -698,7 +915,7 @@ expression profiles as an objective function."""
       v = []
       for i in xrange(l) :
         x = tseries[i].factor_concentration[factor_index]
-        if utils.is_nan(x) :
+        if transsys.utils.is_nan(x) :
           print str(tseries[i])
           raise StandardError, 'expression level of factor "%s" is NaN' % factor_name
         v.append(x)
@@ -747,7 +964,7 @@ that factor is 2.
         v = []
         for i in xrange(l) :
           x = tseries[i].factor_concentration[factor_index]
-          if utils.is_nan(x) :
+          if transsys.utils.is_nan(x) :
             print str(tseries[i])
             raise StandardError, 'expression level of factor "%s" is NaN' % factor_name
           v.append(x)
@@ -762,15 +979,42 @@ that factor is 2.
 class AbstractOptimiser(object) :
   """Abstract base class for optimisers.
 
+@ivar rng: random number generator, used to initialise optimisation, but
+  may subsequently be used by stochastic optimisers.
+@ivar transformer: parameter transformer
+@ivar randomInitRange: if not C{None}, parameters in transformed space
+  will be initialised with uniform random values from
+  [-\C{randomInitRange}, +C{randomInitRange}[
 @ivar verbose: controls verbosity (of optimisation process)
   """
 
-  def __init__(self, verbose = False) :
+  def __init__(self, rng, transformer = None, randomInitRange = None, verbose = 0) :
     """Partial constructor method.
 
-This constructor just sets the C{verbose} instance variable
-    """
+This constructor is to be invoked from subclass constructors. Instances
+of C{AbstractOptimiser} do not have any use.
+"""
+    if rng is None :
+      self.rng = random.Random(1)
+    else :
+      self.rng = rng
+    if transformer is None :
+      self.transformer = ParameterTransformer()
+    else :
+      self.transformer = transformer
+    self.randomInitRange = randomInitRange
     self.verbose = verbose
+
+
+  def initialiseTranssysProgramValues(self, transsys_program) :
+    """Randomly initialise transsys program values if requested."""
+    if self.randomInitRange is None :
+      self.transformer.clipParameters(transsys_program)
+    else :
+      state = self.transformer.getParameters(transsys_program)
+      for i in xrange(len(state)) :
+        state[i] = (self.rng.random() * 2.0 - 1.0) * self.randomInitRange
+      self.transformer.setParameters(state, transsys_program)
 
 
   def optimise(self, transsys_program_init, objective_function) :
@@ -819,7 +1063,7 @@ The parameterisation of stepping is based on the concepts outlined in
 
 @cvar PERTURBATION_METHOD_UNIFORM: specifies local search by perturbation of
   current state by uniformly distributed random values
-@cvar PERTURBATION_MOETHO_GAUSS: specifies local search by perturbation of
+@cvar PERTURBATION_METHOD_GAUSS: specifies local search by perturbation of
   current state by random values with Gaussian distribution
 @ivar stepsize_learning_rate: learning rate for stepsize
 @ivar target_improvement_ratio: target ratio of improvements in
@@ -839,19 +1083,16 @@ The parameterisation of stepping is based on the concepts outlined in
   process is terminated
 @ivar termination_iteration: number of iteration after which process
   is terminated
-@ivar transformer: parameter transformer.
-@ivar rng: random number generator.
 @ivar perturbation_method: perturbation method for local search
-@ivar verbose: controls verbosity.
 """
 
   savefile_magic = 'SimulatedAnnealer-0.1'
   PERTURBATION_METHOD_UNIFORM = 1
   PERTURBATION_METHOD_GAUSS = 2
 
-  def __init__(self, cooling_rate = 0.995, temperature_init = None, termination_temperature = None, termination_objective = None, termination_iteration = None, stepsize_learning_rate = 0.0, target_improvement_ratio = 0.2, stepsize_init = 1.0, stepvector_learning_rate = 0.0, stepvector_learning_decay = 0.0, transformer = None, rng = None, perturbation_method = PERTURBATION_METHOD_UNIFORM, verbose = False) :
+  def __init__(self, cooling_rate = 0.995, temperature_init = None, termination_temperature = None, termination_objective = None, termination_iteration = None, stepsize_learning_rate = 0.0, target_improvement_ratio = 0.2, stepsize_init = 1.0, stepvector_learning_rate = 0.0, stepvector_learning_decay = 0.0, perturbation_method = PERTURBATION_METHOD_UNIFORM, rng = None, transformer = None, randomInitRange = None, verbose = 0) :
     """Constructor."""
-    super(SimulatedAnnealer, self).__init__(verbose)
+    super(SimulatedAnnealer, self).__init__(rng, transformer, randomInitRange, verbose)
     self.stepsize_learning_rate = stepsize_learning_rate
     self.target_improvement_ratio = target_improvement_ratio
     self.stepsize_init = stepsize_init
@@ -863,14 +1104,6 @@ The parameterisation of stepping is based on the concepts outlined in
     self.termination_objective = termination_objective
     self.termination_iteration = termination_iteration
     self.perturbation_method = perturbation_method
-    if transformer is None :
-      self.transformer = IdentityParameterTransformer()
-    else :
-      self.transformer = transformer
-    if rng is None :
-      self.rng = random.Random(1)
-    else :
-      self.rng = rng
 
 
   def setPerturbationMethod(self, pMethodString) :
@@ -892,54 +1125,43 @@ beginning of a valid save file.
 
   def parse_variables(self, f) :
     """Get the values of instance variables from file C{f}."""
-    self.stepsize_learning_rate = utils.parse_float(f, 'stepsize_learning_rate')
-    self.target_improvement_ratio = utils.parse_float(f, 'target_improvement_ratio')
-    self.stepsize_init = utils.parse_float(f, 'stepsize_init')
-    self.stepvector_learning_rate = utils.parse_float(f, 'stepvector_learning_rate')
-    self.stepvector_learning_decay = utils.parse_float(f, 'stepvector_learning_decay')
-    self.cooling_rate = utils.parse_float(f, 'cooling_rate')
-    self.temperature_init = utils.parse_float(f, 'temperature_init', allowNone = True)
-    self.termination_temperature = utils.parse_float(f, 'termination_temperature', allowNone = True)
-    self.termination_objective = utils.parse_float(f, 'termination_objective', allowNone = True)
-    self.termination_iteration = utils.parse_int(f, 'termination_iteration', allowNone = True)
-    self.setPerturbationMethod(utils.parse_string(f, 'perturbation_method').strip())
-    rndseed = utils.parse_int(f, 'rndseed')
+    self.stepsize_learning_rate = transsys.utils.parse_float(f, 'stepsize_learning_rate')
+    self.target_improvement_ratio = transsys.utils.parse_float(f, 'target_improvement_ratio')
+    self.stepsize_init = transsys.utils.parse_float(f, 'stepsize_init')
+    self.stepvector_learning_rate = transsys.utils.parse_float(f, 'stepvector_learning_rate')
+    self.stepvector_learning_decay = transsys.utils.parse_float(f, 'stepvector_learning_decay')
+    self.cooling_rate = transsys.utils.parse_float(f, 'cooling_rate')
+    self.temperature_init = transsys.utils.parse_float(f, 'temperature_init', allowNone = True)
+    self.termination_temperature = transsys.utils.parse_float(f, 'termination_temperature', allowNone = True)
+    self.termination_objective = transsys.utils.parse_float(f, 'termination_objective', allowNone = True)
+    self.termination_iteration = transsys.utils.parse_int(f, 'termination_iteration', allowNone = True)
+    self.setPerturbationMethod(transsys.utils.parse_string(f, 'perturbation_method').strip())
+    rndseed = transsys.utils.parse_int(f, 'rndseed')
     self.rng = random.Random(rndseed)
-    s = utils.parse_string(f, 'transformer').strip()
-    if s == 'identity' :
-      self.transformer = IdentityParameterTransformer()
-    elif s == 'constrained' :
-      self.transformer = ConstrainedParameterTransformer()
-    else :
-      raise StandardError, 'unknown parameter transformer "%s"' % s
+    self.transformer = parse_parameter_transformer(f)
 
 
   def __str__(self) :
     s = '%s\n' % self.savefile_magic
-    s = s + '%s\n' % utils.name_value_pair(self.stepsize_learning_rate, 'stepsize_learning_rate')
-    s = s + '%s\n' % utils.name_value_pair(self.target_improvement_ratio, 'target_improvement_ratio')
-    s = s + '%s\n' % utils.name_value_pair(self.stepsize_init, 'stepsize_init')
-    s = s + '%s\n' % utils.name_value_pair(self.stepvector_learning_rate, 'stepvector_learning_rate')
-    s = s + '%s\n' % utils.name_value_pair(self.stepvector_learning_decay, 'stepvector_learning_decay')
-    s = s + '%s\n' % utils.name_value_pair(self.cooling_rate, 'cooling_rate')
-    s = s + '%s\n' % utils.name_value_pair(self.temperature_init, 'temperature_init')
-    s = s + '%s\n' % utils.name_value_pair(self.termination_temperature, 'termination_temperature')
-    s = s + '%s\n' % utils.name_value_pair(self.termination_objective, 'termination_objective')
-    s = s + '%s\n' % utils.name_value_pair(self.termination_iteration, 'termination_iteration')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.stepsize_learning_rate, 'stepsize_learning_rate')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.target_improvement_ratio, 'target_improvement_ratio')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.stepsize_init, 'stepsize_init')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.stepvector_learning_rate, 'stepvector_learning_rate')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.stepvector_learning_decay, 'stepvector_learning_decay')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.cooling_rate, 'cooling_rate')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.temperature_init, 'temperature_init')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.termination_temperature, 'termination_temperature')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.termination_objective, 'termination_objective')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.termination_iteration, 'termination_iteration')
     if self.perturbation_method == self.PERTURBATION_METHOD_UNIFORM :
-      s = s + '%s\n' % utils.name_value_pair('uniform', 'perturbation_method')
+      s = s + '%s\n' % transsys.utils.name_value_pair('uniform', 'perturbation_method')
     elif self.perturbation_method == self.PERTURBATION_METHOD_GAUSS :
-      s = s + '%s\n' % utils.name_value_pair('gauss', 'perturbation_method')
+      s = s + '%s\n' % transsys.utils.name_value_pair('gauss', 'perturbation_method')
     else :
       raise StandardError, 'cannot encode perturbation method'
-    s = s + '%s\n' % utils.name_value_pair('unknown', 'rndseed')
-    if isinstance(self.transformer, IdentityParameterTransformer) :
-      s = s + '%s\n' % utils.name_value_pair('identity', 'transformer')
-    elif isinstance(self.transformer, ConstrainedParameterTransformer) :
-      s = s + '%s\n' % utils.name_value_pair('constrained', 'transformer')
-    else :
-      raise StandardError, 'cannot encode parameter transformer'
-    return s
+    s = s + '%s\n' % transsys.utils.name_value_pair('unknown', 'rndseed')
+    s = s + '%s\n' % str(self.transformer)
+    return s[:-1]
 
 
   def verifyTermination(self) :
@@ -993,9 +1215,14 @@ explicitly does so.
     if rndseed is not None :
       self.rng.seed(rndseed)
     transsys_program = copy.deepcopy(transsys_program_init)
+    self.initialiseTranssysProgramValues(transsys_program)
+    # slightly silly to set the parameters in initialising and then getting them next thing
+    # may help to maintain consistency, though.
     state = self.transformer.getParameters(transsys_program)
     if self.verbose :
       sys.stderr.write('SimulatedAnnealer: optimising %d values\n' % len(state))
+      # sys.stderr.write('state: %s\n' % str(state))
+      sys.stderr.write('%s\n' % str(transsys_program))
     num_dimensions = len(state)
     unbiased_stepvector_component = 1.0 / math.sqrt(float(num_dimensions))
     if stepvector_init is None :
@@ -1003,7 +1230,7 @@ explicitly does so.
     else :
       if len(stepvector_init) != num_dimensions :
         raise StandardError, 'stepvector incompatible with transsys program'
-      stepvector = utils.normalised_vector(stepvector_init)
+      stepvector = transsys.utils.normalised_vector(stepvector_init)
     stepsize = self.stepsize_init
     records = []
     obj = objective_function(transsys_program).fitness
@@ -1029,7 +1256,7 @@ explicitly does so.
       delta_state = []
       for i in xrange(num_dimensions) :
         delta_state.append(state_alt[i] - state[i])
-      state_distance = utils.euclidean_norm(delta_state)
+      state_distance = transsys.utils.euclidean_norm(delta_state)
       self.transformer.setParameters(state_alt, transsys_program)
       obj_alt = objective_function(transsys_program).fitness
       if self.verbose :
@@ -1044,18 +1271,18 @@ explicitly does so.
         if self.verbose :
           sys.stderr.write('delta_obj = %f, temperature = %f, p_accept = %f\n' % (obj_alt - obj, temperature, p_accept))
         accept = self.rng.random() < p_accept
-      records.append(SimulatedAnnealingRecord(obj, obj_alt, temperature, stepsize, utils.shannon_entropy(stepvector), max(stepvector), state_distance, p_accept, accept))
+      records.append(SimulatedAnnealingRecord(obj, obj_alt, temperature, stepsize, transsys.utils.shannon_entropy(stepvector), max(stepvector), state_distance, p_accept, accept))
       if obj_alt <= obj :
         stepsize = stepsize * (1.0 + self.stepsize_learning_rate / self.target_improvement_ratio)
-        sdn = utils.normalised_vector(delta_state)
+        sdn = transsys.utils.normalised_vector(delta_state)
         v = []
         for i in xrange(num_dimensions) :
           v.append((1.0 - self.stepvector_learning_rate) * stepvector[i] + self.stepvector_learning_rate * abs(sdn[i]))
       else :
         stepsize = stepsize * (1.0 - self.stepsize_learning_rate)
         v = map(lambda x : (1.0 - self.stepvector_learning_decay) * x + self.stepvector_learning_decay * unbiased_stepvector_component, stepvector)
-        stepvector = utils.normalised_vector(v)
-      stepvector = utils.normalised_vector(v)
+        stepvector = transsys.utils.normalised_vector(v)
+      stepvector = transsys.utils.normalised_vector(v)
       if accept :
         if self.verbose :
           sys.stderr.write('  state_alt accepted (obj = %f, obj_alt = %f)\n' % (obj, obj_alt))
@@ -1126,7 +1353,7 @@ criterion is reached:
 
   savefile_magic = 'GradientOptimiser-0.1'
 
-  def __init__(self, initial_stepsize = 1.0, delta = 1.0e-6, stepsize_shrink = 0.5, termination_stepsize = 1.0e-30, termination_objective = None, termination_iteration = None, termination_numEvaluations = None, termination_improvement = 0.0, stepsize_max = 1.0e30, transformer = None, verbose = False) :
+  def __init__(self, initial_stepsize = 1.0, delta = 1.0e-6, stepsize_shrink = 0.5, termination_stepsize = 1.0e-30, termination_objective = None, termination_iteration = None, termination_numEvaluations = None, termination_improvement = 0.0, stepsize_max = 1.0e30, rng = None, transformer = None, randomInitRange = None, verbose = 0) :
     """
 @param initial_stepsize: distance initially stepped in gradient
   direction. Subject to subsequent adaptation
@@ -1147,7 +1374,7 @@ criterion is reached:
   stepsize exceed this limit
 @param transformer: parameter transformer
 """
-    super(GradientOptimiser, self).__init__(verbose)
+    super(GradientOptimiser, self).__init__(rng, transformer, randomInitRange, verbose)
     self.initial_stepsize = initial_stepsize
     self.delta = delta
     self.stepsize_shrink = stepsize_shrink
@@ -1157,10 +1384,6 @@ criterion is reached:
     self.termination_numEvaluations = termination_numEvaluations
     self.termination_improvement = termination_improvement
     self.stepsize_max = stepsize_max
-    if transformer is None :
-      self.transformer = IdentityParameterTransformer()
-    else :
-      self.transformer = transformer
     self.eliminateFlatComponents = False
 
 
@@ -1173,44 +1396,33 @@ beginning of a valid save file.
 
   def parse_variables(self, f) :
     """Get the values of instance variables from file C{f}."""
-    self.initial_stepsize = utils.parse_float(f, 'initial_stepsize')
-    self.delta = utils.parse_float(f, 'delta')
-    self.stepsize_shrink = utils.parse_float(f, 'stepsize_shrink')
-    self.termination_stepsize = utils.parse_float(f, 'termination_stepsize', allowNone = True)
-    self.termination_objective = utils.parse_float(f, 'termination_objective', allowNone = True)
-    self.termination_iteration = utils.parse_int(f, 'termination_iteration', allowNone = True)
-    self.termination_numEvaluations = utils.parse_int(f, 'termination_numEvaluations', allowNone = True)
-    self.termination_improvement = utils.parse_float(f, 'termination_improvement', allowNone = True)
-    self.stepsize_max = utils.parse_float(f, 'stepsize_max')
-    self.eliminateFlatComponents = utils.parse_boolean(f, 'eliminateFlatComponents')
-    s = utils.parse_string(f, 'transformer').strip()
-    if s == 'identity' :
-      self.transformer = IdentityParameterTransformer()
-    elif s == 'constrained' :
-      self.transformer = ConstrainedParameterTransformer()
-    else :
-      raise StandardError, 'unknown parameter transformer "%s"' % s
+    self.initial_stepsize = transsys.utils.parse_float(f, 'initial_stepsize')
+    self.delta = transsys.utils.parse_float(f, 'delta')
+    self.stepsize_shrink = transsys.utils.parse_float(f, 'stepsize_shrink')
+    self.termination_stepsize = transsys.utils.parse_float(f, 'termination_stepsize', allowNone = True)
+    self.termination_objective = transsys.utils.parse_float(f, 'termination_objective', allowNone = True)
+    self.termination_iteration = transsys.utils.parse_int(f, 'termination_iteration', allowNone = True)
+    self.termination_numEvaluations = transsys.utils.parse_int(f, 'termination_numEvaluations', allowNone = True)
+    self.termination_improvement = transsys.utils.parse_float(f, 'termination_improvement', allowNone = True)
+    self.stepsize_max = transsys.utils.parse_float(f, 'stepsize_max')
+    self.eliminateFlatComponents = transsys.utils.parse_boolean(f, 'eliminateFlatComponents')
+    self.transformer = parse_transformer(f)
 
 
   def __str__(self) :
     s = '%s\n' % self.savefile_magic
-    s = s + '%s\n' % utils.name_value_pair(self.initial_stepsize, 'initial_stepsize')
-    s = s + '%s\n' % utils.name_value_pair(self.delta, 'delta')
-    s = s + '%s\n' % utils.name_value_pair(self.stepsize_shrink, 'stepsize_shrink')
-    s = s + '%s\n' % utils.name_value_pair(self.termination_stepsize, 'termination_stepsize')
-    s = s + '%s\n' % utils.name_value_pair(self.termination_objective, 'termination_objective')
-    s = s + '%s\n' % utils.name_value_pair(self.termination_iteration, 'termination_iteration')
-    s = s + '%s\n' % utils.name_value_pair(self.termination_numEvaluations, 'termination_numEvaluations')
-    s = s + '%s\n' % utils.name_value_pair(self.termination_improvement, 'termination_improvement')
-    s = s + '%s\n' % utils.name_value_pair(self.stepsize_max, 'stepsize_max')
-    s = s + '%s\n' % utils.name_value_pair(self.eliminateFlatComponents, 'eliminateFlatComponents')
-    if isinstance(self.transformer, IdentityParameterTransformer) :
-      s = s + '%s\n' % utils.name_value_pair('identity', 'transformer')
-    elif isinstance(self.transformer, ConstrainedParameterTransformer) :
-      s = s + '%s\n' % utils.name_value_pair('constrained', 'transformer')
-    else :
-      raise StandardError, 'cannot encode parameter transformer'
-    return s
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.initial_stepsize, 'initial_stepsize')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.delta, 'delta')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.stepsize_shrink, 'stepsize_shrink')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.termination_stepsize, 'termination_stepsize')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.termination_objective, 'termination_objective')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.termination_iteration, 'termination_iteration')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.termination_numEvaluations, 'termination_numEvaluations')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.termination_improvement, 'termination_improvement')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.stepsize_max, 'stepsize_max')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.eliminateFlatComponents, 'eliminateFlatComponents')
+    s = s + '%s\n' % str(self.transformer)
+    return s[:-1]
     
 
   def terminationCondition(self, stepsize, objective, improvement, iteration, numEvaluations, gradient) :
@@ -1241,6 +1453,7 @@ beginning of a valid save file.
 
   def optimise(self, transsys_program, objective_function, gene_name_list = None, factor_name_list = None) :
     tp = copy.deepcopy(transsys_program)
+    self.initialiseTransssysProgramValues(tp)
     current_values = self.transformer.getParameters(tp)
     if self.verbose :
       sys.stderr.write('optimising %d values\n' % len(current_values))
@@ -1273,7 +1486,7 @@ beginning of a valid save file.
           self.transformer.setParameters(current_values, tp)
       if self.verbose and self.eliminateFlatComponents :
         sys.stderr.write('num_zeros: %d\n' % num_zeros)
-      gradient_norm = utils.euclidean_norm(gradient)
+      gradient_norm = transsys.utils.euclidean_norm(gradient)
       if gradient_norm == 0.0 :
         if self.verbose :
           sys.stderr.write('GradientOptimiser.optimise: flat gradient\n')

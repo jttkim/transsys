@@ -1,0 +1,116 @@
+#!/usr/bin/env python
+
+# $Id$
+# $Revision$
+# $Author$
+# $Date$ 
+
+import sys
+import getopt
+import random
+import copy
+import math
+
+import transsys
+import transsys.optim
+
+
+def write_result(f, optResult) :
+  f.write('// objective: %g\n' % optResult.objectiveOptimum)
+  f.write('%s\n' %  str(optResult.optimised_transsys_program))
+
+
+objective_function_name = None
+num_restarts = None
+optimiserfile_name = None
+transformerfile_name = None
+seriesfile_name = None
+optimisation_logfile_name = None
+verbose = 0
+options, args = getopt.getopt(sys.argv[1:], 'f:x:r:L:P:T:vh')
+for opt, par in options :
+  if opt == '-h' :
+    print '-f [squaresum | correlation]: specify objective function'
+    print '-x <expression file>: specify file containing desired expression profiles'
+    print '-r <int>: specify number of random restarts'
+    print '-L <filename>: specify optimisation log file'
+    print '-P <optimiser specfile>: specify optimiser specification file to parse'
+    print '-T <transformer specfile>: specify transformer specification file to parse'
+    print '-v: verbose'
+    print '-h: print this help and exit'
+    sys.exit()
+  elif opt == '-f' :
+    objective_function_name = par
+  elif opt == '-x' :
+    seriesfile_name = par
+  elif opt == '-r' :
+    num_restarts = int(par)
+  elif opt == '-L' :
+    optimisation_logfile_name = par
+  elif opt == '-P' :
+    optimiserfile_name = par
+  elif opt == '-T' :
+    transformerfile_name = par
+  elif opt == '-v' :
+    verbose = 1
+  else :
+    raise StandardError, 'unhandled option "%s"' % opt
+# print str(optimiser)
+if objective_function_name is None :
+  raise StandardError, 'no objective function specified'
+if seriesfile_name is None :
+  raise StandardError, 'no series file specified'
+if optimiserfile_name is None :
+  raise StandardError, 'no optimiser specification file given'
+f = open(optimiserfile_name, 'r')
+optimiser = transsys.optim.parse_optimiser(f)
+f.close()
+optimiser.verbose = verbose
+if transformerfile_name is not None :
+  f = open(transformerfile_name, 'r')
+  optimiser.transformer = transsys.optim.parse_parameter_transformer(f)
+  f.close()
+f = open(seriesfile_name, 'r')
+if objective_function_name == 'squaresum' :
+  objective = transsys.optim.ExpressionSeriesSquareSumObjective(f)
+elif objective_function_name == 'correlation' :
+  objective = transsys.optim.ExpressionSeriesCorrelationObjective(f)
+else :
+  raise StandardError, 'unknown objective function "%s"' % objective_function_name
+f.close()
+if len(args) > 0 :
+  infile = open(args[0], 'r')
+else :
+  infile = sys.stdin
+if len(args) > 1 :
+  outfile = open(args[1], 'w')
+else :
+  outfile = sys.stdout
+if optimisation_logfile_name is None :
+  logfile = None
+else :
+  logfile = open(optimisation_logfile_name, 'w')
+# print str(objective)
+p = transsys.TranssysProgramParser(infile)
+# print objective(transsys_program)
+transsys_program = p.parse()
+tp_index = 0
+while transsys_program is not None :
+  if num_restarts is None :
+    optResult = optimiser.optimise(transsys_program, objective)
+    sys.stderr.write('%s\n' % str(objective(optResult.optimised_transsys_program)))
+    write_result(outfile, optResult)
+    if logfile is not None :
+      optResult.write_log(logfile, '%d' % tp_index, True, 'tp_index')
+  else :
+    optimiser.randomInitRange = 1.0
+    for restart_index in xrange(num_restarts) :
+      optResult = optimiser.optimise(transsys_program, objective)
+      sys.stderr.write('%s\n' % str(objective(optResult.optimised_transsys_program)))
+      write_result(outfile, optResult)
+      if logfile is not None :
+        optResult.write_log(logfile, '%d %d' % (tp_index, restart_index), tp_index == 0 and restart_index == 0, 'tp_index restart_index')
+  transsys_program = p.parse()
+  tp_index = tp_index + 1
+
+

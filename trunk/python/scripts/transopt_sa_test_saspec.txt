@@ -11,4 +11,39 @@ termination_objective: None
 termination_iteration: None
 perturbation_method: uniform
 rndseed: 1
-transformer: constrained
+TranssysTypedParameterTransformer
+decayTransformation
+SigmoidFunction
+exponentMultiplier: 1.00000000000000000e+00
+minValue: 0.00000000000000000e+00
+maxValue: 1.00000000000000000e+00
+diffusibilityTransformation
+SigmoidFunction
+exponentMultiplier: 1.00000000000000000e+00
+minValue: 0.00000000000000000e+00
+maxValue: 1.00000000000000000e+00
+constitutiveTransformation
+SigmoidFunction
+exponentMultiplier: 1.00000000000000000e+00
+minValue: 0.00000000000000000e+00
+maxValue: 1.00000000000000000e+00
+aspecTransformation
+SigmoidFunction
+exponentMultiplier: 1.00000000000000000e+00
+minValue: 0.00000000000000000e+00
+maxValue: 1.00000000000000000e+00
+amaxTransformation
+SigmoidFunction
+exponentMultiplier: 1.00000000000000000e+00
+minValue: 0.00000000000000000e+00
+maxValue: 1.00000000000000000e+00
+rspecTransformation
+SigmoidFunction
+exponentMultiplier: 1.00000000000000000e+00
+minValue: 0.00000000000000000e+00
+maxValue: 1.00000000000000000e+00
+rmaxTransformation
+SigmoidFunction
+exponentMultiplier: 1.00000000000000000e+00
+minValue: 0.00000000000000000e+00
+maxValue: 1.00000000000000000e+00
