@@ -209,6 +209,19 @@ class ExpressionNodeValue(ExpressionNode) :
     return [self]
 
 
+  def clip(self, minValue = None, maxValue = None) :
+    """Clip value to [C{minValue}, C{maxValue}].
+
+Both parameters may be C{None} to specify an open-ended interval.
+"""
+    # print 'clipping value = %f to [%s, %s]' % (self.value, str(minValue), str(maxValue)),
+    if minValue is not None :
+      self.value = max(minValue, self.value)
+    if maxValue is not None :
+      self.value = min(maxValue, self.value)
+    # print '--> %f' % self.value
+
+
 class ExpressionNodeIdentifier(ExpressionNode) :
 
   def __init__(self, factor, transsys_label = None) :
@@ -566,6 +579,20 @@ complex identifiers."""
     return self.expression.getIdentifierNodes()
 
 
+  def canonicalise(self) :
+    """Does nothing.
+
+Negative constitutive expression can be useful at times to set a
+threshold that must be overcome by activation. Negative parameters
+to constitutive are therefore currently not canonicalised away.
+
+Negative constitutive expression is a bit of a hack, though, and
+should be used sparingly and avoided where possible.
+"""
+    # if isinstance(self.expression, ExpressionNodeValue) :
+    #  self.expression.clip(0.0, None)
+    
+
   def write_dot_edge(self, f, target_name, dot_parameters, transsys) :
     # FIXME: constitutive expression of genes should probably be indicated
     # by node shape / border or the like...
@@ -653,6 +680,23 @@ any identifier nodes that may appear in the parameters to the link element."""
     return identifierNodes
 
 
+  def canonicalise(self) :
+    """Clip the spec parameter to non-negative it is a constant.
+
+Notice that negative max parameters are permitted. These effectively
+invert C{activate} to C{repress} and vice versa, thus creating a
+degeneracy in representation, but this feature has proven unexpectedly
+useful in optimisation.
+
+Future implementations of canonicalisation may convert links with
+negative max constants to their antagonistic counterparts.
+"""
+    if isinstance(self.expression1, ExpressionNodeValue) :
+      self.expression1.clip(0.0, None)
+    # if isinstance(self.expression2, ExpressionNodeValue) :
+    #   self.expression2.clip(0.0, None)
+
+
   def write_dot_edge(self, f, target_name, display_factors, arrowhead, transsys) :
 
     def factor_name(f) :
@@ -674,6 +718,9 @@ any identifier nodes that may appear in the parameters to the link element."""
           f.write(' [arrowhead="%s"' % arrowhead)
           f.write(' %s];\n' % dot_attribute_string(self.dot_attributes))
 
+
+# FIXME: there should be a "Michaelis-Menten" parent class for
+# activate and repress
 
 class PromoterElementActivate(PromoterElementLink) :
 
@@ -776,7 +823,22 @@ class Factor :
     f.write(';\n')
 
 
+  def canonicalise(self) :
+    """"""
+    if isinstance(self.decay_expression, ExpressionNodeValue) :
+      self.decay_expression.clip(0.0, 1.0)
+    if isinstance(self.diffusibility_expression, ExpressionNodeValue) :
+      self.diffusibility_expression.clip(0.0, 1.0)
+
+
 class Gene :
+  """Class to represent a gene.
+
+@ivar name: name of the gene
+@ivar product: product of this gene, either a string (unresolved) or a
+  C{Factor} (resolved)
+@ivar promoter: list of promoter elements.
+"""
 
   def __init__(self, name, product, promoter = None, dot_attrs = None) :
     if not (isinstance(product, Factor) or (type(product) is types.StringType)) :
@@ -934,12 +996,35 @@ promoter elements (activate, repress) of this gene."""
     return rfactors
 
 
+  def canonicalise(self) :
+    """Canonicalise parameters in promoter elements."""
+    for p in self.promoter :
+      p.canonicalise()
+
+
 class TranssysProgram :
-  """Note: unresolved_copy returns a TranssysProgram instance, also for
+  """Class to represent a transsys program.
+
+References to objects within the transsys program can in some
+places either be specified by a python reference, or alternatively
+by a string specifying the name of the object being referred to.
+The process of replacing these names with proper python references
+is called I{resolving}, and hence a transsys program in which
+objects are referred to by proper python references is said to
+be I{resolved}, whereas one in which references are specified by
+"raw" strings is said to be I{unresolved}.
+
+Note: unresolved_copy returns a TranssysProgram instance, also for
 classes derived from TranssysProgram. If unresolved_copy for such classes
 is required to return the derived class, these classes will have to
 re-implement this method.
-  """
+
+@ivar name: name of the transsys program
+@ivar factor_list: list containing the factors of the program
+@ivar gene_list: list containing the genes of the program
+@ivar comments: list of strings that will be provided as
+  comments upon converting the transsys program to a string
+"""
 
   def __init__(self, name, factor_list = None, gene_list = None, resolve = True) :
     self.name = name
@@ -965,6 +1050,11 @@ re-implement this method.
 
 
   def __str__(self) :
+    """Render the transsys program as a multi-line string.
+
+Parsing this string results in a transsys program equal to
+this instance itself.
+"""
     s = 'transsys %s\n' % self.name
     s = s + _comment_lines(self.comments)
     s = s + '{\n'
@@ -980,14 +1070,17 @@ re-implement this method.
 
 
   def num_factors(self) :
+    """Return the number of factors in this transsys program."""
     return len(self.factor_list)
 
 
   def num_genes(self) :
+    """Return the number of genes in this transsys program."""
     return len(self.gene_list)
 
 
   def factor_names(self) :
+    """Return a list of names of the factors in this transsys program."""
     fnames = []
     for f in self.factor_list :
       fnames.append(f.name)
@@ -995,6 +1088,7 @@ re-implement this method.
 
 
   def gene_names(self) :
+    """Return a list of names of the genes in this transsys program."""
     gnames = []
     for g in self.gene_list :
       gnames.append(g.name)
@@ -1002,6 +1096,12 @@ re-implement this method.
 
 
   def find_factor_index(self, f_name) :
+    """Find the index of factor C{f_name}.
+
+@return: the index of factor C{f_name}, or -1 if no factor with that name
+  exists
+@rtype: int
+"""
     for i in xrange(len(self.factor_list)) :
       if self.factor_list[i].name == f_name :
         return i
@@ -1009,6 +1109,12 @@ re-implement this method.
 
 
   def find_factor(self, f_name) :
+    """Find the factor specified by C{f_name}.
+
+@return: the requested factor
+@rtype: Factor
+@raise StandardError: if the specified factor does not exist
+"""
     if isinstance(f_name, Factor) :
       f_name = f_name.name
     elif type(f_name) is not types.StringType :
@@ -1020,6 +1126,12 @@ re-implement this method.
 
 
   def find_gene_index(self, g_name) :
+    """Find the index of gene C{g_name}.
+
+@return: the index of gene C{g_name}, or -1 if no gene with that name
+  exists
+@rtype: int
+"""
     for i in xrange(len(self.gene_list)) :
       if self.gene_list[i].name == g_name :
         return i
@@ -1027,6 +1139,12 @@ re-implement this method.
 
 
   def find_gene(self, g_name) :
+    """Find the gene specified by C{g_name}.
+
+@return: the requested gene
+@rtype: Gene
+@raise StandardError: if the specified gene does not exist
+"""
     if isinstance(g_name, Gene) :
       g_name = g_name.name
     if type(g_name) is not types.StringType :
@@ -1051,6 +1169,7 @@ gene names and factor names can be altered without changing the network."""
 
 
   def unresolved_copy(self) :
+    """Produce an unresolved transsys program equal to this program itself"""
     factor_list = []
     for f in self.factor_list :
       factor_list.append(f.unresolved_copy())
@@ -1201,12 +1320,14 @@ genes in this transsys program."""
 
 
   def dot_positions_circle(self, x0, y0, radius) :
+    """Set the dot language coordinates of genes to arrange them in a circle."""
     for i in xrange(len(self.gene_list)) :
       angle = 2.0 * math.pi * i / len(self.gene_list)
       self.gene_list[i].dot_attributes['pos'] = '%f,%f!' % (x0 + radius * math.cos(angle), y0 + radius * math.sin(angle))
 
 
   def regulated_genes(self, factor) :
+    """Find the genes regulated by C{factor}."""
     if type(factor) is types.StringType :
       i = self.find_factor_index(factor)
       if i == -1 :
@@ -1222,6 +1343,7 @@ genes in this transsys program."""
 
 
   def indegree_list(self) :
+    """Get a gene-based list of indegree values."""
     dlist = []
     for gene in self.gene_list :
       dlist.append(len(gene.regulating_factors()))
@@ -1229,6 +1351,7 @@ genes in this transsys program."""
 
 
   def outdegree_list(self) :
+    """Get a gene-based list of outdegree values."""
     dlist = []
     for gene in self.gene_list :
       factor = gene.product
@@ -1237,6 +1360,7 @@ genes in this transsys program."""
 
 
   def merge(self, other) :
+    """Merge the factors and genes of transsys program C{other} into this program."""
     other_unresolved = other.unresolved_copy()
     for f in other_unresolved.factor_list :
       if self.find_factor_index(f.name) == -1 :
@@ -1250,6 +1374,31 @@ genes in this transsys program."""
         sys.stderr.write('TranssysProgram::merge: gene %s already present -- skipping\n' % g.name)
     self.resolve()
     self.comments.append('merged with transsys %s' % other.name)
+
+
+  def canonicalise(self) :
+    """Replace values in numeric nodes with the canonical value.
+
+Canonicalisation clips values that are outside of their range
+with the closest value within the range. This does not alter the
+dynamical properties of the transsys program, as such clipping is
+done by the transsys engine during simulation of dynamics too.
+
+In other words, the clipping done by the transsys gene expression
+simulator engine implies that there exist multiple transsys programs
+with identical dynamics, and canonicalisation serves to reduce this
+degeneracy by converting such multiple equivalent programs to one
+canonical form.
+
+Canonicalisation only operates on constant values in certain
+contexts, see C{canonicalise} documentation for C{Factor} and C{Gene}
+for more details. Notice that this implies that transsys programs
+may have identical dynamics even though their canonical forms differ.
+"""
+    for factor in self.factor_list :
+      factor.canonicalise()
+    for gene in self.gene_list :
+      gene.canonicalise()
 
 
 class GraphicsPrimitive :

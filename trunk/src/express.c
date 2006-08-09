@@ -44,6 +44,10 @@ static double minimal_concentration(int num_binding_factors, int *fi, double *fc
 
 static double michaelis_menten(double km, double max, double c)
 {
+  if (km <= 0.0)
+  {
+    return (max);
+  }
   return (max * c / (km + c));
 }
 
