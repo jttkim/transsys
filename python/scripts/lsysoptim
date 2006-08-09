@@ -42,6 +42,9 @@ def write_transopt_comments(f, tp_opt, obj_opt, opt_descriptor) :
       f.write('%s%s' % (glue, fname))
       glue = ', '
     f.write('\n')
+  f.write('\n')
+  for st_entry in obj_opt.score_table :
+    f.write('// %s %s: %f\n' % st_entry)
   f.write(str(tp_opt))
   f.flush()
 
@@ -80,7 +83,7 @@ improvement_threshold = 0.0
 disparity_function = None
 verbose = 0
 optimiserfile_name = None
-transformererfile_name = None
+transformerfile_name = None
 logfile_name = None
 options, args = getopt.getopt(sys.argv[1:], '-f:o:n:s:L:P:T:r:vh')
 for opt, par in options :
@@ -122,7 +125,9 @@ if optimiserfile_name is None and logfile_name is not None :
 f = open(frameworkfile_name, 'r')
 transsys_frame, lsys_frame = read_framework(f)
 f.close()
-if optimiserfile_name is not None :
+if optimiserfile_name is None :
+  optimiser = None
+else :
   f = open(optimiserfile_name, 'r')
   optimiser = transsys.optim.parse_optimiser(f)
   f.close()

@@ -396,6 +396,12 @@ exponentMultiplier: 5.50000000000000044e-01
 minValue: -2.20000000000000018e+00
 maxValue: 3.29999999999999982e+00"""
 
+    self.transfunc_lowerbounded = """LowerBoundedFunction
+minValue: -2.60000000000000009e+00"""
+
+    self.transfunc_arctan = """ArctanFunction
+minValue: -7.70000000000000018e+00
+maxValue: 4.20000000000000018e+00"""
 
   def getTestTranssys(self) :
     f = open('test.tra', 'w')
@@ -431,6 +437,18 @@ maxValue: 3.29999999999999982e+00"""
     for x in xlist :
       dx = x - tf.inverse(tf(x))
       self.failUnless(abs(dx) < 1e-4)
+    tf = transsys.optim.LowerBoundedFunction()
+    read_tf(fname, self.transfunc_lowerbounded, tf)
+    self.assertEqual(self.transfunc_lowerbounded, str(tf))
+    for x in xlist :
+      dx = x - tf.inverse(tf(x))
+      self.failUnless(abs(dx) < 1e-7)
+    tf = transsys.optim.ArctanFunction()
+    read_tf(fname, self.transfunc_arctan, tf)
+    self.assertEqual(self.transfunc_arctan, str(tf))
+    for x in xlist :
+      dx = x - tf.inverse(tf(x))
+      self.failUnless(abs(dx) < 1e-7)
     
 
   def testTranssysDNADecoder(self) :

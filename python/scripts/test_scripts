@@ -24,4 +24,5 @@ function runcmd ()
 }
 
 
-runcmd ./transopt_sa -f squaresum -P transopt_sa_test_saspec.txt -x transopt_sa_test_obj.txt -r 1 -L transopt_sa_test_out.dat transopt_sa_test.tra transopt_sa_test_out.tra
+runcmd ./transopt -f squaresum -P transopt_test_sa.txt -x transopt_test_obj.txt -r 1 -L transopt_test_out.dat transopt_test.tra transopt_test_out.tra
+

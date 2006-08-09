@@ -127,9 +127,10 @@ of the transsys program etc.
 
 class LsysDisparityFitnessResult(FitnessResult) :
 
-  def __init__(self, fitness, best_factor_list) :
+  def __init__(self, fitness, best_factor_list, score_table) :
     FitnessResult.__init__(self, fitness)
     self.best_factor_list = best_factor_list
+    self.score_table = score_table
 
 
 def flat_symbol_instance_list(lstring_list, transsys_program = None) :
@@ -156,6 +157,7 @@ def disparity_fitness(lsys_program, transsys_program, factor_names, num_timestep
     return 1.0
   fitness = 0.0
   best_factor_list = []
+  score_table = []
   factor_indices = []
   for factor_name in factor_names :
     factor_indices.append(transsys_program.find_factor_index(factor_name))
@@ -164,6 +166,7 @@ def disparity_fitness(lsys_program, transsys_program, factor_names, num_timestep
     fmin = None
     for factor_index in factor_indices :
       f = disparity(rule, instance_series, factor_index)
+      score_table.append((rule.name, transsys_program.factor_list[factor_index].name, f, ))
       if fmin is None :
         fmin = f
         best_factors = [transsys_program.factor_list[factor_index].name]
@@ -175,7 +178,7 @@ def disparity_fitness(lsys_program, transsys_program, factor_names, num_timestep
     # print '  rule "%s": %f' % (rule.name, f)
     best_factor_list.append((rule.name, tuple(best_factors), ))
     fitness = fitness + fmin
-  return LsysDisparityFitnessResult(fitness / float(len(lsys_program.rules)), best_factor_list)
+  return LsysDisparityFitnessResult(fitness / float(len(lsys_program.rules)), best_factor_list, score_table)
 
 
 class Mutator :
@@ -359,6 +362,96 @@ point overflow.
     return max(xmin, 1.0 / self.exponentMultiplier * math.log(v))
 
 
+class ArctanFunction(TransformationFunction) :
+  """Arcus tangens transformation function.
+
+The arctan approaches its minimum and its maximum with O(1/x). From
+a perspective of numeric computation, this makes it favourable over
+the exponential sigmoid function, as x can take on values from the
+greatest possible range without incurring floating point limitations.
+"""
+
+  functionName = 'ArctanFunction'
+  
+  def __init__(self, minValue = 0.0, maxValue = 1.0) :
+    self.minValue = minValue
+    self.valueRange = maxValue - minValue
+
+
+  def __call__(self, x) :
+    return self.minValue + (math.atan(x) / math.pi + 0.5) * self.valueRange
+
+
+  def __str__(self) :
+    s = '%s\n' % self.functionName
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.minValue, 'minValue')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.getMaxValue(), 'maxValue')
+    return s[:-1]
+
+
+  def parse_variables(self, f) :
+    self.minValue = transsys.utils.parse_float(f, 'minValue')
+    maxValue = transsys.utils.parse_float(f, 'maxValue')
+    self.valueRange = maxValue - self.minValue
+
+
+  def getMaxValue(self) :
+    return self.minValue + self.valueRange
+
+
+  def clip(self, y) :
+    return min(self.getMaxValue(), max(self.minValue, y))
+
+
+  def inverse(self, y) :
+    maxValue = self.getMaxValue()
+    if y <= self.minValue or y >= maxValue :
+      return None
+    return math.tan(math.pi * ((y - self.minValue) / self.valueRange - 0.5))
+
+
+class LowerBoundedFunction(TransformationFunction) :
+  """A function asymptoting to a finite lower bound as x -> -Inf
+and linearly diverging as x -> +Inf.
+
+This implements the function 0.5 * x + sqrt(1.0 + 0.25 * x^2), which
+approaches 1/x for small x and x for large x. Like arctan, this
+function approaches its asymptote with O(1/x) and may therefore be
+favourable over exponential functions. Linear divergence may also
+be much less prone to extremes than exponential divergence.
+"""
+
+  functionName = 'LowerBoundedFunction'
+
+  def __init__(self, minValue = 0.0) :
+    self.minValue = minValue
+
+
+  def __call__(self, x) :
+    return self.minValue + 0.5 * x + math.sqrt(1.0 + 0.25 * x * x)
+
+
+  def __str__(self) :
+    s = '%s\n' % self.functionName
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.minValue, 'minValue')
+    return s[:-1]
+
+
+  def parse_variables(self, f) :
+    self.minValue = transsys.utils.parse_float(f, 'minValue')
+
+
+  def clip(self, y) :
+    return max(self.minValue, y)
+
+
+  def inverse(self, y) :
+    if y <= self.minValue :
+      return None
+    y1 = y - self.minValue
+    return (y1 * y1 - 1.0) / y1
+
+
 class SigmoidFunction(TransformationFunction) :
   """Sigmoid parameter transformation.
 
@@ -368,6 +461,8 @@ y = minValue + (maxValue - minValue) / (1.0 + exp(-exponentMultiplier * x)).
 
   # FIXME: this function may have a further parameter x0, a more general form
   # is minValue + valueRange / exp(-exponentMultiplier * x - x0)
+  # Not clear whether this extension would be useful, could alternatively
+  # use biased initialisation for x
   functionName = 'SigmoidFunction'
 
   def __init__(self, exponentMultiplier = 1.0, minValue = 0.0, maxValue = 1.0) :
@@ -421,7 +516,7 @@ point overflow.
 @return: inverse function value, or C{None} if ${y} is out of admissible range
 @rtype: float or None
 """
-    maxValue = self.minValue + self.valueRange
+    maxValue = self.getMaxValue()
     if y < self.minValue or y > maxValue :
       return None
       # raise StandardError, 'argument %f out of range [%f, %f]' % (y, self.minValue, maxValue)

@@ -689,8 +689,15 @@ int lsys_string_diffusion(LSYS_STRING *lstr)
 	  si = lstr->symbol + i;
 	  ti = &(si->transsys_instance);
 	  transsys = ti->transsys;
-	  /* FIXME (?) should diffusibility be clipped to [0, 1] ?? Warning? */
 	  diffusibility = evaluate_expression(transsys->factor_list[f].diffusibility_expression, &ti);
+	  if (diffusibility < 0.0)
+	  {
+	    diffusibility = 0.0;
+	  }
+	  if (diffusibility > 1.0)
+	  {
+	    diffusibility = 1.0;
+	  }
 	  for (j = 0; j < neighbourhood[i].num_neighbours; j++)
 	  {
 	    /* FIXME: this is numerically very unstable. Some more maths may help fixing this... */
