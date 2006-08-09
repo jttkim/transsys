@@ -379,7 +379,12 @@ y = minValue + (maxValue - minValue) / (1.0 + exp(-exponentMultiplier * x)).
 
   def __call__(self, x) :
     """Compute function value."""
-    return self.minValue + self.valueRange / (1.0 + math.exp(-self.exponentMultiplier * x))
+    exp = -self.exponentMultiplier * x
+    if exp < -700.0 :
+      return self.getMaxValue()
+    elif exp > 700.0 :
+      return self.minValue
+    return self.minValue + self.valueRange / (1.0 + math.exp(exp))
 
 
   def __str__(self) :

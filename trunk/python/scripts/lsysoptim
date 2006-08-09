@@ -159,7 +159,7 @@ while transsys_program is not None :
       obj_opt = objective_function(optResult.optimised_transsys_program)
       write_transopt_comments(outfile, optResult.optimised_transsys_program, obj_opt, 'optimised, original')
       if logfile is not None :
-        optResult.write_log(logfile, '%d' % tp_index, transsys_index == 0, 'tp_index')
+        optResult.write_log(logfile, '%d' % tp_index, tp_index == 0, 'tp_index')
         logfile.flush()
   else :
     for restart_index in xrange(num_restarts) :
