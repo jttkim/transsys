@@ -1,0 +1,4 @@
+lsys example
+{
+  symbol shoot_piece;
+}

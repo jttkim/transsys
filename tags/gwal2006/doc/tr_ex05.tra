@@ -1,0 +1,13 @@
+  factor F2 { decay: 1; }
+
+  gene g2
+  {
+    promoter
+    {
+      F1: activate(2, 5);
+    }
+    product
+    {
+      default: F2;
+    }
+  }

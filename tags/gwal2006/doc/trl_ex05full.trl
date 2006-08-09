@@ -1,0 +1,26 @@
+lsys example
+{
+  symbol shoot_piece;
+  symbol left;
+  symbol right;
+
+  axiom shoot_piece;
+
+  rule wiggle
+  {
+    shoot_piece --> left shoot_piece right shoot_piece
+  }
+
+  graphics
+  {
+    shoot_piece
+    {
+      move(0.5);
+      color(0.7, 0.7, 0.7);
+      cylinder(0.1, 1.0);
+      move(0.5);
+    }
+    left { turn(-20); }
+    right { turn(20); }
+  }
+}

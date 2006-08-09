@@ -1,0 +1,32 @@
+transsys cycler
+{
+  factor A { decay: 0.1; }
+  factor R { decay: 0.1; }
+
+  gene agene
+  {
+    promoter
+    {
+      constitutive: 0.01;
+      A: activate(0.01, 1.0);
+      R: repress(0.1, 1.0);
+    }
+    product
+    {
+      default: A;
+    }
+  }
+
+  gene rgene
+  {
+    promoter
+    {
+      A: activate(1.0, 10.0);
+      R: repress(1.0, 1.0);
+    }
+    product
+    {
+      default: R;
+    }
+  }
+}

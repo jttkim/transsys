@@ -1,0 +1,214 @@
+#!/usr/bin/env python
+
+# $Id$
+
+# $Log$
+# Revision 1.1  2005/03/08 17:12:02  jtk
+# Initial revision
+#
+# Revision 1.3  2003/02/14 16:31:27  kim
+# regstruct project is nearing completion. regstruct_transsys for
+#     generation of transsys programs and regstruct_transarray for
+#     array simulation are (more or less) properly implemented.
+#     Analysis with R has been assembled in microarr.r
+#
+# Revision 1.2  2003/02/04 23:46:12  kim
+# adapted to parse program into TranssysProgram instance etc.
+#
+# Revision 1.1  2003/01/28 21:12:05  kim
+# initial toolbox assembly
+#
+
+
+import sys
+import getopt
+import string
+import os
+
+import transsys.utils
+import transsys
+import arrtool
+
+
+def random_list(length, minval, maxval, rng) :
+  l = []
+  valrange = maxval - minval
+  for i in xrange(length) :
+    l.append(rng.rnd() * valrange - minval)
+  return l
+
+
+def arrdata_plots(gpcfile, espec_list, histo_max, histo_nbins, array_fname, basename, cmp_basename = None) :
+  a = arrtool.MicroarrayData()
+  f = open(array_fname, 'r')
+  a.read_file(f)
+  f.close()
+  a.experiment_plots(gpcfile, espec_list, histo_max, histo_nbins, basename, cmp_basename)
+
+
+def comparative_regstrength_plot(fname, gpcfile, array_fname, complete_array_fname) :
+  a = arrtool.MicroarrayData()
+  f = open(array_fname, 'r')
+  a.read_file(f)
+  f.close()
+  rlist = a.regulation_index_list()
+  rdict = {}
+  for r in rlist :
+    rdict[r[0]] = r[1]
+  complete_a = arrtool.MicroarrayData()
+  f = open(complete_array_fname, 'r')
+  complete_a.read_file(f)
+  f.close()
+  complete_rlist = complete_a.regulation_index_list()
+  factor_list = []
+  for r in complete_rlist :
+    factor_list.append(r[0])
+  factor_list.sort()
+  index_dict = {}
+  for i in xrange(len(factor_list)) :
+    index_dict[factor_list[i]] = i
+  f = open(fname, 'w')
+  for i in xrange(len(complete_rlist)) :
+    r = complete_rlist[i]
+    if r[0] in rdict.keys() :
+      f.write('# %s: externally unperturbed\n' % r[0])
+    else :
+      f.write('# %s: externally perturbed\n' % r[0])
+    f.write('%d %d %g' % (index_dict[r[0]], i, r[1]))
+    if r[0] in rdict.keys() :
+      f.write(' %g' % rdict[r[0]])
+    f.write('\n')
+  gpcfile.write('plot \'%s\' using 3 with boxes, \'%s\' using 4 with impulses, \'%s\' using 4 with points\n' % (fname, fname, fname))
+  gpcfile.write('pause -1 \'Hit return\'\n')
+
+
+def usage() :
+  print '-m <float>: specify maximum initial expression value'
+  print '-e <intnum>: specify number of environmental conditions'
+  print '-n <intnum>: specify number of samples from each environment'
+  print '-d <intnum>: specify delta t between samples'
+  print '-p <intnum>: specify number of perturbed factors'
+  print '-r <intnum>: specify random seed'
+  print '-s <float>: specify skew for saved array vales'
+  print '-v <float>: specify dispersion (gaussian) for saved array values'
+  print '-H <float>,<float>: specify histogram parameters: first is number'
+  print '    of bins, second is max. value'
+  print '-c <filename>: specify name for complete microarray file'
+  print '    (i.e. including rows for perturbed factors)'
+  print '-a <basename>: specify filename prefix for testing purposes'
+
+
+class DistortFunc :
+
+  def __init__(self, skew, dispersion, rndseed = 1) :
+    self.skew = skew
+    self.dispersion = dispersion
+    self.rng = transsys.utils.transrnd(rndseed)
+
+
+  def __call__(self, v) :
+    return v + self.skew + self.rng.gauss() * self.dispersion
+
+
+rndseed = 1
+maxval = 1.0
+num_environments = 5
+num_timesteps_init = 5000
+samples_per_environment = 5
+delta_t = 20
+arrtool_basename = None
+num_perturbed_factors = None
+complete_array_fname = None
+histo_max = 10.0
+histo_nbins = 0
+array_dispersion = 0.0
+array_skew = 0.0
+
+options, args = getopt.getopt(sys.argv[1:], 'r:m:a:e:n:d:p:c:s:v:H:h')
+for opt in options :
+  if opt[0] == '-m' :
+    maxval = string.atof(opt[1])
+  elif opt[0] == '-r' :
+    rndseed = int(opt[1])
+  elif opt[0] == '-a' :
+    arrtool_basename = opt[1]
+  elif opt[0] == '-e' :
+    num_environments = string.atoi(opt[1])
+  elif opt[0] == '-n' :
+    samples_per_environment = string.atoi(opt[1])
+  elif opt[0] == '-d' :
+    delta_t = string.atoi(opt[1])
+  elif opt[0] == '-p' :
+    num_perturbed_factors = string.atoi(opt[1])
+  elif opt[0] == '-s' :
+    array_skew = string.atof(opt[1])
+  elif opt[0] == '-o' :
+    array_dispersion = string.atof(opt[1])
+  elif opt[0] == '-c' :
+    complete_array_fname = opt[1]
+  elif opt[0] == '-H' :
+    l = string.split(opt[1], ',')
+    histo_nbins = string.atoi(l[0])
+    if len(l) > 1 :
+      histo_max = string.atof(l[1])
+  elif opt[0] == '-h' :
+    usage()
+    sys.exit()
+  else :
+    raise StandardError, 'unknown option %s' % opt[0]
+if len(args) < 1 :
+  raise StandardError, 'you must provide a transsys program file'
+transsys_filename = args[0]
+if len(args) > 1 :
+  outfile_name = args[1]
+  outfile = open(outfile_name, 'w')
+else :
+  outfile_name = None
+  outfile = sys.stdout
+
+p = transsys.TranssysProgramParser(transsys_filename)
+tp = p.parse_transsys()
+rng = transsys.utils.transrnd(rndseed)
+initial_values = transsys.TranssysInstance(tp)
+dfunc = DistortFunc(array_skew, array_dispersion)
+if num_perturbed_factors is None :
+  num_perturbed_factors = tp.num_factors()
+initial_values.factor_concentration = random_list(tp.num_factors(), 0.0, maxval, rng)
+tas = transsys.ArraySeries(transsys_filename, initial_values, num_timesteps_init, 1e-8)
+tas.simulate_timeseries('ref_init', tas.reference_state, samples_per_environment * delta_t, delta_t)
+for env in xrange(num_environments) :
+  env_name = 'env%03d' % env
+  env_init = transsys.TranssysInstance(tp)
+  env_init.factor_concentration = random_list(num_perturbed_factors, 0.0, maxval, rng) + tas.reference_state.factor_concentration[num_perturbed_factors:]
+  # env_init = random_list(num_perturbed_factors, 0.0, maxval, rng) + tas.reference_state[num_perturbed_factors:]
+  tas.simulate_timeseries(env_name, env_init, samples_per_environment * delta_t, delta_t)
+tas.write_data(outfile, tp.factor_names()[num_perturbed_factors:], None, 1, dfunc)
+if complete_array_fname :
+  f = open(complete_array_fname, 'w')
+  tas.write_data(f, tp.factor_names(), None, 1, dfunc)
+  f.close()
+
+if arrtool_basename is not None and outfile_name is None :
+  raise StandardError, 'cannot run array data analysis on data written to standard output'
+if arrtool_basename is None :
+  sys.exit()
+
+outfile.close()
+time_list = []
+for t in range(samples_per_environment) :
+  time_list.append(float(t * delta_t))
+espec_list = [arrtool.ExperimentSpec(range(1, 1 + samples_per_environment), time_list, 'ref_init')]
+for env in xrange(1, num_environments + 1) :
+  espec_list.append(arrtool.ExperimentSpec(range(1 + env * samples_per_environment, 1 + (env + 1) * samples_per_environment), time_list, 'env%03d' % env))
+gpc_fname = '%s.gpc' % arrtool_basename
+gpcfile = open(gpc_fname, 'w')
+if histo_nbins == 0 :
+  histo_nbins = tp.num_factors() / 20
+if histo_nbins < 5 :
+  histo_nbins = 5
+arrdata_plots(gpcfile, espec_list, histo_max, histo_nbins, outfile_name, arrtool_basename)
+if complete_array_fname :
+  arrdata_plots(gpcfile, espec_list, histo_max, histo_nbins, complete_array_fname, '%s_c' % arrtool_basename, arrtool_basename)
+  fname = '%s_scomp.plt' % arrtool_basename
+  comparative_regstrength_plot(fname, gpcfile, outfile_name, complete_array_fname)
+

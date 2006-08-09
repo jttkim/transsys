@@ -1,0 +1,262 @@
+#!/usr/bin/env python
+
+# generate a transsys program,
+# n "mutant" transsys programs with one knockout each time,
+# build matrix_D and create disruption network
+
+# $Id$
+
+# $Log$
+# Revision 1.1  2005/03/08 17:12:02  jtk
+# Initial revision
+#
+# Revision 1.6  2003/02/27 19:13:21  schwarzd
+# new version?
+#
+# Revision 1.5  2003/02/12 18:12:23  schwarzd
+# creats disruption network
+# CVSt: ----------------------------------------------------------------------
+#
+# Revision 1.4  2003/02/12 15:50:29  schwarzd
+# added sigma
+#
+# Revision 1.3  2003/02/12 15:28:11  schwarzd
+# mutant_transsys now reconstructs network
+#
+# Revision 1.2  2003/02/05 14:56:12  kim
+# modified many things...
+#
+
+
+import sys
+import getopt
+import string
+import copy
+import math
+
+import transsys
+
+
+class KnockoutTranssysProgram(transsys.TranssysProgram) :
+
+  def add_nonfunctional_factor(self) :
+    self.non_func = transsys.Factor("non_func", 0.0)
+    self.factor_list.append(self.non_func)
+
+
+  def do_knockout(self, knockout_index) :
+    if self.knockout_index is not None :
+      raise StandardError, 'multiple knockout backtrace not (yet) implemented'
+    self.name = '%s_ko_%d' % (self.basename, knockout_index)
+    self.knockout_index = knockout_index
+    self.functional_factor = self.gene_list[knockout_index].product
+    self.gene_list[knockout_index].product = self.non_func
+
+
+  def undo_knockout(self) :
+    if self.knockout_index is None :
+      raise StandardError, 'no knockout done which could be undone'
+    self.name = self.basename
+    self.gene_list[self.knockout_index].product = self.functional_factor
+    self.knockout_index = None
+
+
+  def __init__(self, tp) :
+    self.basename = tp.name
+    self.name = tp.name
+    self.factor_list = tp.factor_list[:]
+    self.gene_list = tp.gene_list[:]
+    self.comments = tp.comments
+    self.add_nonfunctional_factor()
+    self.knockout_index = None
+
+
+def write_time_series(f, tseries) :
+  tsteps = tseries.keys()
+  tsteps.sort()
+  for t in tsteps :
+    tseries[t].write_gnuplot(f, t)
+  f.write('\n')
+  f.flush()
+
+
+def create_disruption_network(matrix_D) :
+  # default values
+  factor_decay_expr = transsys.ExpressionNodeValue(0.1)
+  promoter_expr     = transsys.ExpressionNodeValue(1.0)
+  
+  factor_list = []
+  gene_list = []
+  temp_promoter_list = []
+  
+  for i in xrange(len(matrix_D[0])) :
+    factor_list.append(transsys.Factor('f' + string.zfill(str(i),4), factor_decay_expr))
+  
+  for gene_i in xrange(len(matrix_D)) :
+    
+    temp_promoter_list = []
+    for gene_j in xrange(len(matrix_D[gene_i])) :
+      if matrix_D[gene_i][gene_j] == -1.0 :
+        temp_promoter_list.append(transsys.PromoterElementActivate(promoter_expr, promoter_expr, [factor_list[gene_j]]))
+      if matrix_D[gene_i][gene_j] == 1.0 :
+        temp_promoter_list.append(transsys.PromoterElementRepress(promoter_expr, promoter_expr, [factor_list[gene_j]]))
+
+    #if len(temp_promoter_list) == 0 :
+    temp_promoter_list.append(transsys.PromoterElementConstitutive(transsys.ExpressionNodeValue(0.1)))
+      
+    gene_list.append(transsys.Gene("g" + string.zfill(str(gene_i),4), factor_list[gene_i], temp_promoter_list))
+  
+  disruption_network = transsys.TranssysProgram("rec", factor_list, gene_list)
+  return disruption_network
+
+ 
+def identity_perturber(c, fn) :
+  return c
+
+
+def do_gnuplot(gnuplot_file, knockout_tp, reference_state, num_timesteps) :
+  gnuplot_file.flush()
+  initial_state = reference_state.perturbed_copy(identity_perturber)
+  initial_state.transsys_program = knockout_tp
+  tseries = initial_state.time_series(num_timesteps, 1)
+  write_time_series(gnuplot_file, tseries)
+
+
+# matrix_D:
+# ---------
+# dim(matrix_D) = n x n
+#
+# value_k  e {-1, 0, 1}
+# list_k   = [value_0, .., value_n]
+# matrix_D = [[list_0], .., [list_n]]
+#
+# column_i of matrix_D = list_i
+# row_j of matrix_D    = list_1[j], .., list_n[j]
+
+def get_matrix_D(matrix_E, gamma = 0.2, sigma = None) :
+  if sigma is None :
+    sigma = [1.0] * len(matrix_E)
+  if len(sigma) < len(matrix_E) :
+    raise StandardError, 'get_matrix_D: invalid size of vector sigma'
+  matrix_D = []
+  for i in xrange(len(matrix_E)) :
+    matrix_D.append([1.0]*len(matrix_E))
+  
+  for experiment_i in xrange(len(matrix_E)) :
+    for factor_j in xrange(len(matrix_E[experiment_i])) :
+      # "normalize"
+      matrix_E[experiment_i][factor_j] = matrix_E[experiment_i][factor_j]/sigma[i]
+      # d_ij = ...
+      if matrix_E[experiment_i][factor_j] <= -gamma :
+        matrix_D[experiment_i][factor_j] = -1.0
+      elif matrix_E[experiment_i][factor_j] >= gamma :
+        matrix_D[experiment_i][factor_j] = 1.0
+      else :
+        matrix_D[experiment_i][factor_j] = 0.0
+  return matrix_D    
+
+def usage() :
+  print 'mutant_transsys -- ...'
+  print 'usage: mutant_transsys [options] <RandomTranssysParameters file> <Output file>'
+  print 'options:'
+  print '-t <name>: specify base name of transsys programs'
+  print '-m <file>: specify file to save output'
+  print '-g <filename>: specify gnuplot file name'
+  print '-h: print this help and exit'
+
+transsys_name = 'knockout_tp_defaultname'
+gnuplot_fname = None
+num_timesteps_reference = 300
+num_timesteps = 200
+gamma = 2
+sigma = None
+epsilon = 0.01
+
+options, args = getopt.getopt(sys.argv[1:], 'g:t:m:h')
+for opt in options :
+  if opt[0] == '-h' :
+    usage()
+    sys.exit()
+  elif opt[0] == '-g' :
+    gnuplot_fname = opt[1]
+  elif opt[0] == '-m' :
+    output_fname = opt[1]
+  elif opt[0] == '-t' :
+    transsys_name = opt[1]
+  else :
+    sys.stderr.write('unknown option %s\n' % opt[0])
+if len(args) > 0 :
+  infile = open(args[0], 'r')
+else :
+  infile = sys.stdin
+  usage()
+  sys.exit()
+if len(args) > 1 :
+  outfile = open(args[1], 'w')
+else :
+  outfile = sys.stdout
+rtp = transsys.RandomTranssysParameters()
+rtp.parse(infile)
+tp = rtp.generate_transsys(transsys_name)
+
+# instantiate KnockoutTranssysProgram
+knockout_tp = KnockoutTranssysProgram(tp)
+outfile.write(str(knockout_tp))
+outfile.flush()
+
+ti = transsys.TranssysInstance(knockout_tp)
+tseries = ti.time_series(num_timesteps_reference, 1)
+reference_state = tseries[max(tseries.keys())]
+
+if gnuplot_fname :
+  gnuplot_file = open(gnuplot_fname, 'w')
+  write_time_series(gnuplot_file, tseries)
+
+# gene expression data matrix E
+# gene-specific deviation estimate !!do NOT use sigma[i]==0
+sigma = [1.0] * tp.num_factors()
+# 
+matrix_E = []
+for i in xrange(tp.num_factors()) :
+  matrix_E.append([1.0] * (tp.num_factors()))
+
+for i in xrange(tp.num_genes()) :
+  # mutate gene i
+  knockout_tp.do_knockout(i)
+  initial_state = reference_state.perturbed_copy(identity_perturber)
+  initial_state.transsys_program = knockout_tp
+  m_tseries = initial_state.time_series(num_timesteps, 1)
+  this_mutant = m_tseries[max(m_tseries.keys())]
+
+  for j in xrange(tp.num_factors()) :
+    if reference_state.factor_concentration[j] <= (0.0 + epsilon) :      
+      if this_mutant.factor_concentration[j] <= (0.0 + epsilon) :
+        matrix_E[i][j]  = 0.0
+      else :
+        matrix_E[i][j] = max(sigma) * gamma
+    elif this_mutant.factor_concentration[j] <= (0.0 + epsilon) :
+      matrix_E[i][j] = (-1)*max(sigma) * gamma
+    else :
+      matrix_E[i][j] = math.log(this_mutant.factor_concentration[j]/reference_state.factor_concentration[j])
+
+  #outfile.write(str(knockout_tp))
+  #outfile.flush()
+  if gnuplot_fname :
+    do_gnuplot(gnuplot_file, knockout_tp, reference_state, num_timesteps)
+
+  # demutate gene i
+  knockout_tp.undo_knockout()
+
+matrix_D = get_matrix_D(matrix_E, gamma, sigma)
+
+
+# create disruption network
+new_tp = create_disruption_network(matrix_D)
+
+if output_fname :
+  output_file = open(output_fname, 'w')
+  output_file.write(str(new_tp))
+else :
+  print new_tp
+
+sys.exit()

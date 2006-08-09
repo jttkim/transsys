@@ -1,0 +1,142 @@
+#!/usr/bin/env python
+
+import sys
+import getopt
+import time
+
+import transsys
+import transsys.clib
+
+
+def compare_time_series(ts1, ts2) :
+  if len(ts1) != len(ts2) :
+    print 'time series lengths differ: %d != %d' % (len(ts1), len(ts2))
+  for i in xrange(len(ts1)) :
+    if ts1[i].transsys_program is not ts2[i].transsys_program :
+      print 'transsys mismatch: %s != %s' % (ts1[i].transsys.name, ts2[i].transsys.name)
+    for j in xrange(len(ts1[i].factor_concentration)) :
+      print '%f' % (ts1[i].factor_concentration[j] - ts2[i].factor_concentration[j]),
+    print
+
+
+def test_timeseries(tp, nsteps, sampling_period) :
+  ti = transsys.TranssysInstance(tp)
+  for i in xrange(len(ti.factor_concentration)) :
+    ti.factor_concentration[i] = float(i)
+  print str(ti)
+  print
+  print '-' * 60
+  x = ti.time_series(nsteps, sampling_period)
+  print '-' * 60
+  for t in x :
+    print t
+  ts = ti.time_series_old(nsteps, sampling_period)
+  compare_time_series(x, ts)
+
+
+def timeseries_new(tp, nsteps, sampling_period) :
+  ti = transsys.TranssysInstance(tp)
+  for i in xrange(len(ti.factor_concentration)) :
+    ti.factor_concentration[i] = float(i)
+  x = ti.time_series(nsteps, sampling_period)
+  return x
+
+
+def timeseries_old(tp, nsteps, sampling_period) :
+  ti = transsys.TranssysInstance(tp)
+  for i in xrange(len(ti.factor_concentration)) :
+    ti.factor_concentration[i] = float(i)
+  ts = ti.time_series_old(nsteps, sampling_period)
+  return ts
+
+
+def test_timing(tp, nsteps, sampling_period) :
+  t_start = time.time()
+  for i in xrange(num_repeats) :
+    x = timeseries_new(tp, nsteps, sampling_period)
+  t_new = time.time() - t_start
+  t_start = time.time()
+  for i in xrange(num_repeats) :
+    x = timeseries_old(tp, nsteps, sampling_period)
+  t_old = time.time() - t_start
+  print 'old: %f, new: %f' % (t_old, t_new)
+
+
+def emulate_ltransexpr(f, lsys, nsteps, sampling_period, transsys_name = None) :
+
+  def filter(transsys_name, symbol_instance) :
+    if transsys_name is None :
+      return True
+    if symbol_instance.transsys_instance is None :
+      return False
+    if symbol_instance.transsys_instance.transsys_program.name == transsys_name :
+      return True
+    return False
+
+  lstring_list = lsys.derivation_series(nsteps, sampling_period)
+  for lstring in lstring_list :
+    for i in xrange(lstring.length()) :
+      si = lstring.symbol_list[i]
+      if filter(transsys_name, si) :
+        f.write('%d %d %s' % (lstring.timestep, i, si.symbol.name))
+        if si.rule is None :
+          f.write(' <copy>')
+        else :
+          f.write(' %s' % si.rule.name)
+        if si.transsys_instance is not None :
+          f.write(' %s' % si.transsys_instance.transsys_program.name)
+          for fc in si.transsys_instance.factor_concentration :
+            f.write(' %g' % fc)
+        f.write('\n')
+
+
+num_timesteps = 5
+options, args = getopt.getopt(sys.argv[1:], 'n:vh')
+for opt, par in options :
+  if opt == '-h' :
+    print 'help...'
+  elif opt == '-v' :
+    transsys.clib.setverbose(0)
+  elif opt == '-n' :
+    num_timesteps = int(par)
+  else :
+    raise StandardError, 'unknown option "%s"' % opt
+if len(args) > 0 :
+  infile = open(args[0], 'r')
+else :
+  infile = sys.stdin
+if len(args) > 1 :
+  outfile = open(args[1], 'w')
+else :
+  outfile = sys.stdout
+
+num_repeats = 1000
+parser = transsys.TranssysProgramParser(infile)
+tp = parser.parse()
+# test_timing(tp, num_timesteps, sampling_period)
+
+lsys = parser.parse()
+lsys.associate_transsys(tp)
+print tp
+print lsys
+lsys.dissociate_transsys()
+print tp
+print lsys
+sys.exit()
+
+for i in xrange(10) :
+  # print 'i = %d' % i
+  # print lsys
+  emulate_ltransexpr(outfile, lsys, num_timesteps, 1, tp.name)
+sys.exit()
+
+print '-' * 60
+slist = transsys.clib.stringseries(lsys, num_timesteps, 1)
+print '-' * 60
+for s in slist :
+  print s
+sys.exit()
+
+nsteps = 500
+sp = 1
+test_timeseries(tp, nsteps, sp)

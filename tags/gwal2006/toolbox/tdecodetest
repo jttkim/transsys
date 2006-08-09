@@ -1,0 +1,111 @@
+#!/usr/bin/env python
+
+# $Id$
+
+# $Log$
+# Revision 1.2  2005/06/15 10:56:12  jtk
+# changed gene structure, introduced regexp use for start/end finding
+#
+# Revision 1.1  2005/06/14 18:35:42  jtk
+# transdecode for decoding transsys programs from "DNA" sequences
+#
+
+import sys
+import getopt
+import random
+import string
+
+import transsys
+import transdecode
+
+
+def random_sequence(l, rng) :
+  s = []
+  for i in xrange(l) :
+    s.append('acgt'[rng.randrange(4)])
+  return string.join(s, '')
+
+
+def usage() :
+  print '-a <int>: specify length of activator and repressor binding regions'
+  print '-l <int>: specify length of random sequence to be decoded'
+  print '-p <regexp>: specify gene (transcription) start regexp'
+  print '-t <regexp>: specify gene (transcription) end regexp'
+  print '-s <int>: specify random seed'
+  print '-S <string>: specify sequence to be decoded'
+  print '-T <filename>: specify transys decoder parameter file to be read'
+  print '-O <filename>: specify transys decoder parameter file to be written'
+  print '-h: print this help and exit'
+
+
+decoder = transdecode.TranssysDNADecoder()
+decoder.thresholdBase = 1.0
+decoder.thresholdIncrement = 0.25
+decoder.factorNameTemplate = 'f%03d'
+decoder.geneNameTemplate = 'g%03d'
+decoder.setGeneStartRE('aa')
+decoder.setGeneEndRE('ttt')
+decoder.repressorAreaLength = 10
+decoder.activatorAreaLength = 10
+decoder.decay = 0.3
+decoder.diffusibility = 0.1
+decoder.a_spec = 0.2
+decoder.a_max = 1.0
+decoder.constitutive = 0.333
+# dnaseq = 'tttttttttttaaggggggggggacgtacgtccccccccc'
+
+dnaseq = None
+seq_length = 100
+rndseed = 1
+tdcfile_name = None
+tdc_outfile_name = None
+options, args = getopt.getopt(sys.argv[1:], 'a:l:p:s:t:S:T:O:h')
+for opt, par in options :
+  if opt[0] == '-h' :
+    usage()
+    sys.exit()
+  elif opt == '-S' :
+    dnaseq = par
+  elif opt == '-t' :
+    decoder.thresholdOffset = float(par)
+  elif opt == '-T' :
+    tdcfile_name = par
+  elif opt == '-O' :
+    tdc_outfile_name = par
+  elif opt == '-p' :
+    decoder.setGeneStartRE(par)
+  elif opt == '-t' :
+    decoder.setGeneEndRE(par)
+  elif opt == '-a' :
+    decoder.repressorAreaLength = int(par)
+    decoder.activatorAreaLength = int(par)
+  elif opt == '-s' :
+    rndseed = int(par)
+  elif opt == '-l' :
+    seq_length = int(par)
+  else :
+    raise StandardError, 'option %s not implemented' % opt
+if len(args) > 0 :
+  infile = open(args[0], 'r')
+else :
+  infile = sys.stdin
+if len(args) > 1 :
+  outfile = open(args[1], 'w')
+else :
+  outfile = sys.stdout
+if tdcfile_name is not None :
+  f = open(tdcfile_name, 'r')
+  decoder.parse(f)
+  f.close()
+if tdc_outfile_name is not None :
+  f = open(tdc_outfile_name, 'w')
+  decoder.write(f)
+  f.close()
+if dnaseq is None :
+  rng = random.Random(rndseed)
+  dnaseq = random_sequence(seq_length, rng)
+
+tp = decoder.decode_transsys('tdecodetest', dnaseq)
+outfile.write('// indegree list: %s\n' % str(tp.indegree_list()))
+outfile.write('// outdegree list: %s\n' % str(tp.outdegree_list()))
+outfile.write(str(tp))

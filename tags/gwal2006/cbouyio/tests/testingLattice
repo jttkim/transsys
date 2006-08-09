@@ -1,0 +1,203 @@
+#!/bin/bash
+
+# Script to conduct several tests on the latticeSimulator python program.
+# First developed by Cbouyio UEA 15/05/2006.
+
+
+# Usage.
+if [ "$1" == "--help" ] || [ "$1" = "-h" ] ; then
+  echo "Usage: $0  (the tests run without any option)"
+  echo "  Conducting a collection of tests to the latticeSimulator python program.
+  For more info about the tests check the source code."
+  exit 1
+fi
+  
+
+# The directory should contain some expected "zero output" files and the 
+# coresponding "testXxxx" transsys program files.
+if [ ! -f zerotest.tra ]; then
+  echo "Can't find the testZero.tra file, try to find or create one."
+  exit 1
+elif [ ! -f zero.out.expect ]; then
+  echo "Can't find the zero.out.expect file, it's needed to conduct the zero testing."
+  exit 1
+elif [ ! -f decaytest.tra ]; then
+  echo "Can't find the testDecay.tra file, try to find or create one."
+  exit 1
+elif [ ! -f decay.out.expect ]; then
+  echo "Can't find the decay.out.expect file, it's needed to conduct the decay testing."
+  exit 1
+elif [ ! -f intertest.tra ]; then
+  echo "Can't find the intertest.tra file, try to find or create one."
+  exit 1
+elif [ ! -f inter.out.expect ]; then
+  echo "Can't find the inter.out.expect file, it's needed to conduct the nteraction testing."
+  exit 1
+elif [ ! -f sizetest.tra ]; then
+  echo "Can't find the sizetest.tra file, try to find or create one."
+  exit 1
+elif [ ! -f size.out.expect ]; then
+  echo "Can't find the size.out.expect file, it's needed to conduct the lattice size and shannon entropy testing."
+  exit 1
+elif [ ! -f factorstest.tra ]; then
+  echo "Can't find the factorstest.tra file, try to find or create one."
+  exit 1
+elif [ ! -f factors.out.expect ]; then
+  echo "Can't find the factors.out.expect file, it's needed to conduct the factors, signal testing."
+  exit 1
+elif [ ! -f timesteptest.tra ]; then
+  echo "Can't find the timesteptest.tra file, try to find or create one."
+  exit 1
+elif [ ! -f timestep.out.expect ]; then
+  echo "Can't find the timestep.out.expect file, it's needed to conduct the timestep testing."
+  exit 1
+fi
+
+####### Don't use anymore, the script exit with an exit code upon any failure.
+## Initialise some counters.
+#failure=0
+#success=0
+#notests=0
+
+# Test No 1: Zero test for the latticeSimulator program.
+# The test is running with the the simulator's default parameters, (Check the 
+# Usage of the original program fro more info).
+# The test runs on a geneless transsys program with all the values set to zero.
+../latticeSimulator zerotest.tra zerotestTMP.out
+let notests++
+if ! diff zero.out.expect zerotestTMP.out ; then
+  echo "zero test: failed... 
+files zero.out.expect zerotestTMP.out differ!!!"
+  rm *TMP.out
+  exit 1
+#  let failure++
+else
+  echo 'zero test: successful!'
+#  let success++
+fi
+
+
+# Test no 2: Decay test for the latticeSimulator program.
+# The test is running with the simulator's -x parameter (concentration:timestep)
+# The test runs on a geneless transsys program with decay rate = 0.5.
+../latticeSimulator -x 10:0 decaytest.tra decaytestTMP.out
+let notests++
+if ! diff decay.out.expect decaytestTMP.out ; then
+  echo 'decay test: failed...
+files decay.out.expect decaytestTMP.out differ!!!'
+  rm *TMP.out
+  exit 1
+#  let failure++
+else
+  echo 'decay test: successful!'
+#  let success++
+fi
+# Conduct some further test with R, to check the exponential deacay rate.
+
+
+# Test No 3: Test the lattice size, the shannon Entropy measure depends ONLY
+# in the lattice size.
+# The test runs on an identical program with the decay test. the .tra file has
+# a different name to avoid the generation of the same directory.
+# The test involves two comparisons, first the outfile should be identical with
+# the expected and second the outfile should be different from the decay test
+# expected. The signa need not to be adapted because the signal introduction
+# occurs in 4 cells for even lattice sizes...!!!
+../latticeSimulator -x 10:0 -n 10 sizetest.tra sizetestTMP.out
+let notests++
+# Introduce a flag because there are two condition that might result to the failure of test.
+#flag=0
+if ! diff size.out.expect sizetestTMP.out ; then
+  echo "size test: failed...
+files size.out.expect sizetestTMP.out differ!!!"
+  rm *TMP.out
+  exit 1
+#  let flag++
+elif cmp -s decay.out.expect sizetestTMP.out ; then
+  echo 'size test: failed...
+files decay.out.expect sizetestTMP.out are the same!!!'
+  rm *TMP.out
+  exit 1
+#  let flag++
+else
+  echo 'size test: successful!'
+#  let success++
+fi
+
+## Is not used anymore, intoduce an exit code instead.
+## Check the flag and then increment the failure parameter.
+#if [[ $flag != 0 ]]; then
+#  let failure++
+#fi
+
+
+# Test no 4: Diffusibility test between the cells on the lattice.
+# The test runs on a simple transsys program of two factors encoded by two
+# genes where each gene is expressed indepententlly and constitutively (0.5).
+# (Check the corresponding transsys program for more details)
+# Checks out the "per factor" diffusibility mechanism by using two factors with
+# the extreme possible values for diffusibility factor_A=1.0 and factor_B=0.0
+../latticeSimulator intertest.tra intertestTMP.out
+let notests++
+if ! diff inter.out.expect intertestTMP.out ; then
+  echo 'interaction test: failed...
+files inter.out.expect intertestTMP.out differ!!!'
+  rm *TMP.out
+  exit 1
+#  let failure++
+else
+  echo 'interaction test: successful!'
+#  let success++
+fi
+# Conduct some further tests with R, to check the 100% diffusion of the factors
+# between the cells on the lattice.
+
+
+# Test No 5: Test the number/name of factors and the signal mechanism.
+# The test runs on a more complicated transsys program with two genes encoding
+# for two factors, one activator one repressor.
+# The test runs using the signal mechanism, -s switcher by denoting a factor
+# name and a factor concentration. (The rest of the parameters default)
+../latticeSimulator -s FACTOR_A:10 factorstest.tra factorstestTMP.out
+let notests++
+if ! diff factors.out.expect factorstestTMP.out ; then
+  echo 'factors-signal test: failed...
+files factors.out.expect factorstestTMP.out differ!!!'
+  rm *TMP.out
+  exit 1
+#  let failure++
+else
+  echo 'factors-size test: successful!'
+#  let success++
+fi
+
+
+# Test No 6: Test the timestep switch and mechanism.
+# The test runs on a simple transsys program with two genes two factors,
+# similar with the factorstest.tra program.
+# It test the operation of the timesteps switch (-t) as well as the timesteps
+# output. All the rest parameters are set to default.
+../latticeSimulator -t 99 timesteptest.tra timesteptestTMP.out
+let notests++
+if ! diff timestep.out.expect timesteptestTMP.out ; then
+  echo 'timesteps test failed...
+files timestep.out.expect timesteptestTMP.out differ!!!'
+  rm *TMP.out
+  exit 1
+#  let failure++
+else
+  echo 'timesteps test: successful!'
+#  let success++
+fi
+
+
+# Print the final message.
+echo
+rm *TMP.out
+echo "all $notests tests run succefully!!!"
+#if [[ $failure = 0 ]] ; then
+#  echo "all $success out of $notests tests run successfully!!!"
+#else
+#  echo "not all tests run succefully. $success out of $notests succeed and $failure out of $notests tests failed...!!!"
+#fi
+

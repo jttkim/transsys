@@ -1,0 +1,140 @@
+#!/usr/bin/env python
+
+# generate random transsys programs consisting of a set of genes that form
+# regulatory network, and a set of structural genes. Each structural
+# gene is controlled by one gene from the regulatory network, by
+# activation.
+
+# $Id$
+
+# $Log$
+# Revision 1.1  2005/03/08 17:12:02  jtk
+# Initial revision
+#
+# Revision 1.5  2003/02/17 21:40:31  kim
+# Transformed microarr.r into a R library called transarr. Added array_background
+#     to regstruct system
+#
+# Revision 1.4  2003/02/14 16:31:27  kim
+# regstruct project is nearing completion. regstruct_transsys for
+#     generation of transsys programs and regstruct_transarray for
+#     array simulation are (more or less) properly implemented.
+#     Analysis with R has been assembled in microarr.r
+#
+# Revision 1.3  2003/02/04 23:45:31  kim
+# updated to use RandomTranssysParameters
+#     does not (yet) use RTAControlParameters, though
+#
+# Revision 1.2  2003/01/30 12:14:33  kim
+# initial proper implementation of regstruct_transsys
+#
+# Revision 1.1  2003/01/28 21:12:05  kim
+# initial toolbox assembly
+#
+
+import sys
+import math
+import getopt
+
+import transsys
+import transsys.utils
+import regstruct
+
+
+def usage() :
+  print 'generate a random transsys program consisting of a regulatory network'
+  print 'controlling structural genes, and write a template parameter file for'
+  print 'regstruct_transarray'
+  print '-R <filename>: specify RTP file for regulatory network'
+  print '-S <filename>: specify RTP file for structural genes'
+  print '-d <filename>: specify dot output file (process with "neato")'
+  print '-g <intnum>: specify regulon size list (string of comma-separated integers)'
+  print '-p <intnum>: specify number of perturbed factors'
+  print '-r <intnum>: specify random seed'
+  print '-t <filename>: specify template RTA file'
+  print '-w: write transsys program in file <basename>.tra'
+
+
+radius = 5.0
+rtp = None
+struct_rtp = None
+regulon_size_list = None
+dot_fname = None
+out_fname = None
+num_perturbed_factors = None
+rndseed = 1
+template_fname = None
+write_transsys = 0
+
+options, args = getopt.getopt(sys.argv[1:], 'R:S:d:g:p:r:t:wh')
+for opt in options :
+  if opt[0] == '-h' :
+    usage()
+    sys.exit()
+  elif opt[0] == '-R' :
+    rtp = transsys.RandomTranssysParameters()
+    rtp.parse(open(opt[1], 'r'))
+  elif opt[0] == '-S' :
+    struct_rtp = transsys.RandomTranssysParameters()
+    struct_rtp.parse(open(opt[1], 'r'))
+  elif opt[0] == '-d' :
+    dot_fname = opt[1]
+  elif opt[0] == '-g' :
+    regulon_size_list = regstruct.parse_int_csv(opt[1])
+  elif opt[0] == '-p' :
+    num_perturbed_factors = int(opt[1])
+  elif opt[0] == '-r' :
+    rndseed = int(opt[1])
+  elif opt[0] == '-t' :
+    template_fname = opt[1]
+  elif opt[0] == '-w' :
+    write_transsys = 1
+  else :
+    raise StandardError, 'unimplemented option "%s"' % opt[0]
+if rtp is None :
+  sys.stderr.write('no RTP for regulatory network (use -r option)\n')
+  sys.exit(1)
+if struct_rtp is None :
+  sys.stderr.write('no RTP for structural genes (use -s option)\n')
+  sys.exit(1)
+if regulon_size_list is None :
+  sys.stderr.write('no regulon size list specified (use -r option)\n')
+  sys.exit(1)
+if len(args) > 0 :
+  basename = args[0]
+else :
+  basename = 'newrtp'
+if len(args) > 1 :
+  out_fname = args[1]
+rng = transsys.utils.transrnd(rndseed)
+rst = regstruct.RegStructTranssys(basename, rtp, struct_rtp, regulon_size_list, radius)
+rst.choose_perturbed_factors(num_perturbed_factors, rng)
+if dot_fname is not None :
+  dp = transsys.DotParameters()
+  dp.display_factors = 0
+  rst.tp.write_dot(open(dot_fname, 'w'), dp)
+rta = regstruct.RTAControlParameters()
+rta.min_initial_concentration = 0.0
+rta.max_initial_concentration = 1.0
+rta.num_environments = 3
+rta.environment_perturbation_dispersion = 1.0
+rta.delta_t = 10
+rta.samples_per_environment = 5
+rta.num_timesteps_init = 1000
+if template_fname is not None :
+  rta.parse(open(template_fname, 'r'))
+rta.transsys_program = rst.tp
+rta.regnet_factors = rst.regnet_factors()
+rta.structural_factors = rst.structural_factors[:]
+rta.perturbed_factors = rst.perturbed_factors[:]
+rta.regulon_list = rst.regulon_list[:]
+rta.basename = basename
+if out_fname is None :
+  f = sys.stdout
+else :
+  f = open(out_fname, 'w')
+rta.write(f)
+if write_transsys :
+  f = open('%s.tra' % basename, 'w')
+  f.write(str(rta.transsys_program))
+

@@ -1,0 +1,65 @@
+#!/usr/bin/env python
+
+import sys
+
+import regstruct
+import transsys.utils
+
+
+class ClusterNodeWithVector(regstruct.ClusterNode) :
+
+  def set_vectors(self, dim, rng) :
+    self.vector = dim * [0.0]
+    for d in self.descendant_list :
+      d.derive_vector(rng)
+
+
+  def derive_vector(self, rng) :
+    self.vector = []
+    for x in self.ancestor.vector :
+      self.vector.append(x + self.distance * rng.gauss())
+    for d in self.descendant_list :
+      d.derive_vector(rng)
+
+
+  def write_header(self, f) :
+    f.write('node')
+    for i in xrange(len(self.vector)) :
+      f.write('\tdim %d' % i)
+    f.write('\n')
+
+
+  def write_vector_data(self, f) :
+    if len(self.descendant_list) > 0 :
+      for d in self.descendant_list :
+        d.write_vector_data(f)
+    else :
+      f.write('%s' % self.name)
+      for x in self.vector :
+        f.write('\t%f' % x)
+      f.write('\n')
+
+
+def random_cluster(num_leaves, rng) :
+  node_list = [ClusterNodeWithVector('root')]
+  for i in xrange(1, 2 * num_leaves - 1) :
+    j = rng.random_range(len(node_list))
+    r = node_list[j]
+    c = ClusterNodeWithVector('n%03d' % i, r, 1.0)
+    node_list.append(c)
+  return node_list[0]
+
+
+if len(sys.argv) < 3 :
+  print 'usage: %s <num_leaves> <dim>' % sys.argv[0]
+  sys.exit(1)
+num_leaves = int(sys.argv[1])
+dim = int(sys.argv[2])
+rng = transsys.utils.transrnd(1)
+rc = random_cluster(num_leaves, rng)
+rc.set_vectors(dim, rng)
+f = open('stuff.dat', 'w')
+rc.write_header(f)
+rc.write_vector_data(f)
+f = open('stuff.tre', 'w')
+f.write('%s;\n' % str(rc))

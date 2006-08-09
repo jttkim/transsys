@@ -1,0 +1,179 @@
+#!/usr/bin/env python
+
+# $Id$
+
+# $Log$
+# Revision 1.1  2005/03/08 17:12:02  jtk
+# Initial revision
+#
+# Revision 1.8  2003/03/14 01:20:18  kim
+# added stuff for Pearson-like distance accroding to Eisen et.al.
+#
+# Revision 1.7  2003/02/28 00:46:14  kim
+# improved intensity computation
+#
+# Revision 1.6  2003/02/27 10:36:48  kim
+# added ArrayIntensityFunction class for simulating noisy arrays etc.
+#
+# Revision 1.5  2003/02/26 11:46:07  kim
+# added uniform perturber
+#
+# Revision 1.4  2003/02/18 21:47:59  kim
+# added choice of perturbers for simulating different environments,
+#     ExpGauss and ExponentialReplacement perturbers are currently
+#     available. *.rta file format was modified in the process.
+#
+# Revision 1.3  2003/02/17 21:40:30  kim
+# Transformed microarr.r into a R library called transarr. Added array_background
+#     to regstruct system
+#
+# Revision 1.2  2003/02/14 16:31:27  kim
+# regstruct project is nearing completion. regstruct_transsys for
+#     generation of transsys programs and regstruct_transarray for
+#     array simulation are (more or less) properly implemented.
+#     Analysis with R has been assembled in microarr.r
+#
+# Revision 1.1  2003/02/04 23:43:59  kim
+# initial commit
+#
+
+
+import sys
+import copy
+import math
+import getopt
+import re
+import os
+import popen2
+import string
+import StringIO
+
+import transsys
+import transsys.utils
+import regstruct
+import arrtool
+
+
+class DistortFunc :
+
+  def __init__(self, skew, dispersion, rndseed = 1) :
+    self.skew = skew
+    self.dispersion = dispersion
+    self.rng = transsys.utils.transrnd(rndseed)
+
+
+  def __call__(self, v) :
+    return v + self.skew + self.rng.gauss() * self.dispersion
+
+
+def arrdata_plots(gpcfile, espec_list, histo_max, histo_nbins, array_fname, basename, cmp_basename = None) :
+  a = arrtool.MicroarrayData()
+  f = open(array_fname, 'r')
+  a.read_file(f)
+  f.close()
+  a.experiment_plots(gpcfile, espec_list, histo_max, histo_nbins, basename, cmp_basename)
+
+
+def usage() :
+  print 'simulate microarrays for regstruct type transsys programs'
+  print 'arg1: file containing all control parameters'
+  print '-h: print this help and exit'
+  print '-? <filename>: create example control parameter file (not yet implemented)'
+
+
+def r_euclidean_cluster(array_fname, column_start, num_columns, plot_title = None) :
+  rpipe = popen2.Popen3('R --slave --no-save', 1)
+  sys.stdout.flush()
+  sys.stderr.flush()
+  pid = os.fork()
+  if pid == 0 :
+    rpipe.fromchild.close()
+    rcode = r_code_euclidean(array_fname, column_start, num_columns, plot_title)
+    #print rcode
+    rpipe.tochild.write(rcode)
+    rpipe.tochild.close()
+    sys.exit()
+  rpipe.tochild.close()
+  ec = regstruct.parse_cluster(rpipe.fromchild)
+  rpipe.fromchild.close()
+  return ec
+
+
+def environment_label(env) :
+  return 'env%03d' % env
+
+
+radius = 5.0
+
+options, args = getopt.getopt(sys.argv[1:], '?:h')
+for opt in options :
+  if opt[0] == '-h' :
+    usage()
+    sys.exit()
+  else :
+    raise StandardError, 'unimplemented option "%s"' % opt[0]
+control_params = regstruct.RTAControlParameters()
+control_params.parse(open(args[0], 'r'))
+#control_params.write(sys.stdout)
+#sys.exit()
+rng = transsys.utils.transrnd(control_params.rndseed)
+control_params.write_nonperturbed_cluster()
+initial_state = transsys.TranssysInstance(control_params.transsys_program)
+initial_state.perturb(regstruct.UniformReplacementPerturber(control_params.min_initial_concentration, control_params.max_initial_concentration, control_params.rndseed))
+# print initial_state
+tas = transsys.ArraySeries(control_params.transsys_program, initial_state, control_params.num_timesteps_init, control_params.exp_threshold)
+print 'reference:', tas.reference_state
+ref_aif = transsys.ArrayIntensityFunction(control_params.array_offset, control_params.array_dispersion, control_params.rndseed)
+aif = transsys.ArrayIntensityFunction(control_params.array_offset, control_params.array_dispersion, control_params.rndseed + control_params.num_environments)
+tas.simulate_timeseries('ref_init', tas.reference_state, control_params.samples_per_environment * control_params.delta_t, control_params.delta_t, ref_aif, aif)
+env_perturber = control_params.environment_perturber()
+for env in xrange(control_params.num_environments) :
+  env_name = environment_label(env)
+  env_init = tas.reference_state.perturbed_copy(env_perturber)
+  print '%s:' % env_name, env_init
+  ref_aif = transsys.ArrayIntensityFunction(control_params.array_offset, control_params.array_dispersion, control_params.rndseed)
+  aif = transsys.ArrayIntensityFunction(control_params.array_offset, control_params.array_dispersion, control_params.rndseed + env)
+  tas.simulate_timeseries(env_name, env_init, control_params.samples_per_environment * control_params.delta_t, control_params.delta_t, ref_aif, aif)
+f = open(control_params.nonperturbed_array_fname(), 'w')
+tas.write_data(f, control_params.nonperturbed_factor_list(), None, 1)
+f.close()
+f = open(control_params.complete_array_fname(), 'w')
+tas.write_data(f, None, None, 1)
+f.close()
+f = open(control_params.experimentspecs_fname(), 'w')
+tas.write_experimentspecs(f)
+f.close()
+control_params.write_genegroups()
+if control_params.run_r() == 0 :
+  control_params.run_plottree()
+else :
+  raise StandardError, 'run_r failed -- check file "%s"' % control_params.treelist_fname()
+# nonperturbed_euclidean_file = open(control_params.nonperturbed_euclidean_fname(), 'w')
+# for env in xrange(control_params.num_environments) :
+#   env_name = environment_label(env)
+#   fname = control_params.nonperturbed_array_fname()
+#   c = r_euclidean_cluster(fname, 1 + (env + 1) * control_params.num_environments, control_params.samples_per_environment, env_name)
+#   nonperturbed_euclidean_file.write('%s;\n' % str(c))
+#   nonperturbed_euclidean_file.flush()
+# nonperturbed_euclidean_file.close()
+# dp = transsys.DotParameters()
+# dp.display_factors = 0
+# control_params.transsys_program.write_dot(open(control_params.dot_fname(), 'w'), dp)
+time_list = []
+for t in range(control_params.samples_per_environment) :
+  time_list.append(float(t * control_params.delta_t))
+espec_list = [arrtool.ExperimentSpec(range(1, 1 + control_params.samples_per_environment), time_list, 'ref_init')]
+for env in xrange(control_params.num_environments) :
+  espec_list.append(arrtool.ExperimentSpec(range(1 + (env + 1) * control_params.samples_per_environment, 1 + (env + 2) * control_params.samples_per_environment), time_list, environment_label(env)))
+gpcfile = open(control_params.gnuplot_command_fname(), 'w')
+control_params.adjust_histogram_parameters(control_params.transsys_program.num_factors())
+arrdata_plots(gpcfile, espec_list, control_params.histo_max, control_params.histo_nbins, control_params.nonperturbed_array_fname(), control_params.nonperturbed_arrtool_basename())
+arrdata_plots(gpcfile, espec_list, control_params.histo_max, control_params.histo_nbins, control_params.complete_array_fname(), control_params.complete_arrtool_basename(), control_params.nonperturbed_arrtool_basename())
+#f = open(control_params.euclidean_cluster_fname(), 'w')
+#gpcfile.flush()
+#f.write('%s;\n' % str(r_euclidean_cluster(control_params.nonperturbed_array_fname(), control_params.num_environments, control_params.samples_per_environment)))
+
+
+# fname = '%s_scomp.plt' % arrtool_basename
+# comparative_regstrength_plot(fname, gpcfile, out_fname, complete_array_fname)
+

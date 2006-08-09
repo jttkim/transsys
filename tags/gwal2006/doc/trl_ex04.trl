@@ -1,0 +1,10 @@
+  graphics
+  {
+    shoot_piece
+    {
+      move(0.5);
+      color(0.7, 0.7, 0.7);
+      cylinder(0.1, 1.0);
+      move(0.5);
+    }
+  }
