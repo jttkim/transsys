@@ -104,8 +104,6 @@ AC_ARG_WITH([pythonhome],
 
 AC_HEADER_STDC
 
-AC_CHECK_PROG(python_program,python,yes,no)
-AC_CHECK_PROG(r_program,R,yes,no)
 AC_CHECK_LIB(fl, main)
 
 LDFLAGS="$LDFLAGS $X_EXTRA_LIBS $X_PRE_LIBS $X_LIBS"
@@ -141,17 +139,13 @@ fi
 AC_SUBST(YFLAGS)
 AC_SUBST(python_scheme)
 AC_SUBST(python_prefix)
-AC_SUBST(python_program)
-AC_SUBST(r_program)
 
-AC_OUTPUT(Makefile doc/Makefile src/Makefile toolbox/Makefile python/Makefile python/scripts/Makefile)
+AC_OUTPUT(Makefile doc/Makefile src/Makefile toolbox/Makefile python/Makefile)
 AC_MSG_RESULT([
 transsys successfully configured for ${host}
 
   prefix:        ${prefix}
 
-  python:        ${python_program}
-  R:             ${r_program}
   python_scheme: ${python_scheme}
   python_prefix: ${python_prefix}
 ])

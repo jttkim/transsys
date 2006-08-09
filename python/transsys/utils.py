@@ -17,10 +17,8 @@
 """Miscellaneous utilities.
 """
 
-import types
 import math
 import random
-import re
 
 
 def is_nan(x) :
@@ -36,108 +34,6 @@ but cannot be guaranteed to work generally.
 @rtype: boolean
 """
   return x != x
-
-
-def parse_int(f, label, allowNone = False) :
-  """retrieves an int from a line of the form::
-
-<label>: <int>
-
-Raises an error if label is not matched or not followed by a
-colon (optionally flanked by whitespace) and an int.
-"""
-  r = '%s\\s*:\\s*(([0-9]+)|(None))' % label
-  line = f.readline()
-  m = re.match(r, line.strip())
-  if m is None :
-    raise StandardError, 'parse_int: failed to obtain int "%s" in "%s"' % (label, line.strip())
-  if m.group(2) is None :
-    if allowNone :
-      return None
-    raise StandardError, 'parse_int: None not permitted'
-  return int(m.group(1))
-
-
-def parse_float(f, label, allowNone = False) :
-  """retrieves a float from a line of the form::
-
-<label>: <float>
-
-Raises an error if label is not matched or not followed by a
-colon (optionally flanked by whitespace) and a float.
-"""
-  r = '%s\\s*:\\s*(([+-]?([0-9]+((\\.[0-9]+)?)|(\\.[0-9]+))([Ee][+-]?[0-9]+)?)|(None))' % label
-  line = f.readline()
-  m = re.match(r, line.strip())
-  if m is None :
-    raise StandardError, 'parse_float: failed to obtain float "%s" in "%s"' % (label, line.strip())
-  if m.group(2) is None :
-    if allowNone :
-      return None
-    raise StandardError, 'parse_float: None not permitted'
-  # print m.group(), '-->', float(m.group(1))
-  return float(m.group(1))
-
-
-def parse_string(f, label) :
-  """retrieves a string from a line of the form::
-
-<label>:<string>
-
-Raises an error if label is not matched or not followed by a
-colon (optionally preceded by whitespace) and a (possibly empty) string.
-"""
-  r = '%s\\s*:(.*)' % label
-  line = f.readline()
-  if len(line) > 0 :
-    line = line[:-1]
-  m = re.match(r, line)
-  if m is None :
-    raise StandardError, 'parse_string: failed to obtain string "%s" in "%s"' % (label, line.strip())
-  return m.group(1)
-
-
-def parse_boolean(f, label, allowNone = False) :
-  """retrieves a boolean value from a line of the form::
-
-<label>: <booleanvalue>
-
-Raises an error if label is not matched or not followed by a
-colon (optionally flanked by whitespace) and a boolean value,
-i.e. C{True}, C{False} or, if allowed, C{None}.
-"""
-  r = '%s\\s*:\\s*((False)|(True)|(None))' % label
-  line = f.readline()
-  m = re.match(r, line.strip())
-  if m is None :
-    raise StandardError, 'parse_boolean: failed to obtain boolean "%s" in "%s"' % (label, line.strip())
-  if m.group(1) == None :
-    if allowNone :
-      return None
-    raise StandardError, 'parse_boolean: None not permitted'
-  return m.group(1) == 'True'
-
-
-def name_value_pair(x, label) :
-  """Encode a labelled quantity in a parseable way.
-
-This function can be thought of as an inverse to C{parse_int},
-C{parse_float} and C{parse_string}.
-
-@param x: the value to be encoded
-@param label: the label to be used
-"""
-  if x is None :
-    return '%s: None' % label
-  elif type(x) is types.IntType :
-    return '%s: %d' % (label, x)
-  elif type(x) is types.FloatType :
-    return '%s: %1.17e' % (label, x)
-  elif type(x) is types.StringType :
-    return '%s: %s' % (label, x)
-  elif type(x) is types.BooleanType :
-    return '%s: %s' % (label, str(x))
-  raise StandardError, 'unsupported type %s' % str(type(x))
 
 
 def tablecell(x) :
@@ -165,16 +61,6 @@ Currently supported types are:
     else :
       return 'FALSE'
   raise StandardError, 'unsupported type %s' % str(type(x))
-
-
-def table_row(l) :
-  """Render elements of C{l} as a whitespace separated row."""
-  s = ''
-  glue = ''
-  for x in l :
-    s = s + glue + tablecell(x)
-    glue = ' '
-  return s
 
 
 def hamming_distance(s1, s2) :
@@ -221,7 +107,7 @@ def euclidean_distance_squared(v1, v2) :
   d2 = 0.0
   for i in xrange(len(v1)) :
     d = v1[i] - v2[i]
-    d2 = d2 + d * d
+    d2 = d * d
   return d2
 
 
@@ -230,75 +116,22 @@ def euclidean_distance(v1, v2) :
   return math.sqrt(euclidean_distance_squared(v1, v2))
 
 
-def euclidean_norm_squared(v) :
-  """Compute the square of the euclidean norm of C{v}."""
-  return sum(map(lambda x: x * x, v))
-
-
-def euclidean_norm(v) :
-  """Compute the euclidean norm of C{v}."""
-  return math.sqrt(euclidean_norm_squared(v))
-
-
-def normalised_vector(v) :
-  """Normalise a vector.
-
-Computes a vector colinear with C{v} and with unit length.
-
-@return: the normalised vector
-"""
-  n = float(euclidean_norm(v))
-  if n == 0 :
-    raise StandardError, 'cannot normalise a vector of length 0'
-  return map(lambda x : x / n, v)
-
-
 def mean_and_stddev(l) :
   """Compute mean and standard deviation of a list of floating point values.
 
 @return: the mean and the standard deviation
 @rtype: tuple
 """
-  if len(l) <= 1 :
-    raise StandardError, 'cannot compute the standard deviation of less than 2 values (%d values given)' % len(l)
-    # return l[0], 0.0
+  if len(l) == 1 :
+    return l[0], 0.0
   m = sum(l) / float(len(l))
   d = map(lambda x : x - m, l)
   d2 = map(lambda x : x * x, d)
   v = sum(d2) / float(len(l) - 1)
-  # print 'v = %f' % v
   # print l
   # print v
   sd = math.sqrt(v)
   return m, sd
-
-
-def shannon_entropy(v) :
-  """Compute the Shannon entropy of C{v}, normalised so components add up to 1, in bits.
-"""
-  if min(v) < 0.0 :
-    raise StandardError, 'negative components in entropy computation'
-  s = sum(v)
-  v1 = map(lambda x : x / s, v)
-  e = 0
-  for p in v1 :
-    if p > 0.0 :
-      e = e - p * math.log(p, 2.0)
-  return e
-  
-
-def correlation_coefficient(x, y) :
-  """Compute the Pearson correlation coefficient of C{x} and C{y}."""
-  if len(x) != len(y) :
-    raise StandardError, 'x and y have unequal length'
-  nx = euclidean_norm(x)
-  if nx == 0.0 :
-    raise StandardError, 'standard deviation of x is zero'
-  ny = euclidean_norm(y)
-  if ny == 0.0 :
-    raise StandardError, 'standard deviation of y is zero'
-  r = inner_product(x, y) / euclidean_norm(x) / euclidean_norm(y)
-  return r
 
 
 class UniformRNG :
@@ -477,5 +310,3 @@ class RouletteWheel :
       else :
         j = k
     raise ValueError, 'RouletteWheel::slot: bad value ' % x
-
-

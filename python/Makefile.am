@@ -1,13 +1,6 @@
-# $Id$
-# $Revision$
-# $Author$
-# $Date$
-
-CLEANFILES	= transsys/*.pyc transsys/*.pyo
-DISTCLEANFILES	= 
-EXTRA_DIST	= setup.py transsys src
-
-SUBDIRS		= scripts
+CLEANFILES = transsys/__init__.pyc
+DISTCLEANFILES = 
+EXTRA_DIST = setup.py transsys src
 
 # TESTS		= test_transsys
 
