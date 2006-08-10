@@ -407,6 +407,7 @@ SYMBOL_ELEMENT *create_symbol_element(const char *name, const char *transsys_nam
     tr = find_transsys(transsys_list, transsys_name);
     if (tr == NULL)
     {
+      fprintf(stderr, "create_symbol_element: unknown transsys \"%s\"\n", transsys_name);
       return (NULL);
     }
   }
@@ -530,6 +531,12 @@ PRODUCTION_ELEMENT *create_production_element(const char *symbol_name, RAW_ASSIG
   se = find_symbol(lsys, symbol_name);
   if (se == NULL)
   {
+    fprintf(stderr, "create_production_element: unknown symbol \"%s\"\n", symbol_name);
+    return (NULL);
+  }
+  if ((se->transsys == NULL) && (ra_list != NULL))
+  {
+    fprintf(stderr, "create_production_element: symbol \"%s\" has no transsys, but assignment list given\n", se->name);
     return (NULL);
   }
   a_result = resolve_raw_assignments(se, lhs_symbol_list, ra_list);
@@ -617,29 +624,26 @@ RAW_ASSIGNMENT *create_raw_assignment(const char *factor_name, const char *trans
   if (a == NULL)
   {
     fprintf(stderr, "create_raw_assignment: malloc failed");
+    return (NULL);
+  }
+  a->next = NULL;
+  if (factor_name)
+  {
+    strncpy(a->identifier, factor_name, IDENTIFIER_MAX);
+    a->identifier[IDENTIFIER_MAX] = '\0';
+    a->transsys_label[0] = '\0';
+    a->value = value;
+  }
+  else if (transsys_label)
+  {
+    strncpy(a->transsys_label, transsys_label, IDENTIFIER_MAX);
+    a->transsys_label[IDENTIFIER_MAX] = '\0';
+    a->identifier[0] = '\0';
   }
   else
   {
-    a->next = NULL;
-    if (factor_name)
-    {
-      strncpy(a->identifier, factor_name, IDENTIFIER_MAX);
-      a->identifier[IDENTIFIER_MAX] = '\0';
-      a->transsys_label[0] = '\0';
-      a->value = value;
-    }
-    else if (transsys_label)
-    {
-      strncpy(a->transsys_label, transsys_label, IDENTIFIER_MAX);
-      a->transsys_label[IDENTIFIER_MAX] = '\0';
-      a->identifier[0] = '\0';
-    }
-    else
-    {
-      fprintf(stderr, "create_raw_assignment: neither factor name nor transsys label specified\n");
-      a->transsys_label[0] = '\0';
-      a->transsys_label[0] = '\0';
-    }
+    fprintf(stderr, "create_raw_assignment: neither factor name nor transsys label specified\n");
+    a->transsys_label[0] = '\0';
   }
   return (a);
 }
