@@ -130,10 +130,12 @@ import string
 import StringIO
 import math
 import re
+import random
 
 import clib
 
 import transrnd
+import utils
 
 # __all__ appears to interfere with epydoc documentation generation
 # and is not useful for clib anyway, as clib is not intended for
@@ -2362,7 +2364,7 @@ played."""
     s = s + 'vmax_repression: %s\n' % str(self.vmax_repression)
     s = s + 'decay: %s\n' % str(self.decay)
     s = s + 'diffusibility: %s\n' % str(self.diffusibility)
-    s = s + 'rndseed: %d\n' % self.rng.seed
+    s = s + 'rndseed: %d\n' % self.rndseed
     return s
 
 
@@ -2464,11 +2466,12 @@ so it's best to require explicit specification of all parameters."""
 
 
   def set_seed(self, rndseed = 1) :
-    self.rng = transrnd.transrnd(rndseed)
+    self.rndseed = rndseed
+    self.rng = random.Random(rndseed)
 
 
   def get_seed(self) :
-    return self.rng.seed
+    return self.rndseed
 
 
   def set_constitutive(self, v) :
@@ -2576,16 +2579,17 @@ function."""
         linklist.append([])
         in_list = range(n)
         for j in xrange(k) :
-          x = rng.random_range(len(in_list))
+          x = rng.randrange(len(in_list))
           t = in_list[x]
           del in_list[x]
-          if rng.random_range(2) :
+          if rng.random() < 0.5 :
             linklist[i].append(-t -1)
           else :
             linklist[i].append(t)
       return linklist
 
     def random_powerlaw_linklist(num_genes, num_edges, power_exp, power_base, rng) :
+
       linklist = []
       rw = []
       for i in xrange(num_genes) :
@@ -2598,23 +2602,26 @@ function."""
           else :
             raise StandardError, 'RandomTranssysParameters::generate_transsys: overflow in power distribution'
         rw.append(x)
-      rw_jumbled = []
+      rw_shuffled = []
       rwi = range(num_genes)
-      for i in xrange(num_genes) :
-        j = rng.random_range(len(rwi))
-        r = rwi[j]
-        del rwi[j]
-        rw_jumbled.append(rw[r])
-      wheel = transrnd.RouletteWheel(rng, rw_jumbled)
+      rng.shuffle(rwi)
+      for i in rwi :
+        rw_shuffled.append(i)
+      rw_sum = sum(rw_shuffled)
+      # leaving out the last element so last interval will be
+      # open-ended, including 1.0 (to avoid possible floating
+      # point peculiarities)
+      rw_shuffled = map(lambda x : x / rw_sum, rw[:-1])
+      rw_borders = utils.interval_list(rw_shuffled)
       for i in xrange(num_edges) :
-        g0 = wheel.pocket()
-        g1 = wheel.pocket()
+        g0 = utils.find_interval_index(rng.random(), rw_borders)
+        g1 = utils.find_interval_index(rng.random(), rw_borders)
         # FIXME: this loop may run very often or even infinitely often when
         # generating dense graphs
         while g1 in linklist[g0] or -g1 - 1 in linklist[g0] :
-          g0 = wheel.pocket()
-          g1 = wheel.pocket()
-        if rng.random_range(2) :
+          g0 = utils.find_interval_index(rng.random(), rw_borders)
+          g1 = utils.find_interval_index(rng.random(), rw_borders)
+        if rng.random() < 0.5 :
           linklist[g0].append(-g1 - 1)
         else :
           linklist[g0].append(g1)
@@ -2636,10 +2643,10 @@ This function does not create any multilinks."""
       for i in xrange(num_genes) :
         linklist.append([])
       for i in xrange(num_edges) :
-        r = rng.random_range(len(all_links))
+        r = rng.randrange(len(all_links))
         g0, g1 = all_links[r]
         del all_links[r]
-        if rng.random_range(2) :
+        if rng.random() < 0.5 :
           linklist[g0].append(-g1 - 1)
         else :
           linklist[g0].append(g1)
@@ -3409,6 +3416,8 @@ class ArrayIntensityFunction :
 taking the expression level and adding background and noise
 """
 
+  # FIXME: phase out transrnd stuff from here.
+  # this stuff should go to the array module anyway
   def __init__(self, offset, dispersion, rndseed) :
     self.offset = offset
     self.dispersion = dispersion

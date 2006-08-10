@@ -49,7 +49,8 @@ def write_transopt_comments(f, tp_opt, obj_opt, opt_descriptor) :
   f.flush()
 
 
-def write_combined(f, transsys_frame, lsys_frame, transsys_program) :
+def write_combined_lsys(basename, tp_index, restart_index, lsys_frame, transsys_frame, transsys_program) :
+  f = open('%s_%03d_%03d.trl' % (basename, tp_index, restart_index), 'w')
   lsys = copy.deepcopy(lsys_frame)
   lsys.dissociate_transsys()
   tp = copy.deepcopy(transsys_frame)
@@ -57,6 +58,7 @@ def write_combined(f, transsys_frame, lsys_frame, transsys_program) :
   lsys.associate_transsys(tp)
   f.write(str(tp))
   f.write(str(lsys))
+  f.close()
 
 
 def usage() :
@@ -69,6 +71,8 @@ def usage() :
   print '-P <optspecfile>: specify file with optimiser specification'
   print '-T <transformerspecfile>: specify file with parameter transformer specification'
   print '-L <logfile>: specify optimisation log file'
+  print '-c <lsysoutbase>: specify base name for lsys output files,'
+  print '    suffixed by _t<transsysnum>_r<restartnum>.trl'
   print '-v: verbose'
   print '-h: print this help and exit'
 
@@ -84,8 +88,9 @@ disparity_function = None
 verbose = 0
 optimiserfile_name = None
 transformerfile_name = None
+lsysoutfile_base = None
 logfile_name = None
-options, args = getopt.getopt(sys.argv[1:], '-f:o:n:s:L:P:T:r:vh')
+options, args = getopt.getopt(sys.argv[1:], '-f:o:n:s:L:P:T:r:c:vh')
 for opt, par in options :
   if opt == '-h' :
     usage()
@@ -105,6 +110,8 @@ for opt, par in options :
     rndseed = int(par)
   elif opt == '-L' :
     logfile_name = par
+  elif opt == '-c' :
+    lsysoutfile_base = par
   elif opt == '-P' :
     optimiserfile_name = par
   elif opt == '-T' :
@@ -157,23 +164,30 @@ tp_index = 0
 while transsys_program is not None :
   if num_restarts == 0 :
     if optimiser is None :
-      obj_opt = objective_function(transsys_program)
+      tp_opt = transsys_program
+      obj_opt = objective_function(tp_opt)
       write_transopt_comments(outfile, transsys_program, obj_opt, 'evaluated')
     else :
       optResult = optimiser.optimise(transsys_program, objective_function)
-      obj_opt = objective_function(optResult.optimised_transsys_program)
-      write_transopt_comments(outfile, optResult.optimised_transsys_program, obj_opt, 'optimised, original')
+      tp_opt = optResult.optimised_transsys_program
+      obj_opt = objective_function(tp_opt)
+      write_transopt_comments(outfile, tp_opt, obj_opt, 'optimised, original')
       if logfile is not None :
         optResult.write_log(logfile, '%d' % tp_index, tp_index == 0, 'tp_index')
         logfile.flush()
+    if lsysoutfile_base is not None :
+      write_combined_lsys(lsysoutfile_base, tp_index, 0, lsys_frame, transsys_frame, tp_opt)
   else :
     for restart_index in xrange(num_restarts) :
       optResult = optimiser.optimise(transsys_program, objective_function)
-      obj_opt = objective_function(optResult.optimised_transsys_program)
-      write_transopt_comments(outfile, optResult.optimised_transsys_program, obj_opt, 'optimised, restart %d' % restart_index)
+      tp_opt = optResult.optimised_transsys_program
+      obj_opt = objective_function(tp_opt)
+      write_transopt_comments(outfile, tp_opt, obj_opt, 'optimised, restart %d' % restart_index)
       if logfile is not None :
         optResult.write_log(logfile, '%d %d' % (tp_index, restart_index), tp_index == 0 and restart_index == 0, 'tp_index restart_index')
         logfile.flush()
+      if lsysoutfile_base is not None :
+        write_combined_lsys(lsysoutfile_base, tp_index, restart_index, lsys_frame, transsys_frame, tp_opt)
   outfile.write('\n')
   transsys_program = p.parse()
   tp_index = tp_index + 1
