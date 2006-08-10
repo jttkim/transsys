@@ -350,6 +350,36 @@ of None indicates that all genes / factors should be randomised.
     n.value = random_function()
 
 
+def interval_list(interval_size_list, x0 = 0.0) :
+  """Make a list of interval borders of contiguous intervals of given sizes."""
+  return reduce(lambda x, y : x + [x[-1] + y], interval_size_list, [x0])
+
+
+def find_interval_index(x, borders) :
+  """Find the index of the interval within which C{x} is located.
+
+Uses binary search.
+
+@return: index C{i} such that C{borders[i] <= x < borders[i + 1]},
+  -1 if C{x < borders[0]}, C{len(borders)} if C{x >= borders[-1]}.
+@rtype: int
+"""
+  if x < borders[0] :
+    return -1
+  if x >= borders[-1] :
+    return len(borders)
+  imin = 0
+  imax = len(borders) - 1
+  while imin < imax - 1 :
+    i = (imin + imax) / 2
+    # print i, borders[i], x, borders[i] < x
+    if borders[i] <= x :
+      imin = i
+    else :
+      imax = i
+  return imin
+
+
 class transrnd :
   """Random number generator class.
 

@@ -73,15 +73,48 @@ def active_and_inactive_set(rule, instance_series, factor_index) :
 
 
 def stddev_disparity(rule, instance_series, factor_index) :
+  """Standard deviation based disparity score.
+
+This function applies some tricks for preventing limitations of
+floating point precision from resulting in artificially low
+scores. See comments in source for details.
+"""
   active_set, inactive_set = active_and_inactive_set(rule, instance_series, factor_index)
   if len(active_set) == 0 or len(inactive_set) == 0 :
     return 0.0
   m_active, s_active = transsys.utils.mean_and_stddev(active_set)
+  if m_active < 1e-100 and s_active == 0.0 :
+    m_active = 0.0
   m_inactive, s_inactive = transsys.utils.mean_and_stddev(inactive_set)
+  if m_inactive < 1e-100 and s_inactive == 0.0 :
+    m_inactive = 0.0
   m_diff = abs(m_active - m_inactive)
-  if m_diff == 0.0 :
-    return 1.0
-  return 1.0 - 1.0 / (1.0 + (s_active + s_inactive) / m_diff)
+  # if the difference of means falls below a threshold of 1e-150, the
+  # squares calculated in the process of computing the standard deviation
+  # may reach the order of magnitude of 1e-300, i.e. the limits of
+  # floating point precision where they become indistinguishable from 0.
+  # This condition prevents such imprecise values from being used.
+  # (The standard deviations may be much larger than the difference
+  # of the means and in that case not be affected by this problem, but
+  # notice that the score will then be close to 1 anyway.)
+  if m_diff < 1e-100 :
+    sd_disp = 1.0
+  else :
+    # m_active and m_inactive may end up different even though all
+    # values are identical, if the cardinalities of the active and
+    # the inactive set are different (by orders of magnitude).
+    # Therefore, we check the ratio of the mean and the mean difference
+    # and treat the difference as 0 if it is too few orders of magnitude
+    # above the numerical precision level
+    # FIXME: currently, we use 1e-10 as a blanket threshold, this could
+    # be made dependent on the ratio of set cardinalities.
+    m_ratio = m_diff / (abs(m_active) + abs(m_inactive))
+    if m_ratio < 1e-10 :
+      sd_disp = 1.0
+    else :
+      sd_disp = 1.0 - 1.0 / (1.0 + (s_active + s_inactive) / m_diff)
+    # print '%s, factor %d: active = %e +- %e, inactive = %e +- %e, m_ratio = %e, sd_disp = %e' % (rule.name, factor_index, m_active, s_active, m_inactive, s_inactive, m_ratio, sd_disp)
+  return sd_disp
 
 
 def overlap_disparity(rule, instance_series, factor_index) :
@@ -405,8 +438,12 @@ greatest possible range without incurring floating point limitations.
 
   def inverse(self, y) :
     maxValue = self.getMaxValue()
-    if y <= self.minValue or y >= maxValue :
+    if y < self.minValue or y > maxValue :
       return None
+    if y == self.minValue :
+      return -1e300
+    if y == maxValue :
+      return 1e300
     return math.tan(math.pi * ((y - self.minValue) / self.valueRange - 0.5))
 
 
@@ -446,8 +483,10 @@ be much less prone to extremes than exponential divergence.
 
 
   def inverse(self, y) :
-    if y <= self.minValue :
+    if y < self.minValue :
       return None
+    if y == self.minValue :
+      return -1e300
     y1 = y - self.minValue
     return (y1 * y1 - 1.0) / y1
 
@@ -533,7 +572,7 @@ def parse_transformation_function(f) :
   if l == '' :
     return None
   l = l.strip()
-  for tf in [TransformationFunction(), ExponentialFunction(), SigmoidFunction()] :
+  for tf in [TransformationFunction(), ExponentialFunction(), SigmoidFunction(), LowerBoundedFunction(), ArctanFunction()] :
     if tf.check_savefile_magic(l) :
       tf.parse_variables(f)
       return tf
