@@ -82,12 +82,14 @@ scores. See comments in source for details.
   active_set, inactive_set = active_and_inactive_set(rule, instance_series, factor_index)
   if len(active_set) == 0 or len(inactive_set) == 0 :
     return 0.0
-  m_active, s_active = transsys.utils.mean_and_stddev(active_set)
-  if m_active < 1e-100 and s_active == 0.0 :
-    m_active = 0.0
-  m_inactive, s_inactive = transsys.utils.mean_and_stddev(inactive_set)
-  if m_inactive < 1e-100 and s_inactive == 0.0 :
-    m_inactive = 0.0
+  if len(active_set) > 1 :
+    m_active, s_active = transsys.utils.mean_and_stddev(active_set)
+  else :
+    m_active, s_active = active_set[0], 0.0
+  if len(inactive_set) > 1 :
+    m_inactive, s_inactive = transsys.utils.mean_and_stddev(inactive_set)
+  else :
+    m_inactive, s_inactive = active_set[0], 0.0
   m_diff = abs(m_active - m_inactive)
   # if the difference of means falls below a threshold of 1e-150, the
   # squares calculated in the process of computing the standard deviation
@@ -117,6 +119,33 @@ scores. See comments in source for details.
   return sd_disp
 
 
+def difference_sign_disparity(rule, instance_series, factor_index) :
+  """Disparity of sign values of differences between expression levels
+in symbols activating C{rule} and other symbols.
+
+Evaluates to 0 if all signs are the same (and hence activating and
+inactivating instances have expression levels of the factor specified
+by C{factor_index} in non-overlapping intervals and to 1 if sign ratio
+is 50:50.
+"""
+  active_set, inactive_set = active_and_inactive_set(rule, instance_series, factor_index)
+  if len(active_set) == 0 or len(inactive_set) == 0 :
+    return 0.0
+  n_minus = 0
+  n_plus = 0
+  for a in active_set :
+    for i in inactive_set :
+      if a < i :
+        n_minus = n_minus + 1
+      elif a > i :
+        n_plus = n_plus + 1
+  n_all = n_minus + n_plus
+  if n_all == 0 :
+    return 1.0
+  return float(min(n_minus, n_plus)) / float(n_all) * 2.0
+  
+
+
 def overlap_disparity(rule, instance_series, factor_index) :
   """Disparity of expression of factor in symbols activating rule and symbols
 not activating rule."""
@@ -138,7 +167,7 @@ not activating rule."""
   return float(n) / float(len(complete_set))
 
 
-class FitnessResult :
+class FitnessResult(object) :
   """Base class for results of objective (or fitness) functions.
 
 Calling objective functions should return instances of this class
@@ -158,12 +187,44 @@ of the transsys program etc.
     return 'FitnessResult(%g)' % self.fitness
 
 
+  def getTranssysProgramComments(self) :
+    """Get a list of strings describing the objective value and
+its computation.
+
+The idea is to attach this list to the comments of the transsys
+program that has been evaluated.
+
+Notice that since the C{FitnessResult} does not keep track of the
+transsys program it pertains to, so it's up to the user of this
+method to make sure the comments are added to the correct transsys
+program.
+"""
+    return ['objective: %g' % self.fitness]
+
+
 class LsysDisparityFitnessResult(FitnessResult) :
+  """Result of a disparity objective evaluation."""
 
   def __init__(self, fitness, best_factor_list, score_table) :
     FitnessResult.__init__(self, fitness)
     self.best_factor_list = best_factor_list
     self.score_table = score_table
+
+
+  def getTranssysProgramComments(self) :
+    comment_list = super(LsysDisparityFitnessResult, self).getTranssysProgramComments()
+    comment_list.append('best factor list:')
+    for rulename, best_factors in self.best_factor_list :
+      s = '    %s' % rulename
+      glue = ': '
+      for fname in best_factors :
+        s = '%s%s' % (glue, fname)
+        glue = ', '
+      comment_list.append(s)
+    comment_list.append('objective by factor:')
+    for st_entry in self.score_table :
+      comment_list.append('    %s %s: %f' % st_entry)
+    return comment_list
 
 
 def flat_symbol_instance_list(lstring_list, transsys_program = None) :
@@ -296,7 +357,7 @@ This base class implements the identity transformation.
 
 
   def clip(self, y) :
-    """Clip ${y} to the nearest admissible value."""
+    """Clip C{y} to the nearest admissible value."""
     return y
 
 
@@ -375,7 +436,7 @@ the smallest value that can be transformed without a floating
 point overflow.
 
 
-@return: inverse function value, or C{None} if ${y} is out of admissible range
+@return: inverse function value, or C{None} if C{y} is out of admissible range
 @rtype: float or None
 """
     if self.coefficient == 0.0 :
@@ -552,7 +613,7 @@ function's range. Exactly at the borders, the inverse method attempts
 to return the closest value that can be transformed without a floating
 point overflow.
 
-@return: inverse function value, or C{None} if ${y} is out of admissible range
+@return: inverse function value, or C{None} if C{y} is out of admissible range
 @rtype: float or None
 """
     maxValue = self.getMaxValue()
@@ -614,6 +675,19 @@ No transformation, this base class implements an identity transformer.
     """Clip the parameters in C{transsys_program} to the range
 required by the respective transformer."""
     pass
+
+
+  def randomiseParametersUniform(self, transsys_program, parameterRange, rng) :
+    """Randomise the numeric values in C{transsys_program}.
+
+Random values are drawn from a uniform distribution over
+[-C{parameterRange}, C{parameterRange}[ and the numeric values
+are set to the corresponding transformed values.
+"""
+    state = self.getParameters(transsys_program)
+    for i in xrange(len(state)) :
+      state[i] = (rng.random() * 2.0 - 1.0) * parameterRange
+    self.setParameters(state, transsys_program)
 
 
   def getParameters(self, transsys_program) :
@@ -921,6 +995,9 @@ class GradientOptimisationRecord(AbstractOptimisationRecord) :
     self.stepsize = stepsize
     self.numEvaluations = numEvaluations
     gradient_abs = map(abs, gradient)
+    print transsys.utils.euclidean_norm(gradient)
+    #print gradient_abs
+    #print
     self.gradient_entropy = transsys.utils.shannon_entropy(gradient_abs)
     self.gradient_max = max(gradient_abs)
 
@@ -1150,10 +1227,7 @@ of C{AbstractOptimiser} do not have any use.
     if self.randomInitRange is None :
       self.transformer.clipParameters(transsys_program)
     else :
-      state = self.transformer.getParameters(transsys_program)
-      for i in xrange(len(state)) :
-        state[i] = (self.rng.random() * 2.0 - 1.0) * self.randomInitRange
-      self.transformer.setParameters(state, transsys_program)
+      self.transformer.randomiseParametersUniform(transsys_program, self.randomInitRange, self.rng)
 
 
   def optimise(self, transsys_program_init, objective_function) :
@@ -1420,7 +1494,6 @@ explicitly does so.
       else :
         stepsize = stepsize * (1.0 - self.stepsize_learning_rate)
         v = map(lambda x : (1.0 - self.stepvector_learning_decay) * x + self.stepvector_learning_decay * unbiased_stepvector_component, stepvector)
-        stepvector = transsys.utils.normalised_vector(v)
       stepvector = transsys.utils.normalised_vector(v)
       if accept :
         if self.verbose :
@@ -1431,7 +1504,8 @@ explicitly does so.
       temperature = temperature * self.cooling_rate
       iteration = iteration + 1
     self.transformer.setParameters(state, transsys_program)
-    return OptimisationResult(transsys_program, obj, records)
+    # FIXME: this one last evaluation of the objective function can be saved
+    return OptimisationResult(transsys_program, objective_function(transsys_program), records)
 
 
 class GradientOptimiser(AbstractOptimiser) :
@@ -1545,7 +1619,7 @@ beginning of a valid save file.
     self.termination_improvement = transsys.utils.parse_float(f, 'termination_improvement', allowNone = True)
     self.stepsize_max = transsys.utils.parse_float(f, 'stepsize_max')
     self.eliminateFlatComponents = transsys.utils.parse_boolean(f, 'eliminateFlatComponents')
-    self.transformer = parse_transformer(f)
+    self.transformer = parse_parameter_transformer(f)
 
 
   def __str__(self) :
@@ -1573,18 +1647,28 @@ beginning of a valid save file.
     # TODO: print out satisfied condition when they are encountered
     if self.termination_stepsize is not None :
       if stepsize <= self.termination_stepsize :
+        if self.verbose :
+          sys.stderr.write('GradientOptimiser: terminating because stepsize %f <= %f\n' % (stepsize, self.termination_stepsize))
         return True
     if self.termination_objective is not None :
       if objective <= self.termination_objective :
+        if self.verbose :
+          sys.stderr.write('GradientOptimiser: terminating because objective %f <= %f\n' % (objective, self.termination_objective))
         return True
     if self.termination_improvement is not None and improvement is not None :
       if improvement <= self.termination_improvement :
+        if self.verbose :
+          sys.stderr.write('GradientOptimiser: terminating because improvement %f <= %f\n' % (improvement, self.termination_improvement))
         return True
     if self.termination_iteration is not None :
       if iteration >= self.termination_iteration :
+        if self.verbose :
+          sys.stderr.write('GradientOptimiser: terminating because iteration %d <= %d\n' % (iteration, self.termination_iteration))
         return True
     if self.termination_numEvaluations is not None :
       if numEvaluations >= self.termination_numEvaluations :
+        if self.verbose :
+          sys.stderr.write('GradientOptimiser: terminating because numEvaluations %d <= %d\n' % (numEvaluations, self.termination_numEvaluations))
         return True
     if max(map(abs, gradient)) == 0.0 :
       return True
@@ -1592,7 +1676,7 @@ beginning of a valid save file.
 
   def optimise(self, transsys_program, objective_function, gene_name_list = None, factor_name_list = None) :
     tp = copy.deepcopy(transsys_program)
-    self.initialiseTransssysProgramValues(tp)
+    self.initialiseTranssysProgramValues(tp)
     current_values = self.transformer.getParameters(tp)
     if self.verbose :
       sys.stderr.write('optimising %d values\n' % len(current_values))
@@ -1630,8 +1714,8 @@ beginning of a valid save file.
         if self.verbose :
           sys.stderr.write('GradientOptimiser.optimise: flat gradient\n')
         break
-      old_gradient = gradient
       gradient = map(lambda x : x / gradient_norm, gradient)
+      old_gradient = gradient
       # print gradient
       # if self.verbose :
       #   sys.stderr.write('obj = %g, values: %s\n' % (current_obj, str(current_values)))
@@ -1689,7 +1773,7 @@ beginning of a valid save file.
         current_values = new_values[:]
         optimisation_log.append(GradientOptimisationRecord(current_obj, stepsize, numEvaluations, old_gradient))
         iteration = iteration + 1
-    return OptimisationResult(tp, current_obj, optimisation_log)
+    return OptimisationResult(tp, objective_function(tp), optimisation_log)
 
 
 def parse_optimiser(f) :
