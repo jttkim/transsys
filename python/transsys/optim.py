@@ -218,7 +218,7 @@ class LsysDisparityFitnessResult(FitnessResult) :
       s = '    %s' % rulename
       glue = ': '
       for fname in best_factors :
-        s = '%s%s' % (glue, fname)
+        s = s + '%s%s' % (glue, fname)
         glue = ', '
       comment_list.append(s)
     comment_list.append('objective by factor:')
@@ -947,14 +947,14 @@ R's \C{read.table} function.
     if self.optimisation_log is None :
       return
     if len(self.optimisation_log) > 0 :
-      if header_prefix != '' :
-        if not header_prefix[-1].isspace() :
-          header_prefix = header_prefix + ' '
+      if write_header :
+        if header_prefix != '' :
+          if not header_prefix[-1].isspace() :
+            header_prefix = header_prefix + ' '
+        f.write('%s%s\n' % (header_prefix, self.optimisation_log[0].table_header()))
       if column_prefix != '' :
         if not column_prefix[-1].isspace() :
           column_prefix = column_prefix + ' '
-      if write_header :
-        f.write('%s%s\n' % (header_prefix, self.optimisation_log[0].table_header()))
       for l in self.optimisation_log :
         f.write('%s%s\n' % (column_prefix, str(l)))
 
