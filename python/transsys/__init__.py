@@ -2592,28 +2592,24 @@ function."""
 
       linklist = []
       rw = []
-      for i in xrange(num_genes) :
+      for i in xrange(1, num_genes + 1) :
         linklist.append([])
-        try :
-          x = (power_base * i)**power_exp
-        except OverflowError :
-          if a < 0.0 :
-            x = 0.0
-          else :
-            raise StandardError, 'RandomTranssysParameters::generate_transsys: overflow in power distribution'
+        # WATCHME: can this still result in a repairable overflow??
+        x = (power_base * i)**power_exp
         rw.append(x)
-      rw_shuffled = []
-      rwi = range(num_genes)
-      rng.shuffle(rwi)
-      for i in rwi :
-        rw_shuffled.append(i)
-      rw_sum = sum(rw_shuffled)
-      # leaving out the last element so last interval will be
+      # print 'rw', rw
+      rng.shuffle(rw)
+      # print 'rw (shuffled)', rw
+      rw_sum = sum(rw)
+      # last element is left out so last interval will be
       # open-ended, including 1.0 (to avoid possible floating
-      # point peculiarities)
-      rw_shuffled = map(lambda x : x / rw_sum, rw[:-1])
-      rw_borders = utils.interval_list(rw_shuffled)
+      # point imprecision issues).
+      rw = map(lambda x : x / rw_sum, rw[:-1])
+      # print 'rw (normalised to [0, 1[)', rw
+      rw_borders = utils.interval_list(rw)
+      # print 'rw_borders', rw_borders
       for i in xrange(num_edges) :
+        # print 'edge #%d' % i
         g0 = utils.find_interval_index(rng.random(), rw_borders)
         g1 = utils.find_interval_index(rng.random(), rw_borders)
         # FIXME: this loop may run very often or even infinitely often when
@@ -2625,6 +2621,7 @@ function."""
           linklist[g0].append(-g1 - 1)
         else :
           linklist[g0].append(g1)
+      # print linklist
       return linklist
 
     def random_uniform_linklist(num_genes, num_edges, rng) :

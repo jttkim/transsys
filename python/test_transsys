@@ -15,7 +15,7 @@
 
 import sys
 sys.path[0:0] = ['test/lib/python']
-print sys.path
+# print sys.path
 
 import os
 import unittest
@@ -816,8 +816,8 @@ timestep: 99
     promoter
     {
       constitutive: 0.1;
-      f0004: repress(0.1, 1.0);
-      f0002: activate(0.1, 1.0);
+      f0001: activate(0.1, 1.0);
+      f0006: repress(0.1, 1.0);
     }
     product
     {
@@ -830,8 +830,8 @@ timestep: 99
     promoter
     {
       constitutive: 0.1;
-      f0006: activate(0.1, 1.0);
       f0003: repress(0.1, 1.0);
+      f0005: activate(0.1, 1.0);
     }
     product
     {
@@ -844,8 +844,8 @@ timestep: 99
     promoter
     {
       constitutive: 0.1;
-      f0001: repress(0.1, 1.0);
-      f0005: activate(0.1, 1.0);
+      f0000: repress(0.1, 1.0);
+      f0006: repress(0.1, 1.0);
     }
     product
     {
@@ -858,8 +858,8 @@ timestep: 99
     promoter
     {
       constitutive: 0.1;
-      f0002: activate(0.1, 1.0);
-      f0001: repress(0.1, 1.0);
+      f0006: repress(0.1, 1.0);
+      f0003: activate(0.1, 1.0);
     }
     product
     {
@@ -873,7 +873,7 @@ timestep: 99
     {
       constitutive: 0.1;
       f0001: activate(0.1, 1.0);
-      f0007: activate(0.1, 1.0);
+      f0007: repress(0.1, 1.0);
     }
     product
     {
@@ -886,8 +886,8 @@ timestep: 99
     promoter
     {
       constitutive: 0.1;
-      f0004: activate(0.1, 1.0);
-      f0002: activate(0.1, 1.0);
+      f0000: activate(0.1, 1.0);
+      f0007: repress(0.1, 1.0);
     }
     product
     {
@@ -900,8 +900,8 @@ timestep: 99
     promoter
     {
       constitutive: 0.1;
-      f0002: activate(0.1, 1.0);
-      f0000: activate(0.1, 1.0);
+      f0001: repress(0.1, 1.0);
+      f0000: repress(0.1, 1.0);
     }
     product
     {
@@ -914,8 +914,8 @@ timestep: 99
     promoter
     {
       constitutive: 0.1;
-      f0000: activate(0.1, 1.0);
-      f0006: activate(0.1, 1.0);
+      f0003: repress(0.1, 1.0);
+      f0001: repress(0.1, 1.0);
     }
     product
     {

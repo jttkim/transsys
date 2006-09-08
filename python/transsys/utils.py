@@ -367,16 +367,17 @@ Uses binary search.
   if x < borders[0] :
     return -1
   if x >= borders[-1] :
-    return len(borders)
+    return len(borders) - 1
   imin = 0
   imax = len(borders) - 1
-  while imin < imax - 1 :
+  while imax - imin > 1 :
     i = (imin + imax) / 2
     # print i, borders[i], x, borders[i] < x
     if borders[i] <= x :
       imin = i
     else :
       imax = i
+    # print imin, imax, i
   return imin
 
 
