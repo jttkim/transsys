@@ -16,7 +16,7 @@ import transsys.optim
 
 
 def write_result(f, optResult) :
-  f.write('// objective: %g\n' % optResult.objectiveOptimum)
+  f.write('// objective: %g\n' % optResult.objectiveOptimum.fitness)
   f.write('%s\n' %  str(optResult.optimised_transsys_program))
 
 

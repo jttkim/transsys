@@ -73,7 +73,7 @@ def optimise_simple(lsys_frame, transsys_frame, num_timesteps, transsys_program,
     if logfile is not None :
       if logfile_header_prefix is not None :
         logfile_header_prefix = '%s disparity_function' % logfile_header_prefix
-      print logfile_header_prefix
+      # print logfile_header_prefix
       optResult.write_log(logfile, '%s %s' % (logfile_row_prefix, disparity_name), logfile_header_prefix is not None, logfile_header_prefix)
       logfile_header_prefix = None
       logfile.flush()
