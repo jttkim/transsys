@@ -1,0 +1,744 @@
+<?xml version="1.0" encoding="ascii"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+          "DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <title>translattice.TranssysProgramLattice</title>
+  <link rel="stylesheet" href="epydoc.css" type="text/css" />
+  <script type="text/javascript" src="epydoc.js"></script>
+</head>
+
+<body bgcolor="white" text="black" link="blue" vlink="#204080"
+      alink="#204080">
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th class="navbar">&nbsp;&nbsp;&nbsp;<a class="navbar"
+        href="translattice-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th class="navbar">&nbsp;&nbsp;&nbsp;<a class="navbar"
+        href="trees.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th class="navbar">&nbsp;&nbsp;&nbsp;<a class="navbar"
+        href="indices.html">Index</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th class="navbar">&nbsp;&nbsp;&nbsp;<a class="navbar"
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Project homepage -->
+      <th class="navbar" align="right" width="100%">
+        <table border="0" cellpadding="0" cellspacing="0">
+          <tr><th class="navbar" align="center">
+            <p class="nomargin">
+              translattice.py
+      </p></th></tr></table></th>
+  </tr>
+</table>
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr valign="top">
+    <td width="100%">
+      <span class="breadcrumbs">
+        <a href="translattice-module.html">Module&nbsp;translattice</a> ::
+        Class&nbsp;TranssysProgramLattice
+      </span>
+    </td>
+    <td>
+      <table cellpadding="0" cellspacing="0">
+        <!-- hide/show private -->
+        <tr><td align="right"><span class="options">[<a href="javascript: void(0);" class="privatelink"
+    onclick="toggle_private();">hide private</a>]</span></td></tr>
+        <tr><td align="right"><span class="options"
+            >[<a href="frames.html" target="_top">frames</a
+            >]&nbsp;|&nbsp;<a href="translattice.TranssysProgramLattice-class.html"
+            target="_top">no&nbsp;frames</a>]</span></td></tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<!-- ==================== CLASS DESCRIPTION ==================== -->
+<h2 class="class">Class TranssysProgramLattice
+<br/><span class="codelink"><a href="translattice-pysrc.html#TranssysProgramLattice">source&nbsp;code</a></span></h2>
+<pre class="base-tree">
+transsys.TranssysInstanceCollection --+
+                                      |
+                                     <strong class="uidshort">TranssysProgramLattice</strong>
+</pre>
+
+<hr />
+<p>The main class of the simulator, contains a lattice of transsys 
+  programs.</p>
+  <p>Most of the methods for the simulation are contaned here. Is a 
+  subclass of the TranssysInstanceCollection super class of the transsys.py
+  module.</p>
+  The lattice is forming a two dimensional toroidal form.<br /><br />
+
+<!-- ==================== INSTANCE METHODS ==================== -->
+<a name="section-InstanceMethods"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="summary">
+  <td colspan="2">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <th align="left" class="summary">Instance Methods</th>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-InstanceMethods"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+  <td width="15%" align="right" valign="top" class="rtype">
+    &nbsp;
+   </td>
+  <td>
+    <span class="sig"><a href="translattice.TranssysProgramLattice-class.html#__init__" class="sig-name">__init__</a>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">tp</span>,
+        <span class="sig-arg">size</span>)</span>
+    <br />Constructor of the class.
+  </td>
+</tr>
+<tr>
+  <td width="15%" align="right" valign="top" class="rtype">
+    List of Lists
+   </td>
+  <td>
+    <span class="sig"><a href="translattice.TranssysProgramLattice-class.html#lattice_generator" class="sig-name">lattice_generator</a>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">tp</span>,
+        <span class="sig-arg">size</span>)</span>
+    <br />Method to generate the lattice of transsys instances.
+  </td>
+</tr>
+<tr>
+  <td width="15%" align="right" valign="top" class="rtype">
+    Float
+   </td>
+  <td>
+    <span class="sig"><a href="translattice.TranssysProgramLattice-class.html#randomise_factor" class="sig-name">randomise_factor</a>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">fc</span>,
+        <span class="sig-arg">rng</span>,
+        <span class="sig-arg">rangeb</span>,
+        <span class="sig-arg">homogenise</span>)</span>
+    <br />Returns a factor concentration out of a uniform distribution.
+  </td>
+</tr>
+<tr>
+  <td width="15%" align="right" valign="top" class="rtype">
+    &nbsp;
+   </td>
+  <td>
+    <span class="sig"><a href="translattice.TranssysProgramLattice-class.html#randomise_lattice" class="sig-name">randomise_lattice</a>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">rng</span>,
+        <span class="sig-arg">rangeb</span>,
+        <span class="sig-arg">homogenise</span>)</span>
+    <br />Method to randomise the factor concentrations of the lattice.
+  </td>
+</tr>
+<tr>
+  <td width="15%" align="right" valign="top" class="rtype">
+    &nbsp;
+   </td>
+  <td>
+    <span class="sig"><a href="translattice.TranssysProgramLattice-class.html#initialise_lattice_concentrations" class="sig-name">initialise_lattice_concentrations</a>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">homogenise</span>,
+        <span class="sig-arg">borderRange</span>,
+        <span class="sig-arg">rndSeed</span>)</span>
+    <br />Method to assign the initial factor concentrations on the 
+      lattice.
+  </td>
+</tr>
+<tr>
+  <td width="15%" align="right" valign="top" class="rtype">
+    &nbsp;
+   </td>
+  <td>
+    <span class="sig"><a href="translattice.TranssysProgramLattice-class.html#get_transsys_program" class="sig-name">get_transsys_program</a>(<span class="sig-arg">self</span>)</span>
+    <br />Overrides the get_transsys_program method of the superclass.
+  </td>
+</tr>
+<tr>
+  <td width="15%" align="right" valign="top" class="rtype">
+    &nbsp;
+   </td>
+  <td>
+    <span class="sig"><a href="translattice.TranssysProgramLattice-class.html#transsys_instance_list" class="sig-name">transsys_instance_list</a>(<span class="sig-arg">self</span>)</span>
+    <br />Overrides the transsys_instance_list method of the superclass.
+  </td>
+</tr>
+<tr>
+  <td width="15%" align="right" valign="top" class="rtype">
+    &nbsp;
+   </td>
+  <td>
+    <span class="sig"><a href="translattice.TranssysProgramLattice-class.html#write_table_header" class="sig-name">write_table_header</a>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">f</span>)</span>
+    <br />Overrides the write_table_header method of the superclass.
+  </td>
+</tr>
+<tr>
+  <td width="15%" align="right" valign="top" class="rtype">
+    &nbsp;
+   </td>
+  <td>
+    <span class="sig"><a href="translattice.TranssysProgramLattice-class.html#write_table" class="sig-name">write_table</a>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">f</span>)</span>
+    <br />Overrides the write_table method of the superclass.
+  </td>
+</tr>
+<tr>
+  <td width="15%" align="right" valign="top" class="rtype">
+    &nbsp;
+   </td>
+  <td>
+    <span class="sig"><a href="translattice.TranssysProgramLattice-class.html#update_factor_concentrations" class="sig-name">update_factor_concentrations</a>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">currentState</span>,
+        <span class="sig-arg">size</span>,
+        <span class="sig-arg">rndseed</span>)</span>
+    <br />The update function of the simulator, calculates the instances of 
+      the next timestep.
+  </td>
+</tr>
+<tr>
+  <td width="15%" align="right" valign="top" class="rtype">
+    &nbsp;
+   </td>
+  <td>
+    <span class="sig"><a href="translattice.TranssysProgramLattice-class.html#update_function" class="sig-name">update_function</a>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">timesteps</span>,
+        <span class="sig-arg">rndseed</span>)</span>
+    <br />Calculates the new transsys instance.
+  </td>
+</tr>
+<tr>
+  <td width="15%" align="right" valign="top" class="rtype">
+    &nbsp;
+   </td>
+  <td>
+    <span class="sig"><a href="translattice.TranssysProgramLattice-class.html#signal_factor_concentration" class="sig-name">signal_factor_concentration</a>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">xCenter</span>,
+        <span class="sig-arg">yCenter</span>,
+        <span class="sig-arg">signal</span>,
+        <span class="sig-arg">factor</span>)</span>
+    <br />Sets the factor concentration to signal.
+  </td>
+</tr>
+<tr>
+  <td width="15%" align="right" valign="top" class="rtype">
+    &nbsp;
+   </td>
+  <td>
+    <span class="sig"><a href="translattice.TranssysProgramLattice-class.html#introduce_signal" class="sig-name">introduce_signal</a>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">signalC</span>,
+        <span class="sig-arg">xFactor</span>=<span class="sig-default">None</span>)</span>
+    <br />Generic function for introduce signal.
+  </td>
+</tr>
+  <tr>
+    <td colspan="2">
+    <p class="varlist"><span class="varlist-header">Inherited from <code>transsys.TranssysInstanceCollection</code></span>:
+      <code>statistics</code>
+      </p>
+    </td>
+  </tr>
+</table>
+
+<br />
+<!-- ==================== INSTANCE VARIABLES ==================== -->
+<a name="section-InstanceVariables"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="summary">
+  <td colspan="2">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <th align="left" class="summary">Instance Variables</th>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-InstanceVariables"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+  <td width="15%">
+    <strong><a href="translattice.TranssysProgramLattice-class.html#lattice">lattice</a></strong></td>
+  <td>A lattice containg a transsys programs in each cell.</td>
+</tr>
+<tr>
+  <td width="15%">
+    <strong><a href="translattice.TranssysProgramLattice-class.html#name">name</a></strong></td>
+  <td>The lattice name.</td>
+</tr>
+<tr>
+  <td width="15%">
+    <strong><a href="translattice.TranssysProgramLattice-class.html#size">size</a></strong></td>
+  <td>The size of the lattice.</td>
+</tr>
+<tr>
+  <td width="15%">
+    <strong><a href="translattice.TranssysProgramLattice-class.html#transsysProgram">transsysProgram</a></strong></td>
+  <td>The transsys program.</td>
+</tr>
+</table>
+
+<br />
+<!-- ==================== METHOD DETAILS ==================== -->
+<a name="section-MethodDetails"></a>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="details">
+  <td colspan="2">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <th align="left" class="details">Method Details</th>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-MethodDetails"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+</table>
+<a name="__init__"></a>
+<div>
+<table width="100%" class="func-details" bgcolor="#e0e0e0"><tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3><span class="sig"><span class="sig-name">__init__</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">tp</span>,
+        <span class="sig-arg">size</span>)</span>
+    <br /><em class="fname">(Constructor)</em>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="translattice-pysrc.html#TranssysProgramLattice.__init__">source&nbsp;code</a></span>&nbsp;</span
+    ></td>
+  </table>
+  
+  Constructor of the class.
+  <dl><dt></dt><dd>
+    <dl><dt>Overrides:
+      transsys.TranssysInstanceCollection.__init__
+    </dt></dl>
+  </dd></dl>
+</td></tr></table>
+</div>
+<a name="lattice_generator"></a>
+<div>
+<table width="100%" class="func-details" bgcolor="#e0e0e0"><tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3><span class="sig"><span class="sig-name">lattice_generator</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">tp</span>,
+        <span class="sig-arg">size</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="translattice-pysrc.html#TranssysProgramLattice.lattice_generator">source&nbsp;code</a></span>&nbsp;</span
+    ></td>
+  </table>
+  
+  Method to generate the lattice of transsys instances.
+  <dl><dt></dt><dd>
+    <dl><dt>Parameters:</dt></dl>
+    <ul>
+        <li><strong class="pname"><code>tp</code></strong> (<code>class 'transsys.TranssysProgram'</code>) - The transsys program.</li>
+        <li><strong class="pname"><code>size</code></strong> (<code>List</code>) - The size of the lattice.</li>
+    </ul>
+    <dl><dt>Returns: <code>List of Lists</code></dt>
+        <dd>A lattice populated with transsys program instances.</dd></dl>
+  </dd></dl>
+</td></tr></table>
+</div>
+<a name="randomise_factor"></a>
+<div>
+<table width="100%" class="func-details" bgcolor="#e0e0e0"><tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3><span class="sig"><span class="sig-name">randomise_factor</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">fc</span>,
+        <span class="sig-arg">rng</span>,
+        <span class="sig-arg">rangeb</span>,
+        <span class="sig-arg">homogenise</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="translattice-pysrc.html#TranssysProgramLattice.randomise_factor">source&nbsp;code</a></span>&nbsp;</span
+    ></td>
+  </table>
+  
+  <p>Returns a factor concentration out of a uniform distribution.</p>
+  <p>Checks for zero factor concentration and adapting the output.</p>
+  Also returns a constant value in case of the homogenisation switch is 
+  set.
+  <dl><dt></dt><dd>
+    <dl><dt>Parameters:</dt></dl>
+    <ul>
+        <li><strong class="pname"><code>fc</code></strong> (<code>Float</code>) - The current factor concentration.</li>
+        <li><strong class="pname"><code>rng</code></strong> (<code>class 'xxxxxRNG'</code>) - The random number generator.</li>
+        <li><strong class="pname"><code>rangeb</code></strong> (<code>Float</code>) - The range notion for the Uniform distribution. (needs further 
+          explanation)</li>
+        <li><strong class="pname"><code>homogenise</code></strong> (<code>Boolean</code>) - The homogenisation switch.</li>
+    </ul>
+    <dl><dt>Returns: <code>Float</code></dt>
+        <dd>A randomize value for the factor concentration.</dd></dl>
+  </dd></dl>
+</td></tr></table>
+</div>
+<a name="randomise_lattice"></a>
+<div>
+<table width="100%" class="func-details" bgcolor="#e0e0e0"><tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3><span class="sig"><span class="sig-name">randomise_lattice</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">rng</span>,
+        <span class="sig-arg">rangeb</span>,
+        <span class="sig-arg">homogenise</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="translattice-pysrc.html#TranssysProgramLattice.randomise_lattice">source&nbsp;code</a></span>&nbsp;</span
+    ></td>
+  </table>
+  
+  <p>Method to randomise the factor concentrations of the lattice.</p>
+  Wraper of the previous method <a 
+  href="translattice.TranssysProgramLattice-class.html#randomise_factor" 
+  class="link">randomise_factor</a> for all the factors in a lattice.
+  <dl><dt></dt><dd>
+    <dl><dt>Parameters:</dt></dl>
+    <ul>
+        <li><strong class="pname"><code>rng</code></strong> (<code>class 'xxxxxRNG'</code>) - The random number generator.</li>
+        <li><strong class="pname"><code>rangeb</code></strong> (<code>Float</code>) - The range notion for the Uniform distribution. (needs further 
+          explanation)</li>
+        <li><strong class="pname"><code>homogenise</code></strong> (<code>Boolean</code>) - The homogenisation switch.</li>
+    </ul>
+  </dd></dl>
+</td></tr></table>
+</div>
+<a name="initialise_lattice_concentrations"></a>
+<div>
+<table width="100%" class="func-details" bgcolor="#e0e0e0"><tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3><span class="sig"><span class="sig-name">initialise_lattice_concentrations</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">homogenise</span>,
+        <span class="sig-arg">borderRange</span>,
+        <span class="sig-arg">rndSeed</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="translattice-pysrc.html#TranssysProgramLattice.initialise_lattice_concentrations">source&nbsp;code</a></span>&nbsp;</span
+    ></td>
+  </table>
+  
+  Method to assign the initial factor concentrations on the lattice.
+  <dl><dt></dt><dd>
+  </dd></dl>
+</td></tr></table>
+</div>
+<a name="get_transsys_program"></a>
+<div>
+<table width="100%" class="func-details" bgcolor="#e0e0e0"><tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3><span class="sig"><span class="sig-name">get_transsys_program</span>(<span class="sig-arg">self</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="translattice-pysrc.html#TranssysProgramLattice.get_transsys_program">source&nbsp;code</a></span>&nbsp;</span
+    ></td>
+  </table>
+  
+  <p>Overrides the get_transsys_program method of the superclass.</p>
+  Returns a transsys program.
+  <dl><dt></dt><dd>
+    <dl><dt>Overrides:
+      transsys.TranssysInstanceCollection.get_transsys_program
+    </dt></dl>
+  </dd></dl>
+</td></tr></table>
+</div>
+<a name="transsys_instance_list"></a>
+<div>
+<table width="100%" class="func-details" bgcolor="#e0e0e0"><tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3><span class="sig"><span class="sig-name">transsys_instance_list</span>(<span class="sig-arg">self</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="translattice-pysrc.html#TranssysProgramLattice.transsys_instance_list">source&nbsp;code</a></span>&nbsp;</span
+    ></td>
+  </table>
+  
+  <p>Overrides the transsys_instance_list method of the superclass.</p>
+  Returns a list of all the transsys program of a 
+  TranssysProgramCollection.
+  <dl><dt></dt><dd>
+    <dl><dt>Overrides:
+      transsys.TranssysInstanceCollection.transsys_instance_list
+    </dt></dl>
+  </dd></dl>
+</td></tr></table>
+</div>
+<a name="write_table_header"></a>
+<div>
+<table width="100%" class="func-details" bgcolor="#e0e0e0"><tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3><span class="sig"><span class="sig-name">write_table_header</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">f</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="translattice-pysrc.html#TranssysProgramLattice.write_table_header">source&nbsp;code</a></span>&nbsp;</span
+    ></td>
+  </table>
+  
+  Overrides the write_table_header method of the superclass.
+  <dl><dt></dt><dd>
+    <dl><dt>Overrides:
+      transsys.TranssysInstanceCollection.write_table_header
+    </dt></dl>
+  </dd></dl>
+</td></tr></table>
+</div>
+<a name="write_table"></a>
+<div>
+<table width="100%" class="func-details" bgcolor="#e0e0e0"><tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3><span class="sig"><span class="sig-name">write_table</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">f</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="translattice-pysrc.html#TranssysProgramLattice.write_table">source&nbsp;code</a></span>&nbsp;</span
+    ></td>
+  </table>
+  
+  Overrides the write_table method of the superclass.
+  <dl><dt></dt><dd>
+    <dl><dt>Overrides:
+      transsys.TranssysInstanceCollection.write_table
+    </dt></dl>
+  </dd></dl>
+</td></tr></table>
+</div>
+<a name="update_factor_concentrations"></a>
+<div>
+<table width="100%" class="func-details" bgcolor="#e0e0e0"><tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3><span class="sig"><span class="sig-name">update_factor_concentrations</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">currentState</span>,
+        <span class="sig-arg">size</span>,
+        <span class="sig-arg">rndseed</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="translattice-pysrc.html#TranssysProgramLattice.update_factor_concentrations">source&nbsp;code</a></span>&nbsp;</span
+    ></td>
+  </table>
+  
+  <p>The update function of the simulator, calculates the instances of the 
+  next timestep.</p>
+  <p>Careful usage of the factor concentrations...</p>
+  The method calculates the new factor concentrations after the 
+  calculation of all the diffusibility effects and returns the lattice with
+  the &quot;updated&quot; factor concentrations.
+  <dl><dt></dt><dd>
+  </dd></dl>
+</td></tr></table>
+</div>
+<a name="update_function"></a>
+<div>
+<table width="100%" class="func-details" bgcolor="#e0e0e0"><tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3><span class="sig"><span class="sig-name">update_function</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">timesteps</span>,
+        <span class="sig-arg">rndseed</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="translattice-pysrc.html#TranssysProgramLattice.update_function">source&nbsp;code</a></span>&nbsp;</span
+    ></td>
+  </table>
+  
+  <p>Calculates the new transsys instance.</p>
+  The method actually calls the transsys.time_series function for all 
+  the TranssysInstances on the lattice.
+  <dl><dt></dt><dd>
+  </dd></dl>
+</td></tr></table>
+</div>
+<a name="signal_factor_concentration"></a>
+<div>
+<table width="100%" class="func-details" bgcolor="#e0e0e0"><tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3><span class="sig"><span class="sig-name">signal_factor_concentration</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">xCenter</span>,
+        <span class="sig-arg">yCenter</span>,
+        <span class="sig-arg">signal</span>,
+        <span class="sig-arg">factor</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="translattice-pysrc.html#TranssysProgramLattice.signal_factor_concentration">source&nbsp;code</a></span>&nbsp;</span
+    ></td>
+  </table>
+  
+  <p>Sets the factor concentration to signal.</p>
+  Method wich implements the introduce signal functionality. Sets the 
+  concentration of the factor to the given value.
+  <dl><dt></dt><dd>
+  </dd></dl>
+</td></tr></table>
+</div>
+<a name="introduce_signal"></a>
+<div>
+<table width="100%" class="func-details" bgcolor="#e0e0e0"><tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3><span class="sig"><span class="sig-name">introduce_signal</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">signalC</span>,
+        <span class="sig-arg">xFactor</span>=<span class="sig-default">None</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="translattice-pysrc.html#TranssysProgramLattice.introduce_signal">source&nbsp;code</a></span>&nbsp;</span
+    ></td>
+  </table>
+  
+  Generic function for introduce signal. Has two functionalities 
+  depending on the call.
+  <ol start="1">
+    <li>
+      Sets a specific factor concentration to the declared value in the 
+      begining (first timestep) of the simulator. If it is called according
+      to the introduce signal factor functionality.
+    </li>
+    <li>
+      Sets all the factor conscentrations the declared value on a 
+      declared timestep of the simulator. If it is called according to the 
+      introduce signal timestep functionallity.
+    </li>
+  </ol>
+  <dl><dt></dt><dd>
+  </dd></dl>
+</td></tr></table>
+</div>
+<br />
+<!-- ==================== INSTANCE VARIABLE DETAILS ==================== -->
+<a name="section-InstanceVariableDetails"></a>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="details">
+  <td colspan="2">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <th align="left" class="details">Instance Variable Details</th>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-InstanceVariableDetails"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+</table>
+<a name="lattice"></a>
+<div>
+<table width="100%" class="var-details" bgcolor="#e0e0e0"><tr><td>
+  <h3>lattice</h3>
+  A lattice containg a transsys programs in each cell.
+  <dl><dt></dt><dd>
+    <dl><dt>Type:</dt>
+      <dd>List of Lists</dd></dl>
+  </dd></dl>
+</td></tr></table>
+</div>
+<a name="name"></a>
+<div>
+<table width="100%" class="var-details" bgcolor="#e0e0e0"><tr><td>
+  <h3>name</h3>
+  The lattice name. Contains information of the type and the size.
+  <dl><dt></dt><dd>
+    <dl><dt>Type:</dt>
+      <dd>String</dd></dl>
+  </dd></dl>
+</td></tr></table>
+</div>
+<a name="size"></a>
+<div>
+<table width="100%" class="var-details" bgcolor="#e0e0e0"><tr><td>
+  <h3>size</h3>
+  The size of the lattice.
+  <dl><dt></dt><dd>
+    <dl><dt>Type:</dt>
+      <dd>List</dd></dl>
+  </dd></dl>
+</td></tr></table>
+</div>
+<a name="transsysProgram"></a>
+<div>
+<table width="100%" class="var-details" bgcolor="#e0e0e0"><tr><td>
+  <h3>transsysProgram</h3>
+  The transsys program.
+  <dl><dt></dt><dd>
+    <dl><dt>Type:</dt>
+      <dd>class 'transsys.TranssysProgram'</dd></dl>
+  </dd></dl>
+</td></tr></table>
+</div>
+<br />
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th class="navbar">&nbsp;&nbsp;&nbsp;<a class="navbar"
+        href="translattice-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th class="navbar">&nbsp;&nbsp;&nbsp;<a class="navbar"
+        href="trees.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th class="navbar">&nbsp;&nbsp;&nbsp;<a class="navbar"
+        href="indices.html">Index</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th class="navbar">&nbsp;&nbsp;&nbsp;<a class="navbar"
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Project homepage -->
+      <th class="navbar" align="right" width="100%">
+        <table border="0" cellpadding="0" cellspacing="0">
+          <tr><th class="navbar" align="center">
+            <p class="nomargin">
+              translattice.py
+      </p></th></tr></table></th>
+  </tr>
+</table>
+<table border="0" cellpadding="0" cellspacing="0" width="100%%">
+  <tr>
+    <td align="left" class="footer">Generated by Epydoc
+        3.0alpha2 on Thu Sep 14 17:34:54 2006</td>
+    <td align="right" class="footer">
+      <a href="http://epydoc.sourceforge.net">http://epydoc.sf.net</a>
+    </td>
+  </tr>
+</table>
+
+<script type="text/javascript">
+  <!--
+  // Private objects are initially displayed (because if
+  // javascript is turned off then we want them to be
+  // visible); but by default, we want to hide them.  So hide
+  // them unless we have a cookie that says to show them.
+  checkCookie()
+  // -->
+</script>
+  
+</body>
+</html>
