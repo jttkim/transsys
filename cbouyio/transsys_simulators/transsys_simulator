@@ -72,8 +72,8 @@ def usage():
    transsys_simulator [list of arguments] input_file output_file
                   -d: Sampling intervals. (default = 1)
                   -e: Equilibration procedure switcher, enables the
-                      equilibration function, leads the system to an
-                      equilibrium before starting anything.
+		      equilibration function, leads the system to an
+                      equilibrium before starting any other procedure.
                       (default = DISABLED).
           -h, --help: Prints this screen.
                   -i: Initialize the factor concentration of a
@@ -102,8 +102,9 @@ def usage():
                       (default = 5)
                   -s: Standard deviation (sigma) of the Gauss
                       distribution. (default = 0.05)
+
           input_file: A transsys program file.
-         output file: The printout file. (--printout to get more
+         output file: The printout file. (--printhelp to get more
                       information regarding the format of the output
                       files)
 
@@ -119,19 +120,21 @@ def printhelp():
   explains in a brief way the contents of each column. This line is also used
   by the R program with the option header=TRUE to define the column names and
   number of the reading table in R.\n
- normal:  It is the default output of the script, considering one(1) as the
-          default value the perturbed samples, (m = 1). It prints the
-          corresponding timestep, then the factor concentration lists (for
-          each timestep) of all the factors in the initial and the perturbed
-          timeseries and in the last column the Euclidean distance between
-          instances for each timestep
-          (this file has 2g+2 columns, where g is the number of genes at
-          the coresponding transsys program).
- Format2: It is the output format in any other number of perturbed samples
-          (m > 1). In the first column the timesteps are printed again but
-          they are followed by the different Euclidean distance lists
-          for each of the perturbed samples.
-          (this file has m+1 columns, m is the number of perturbed samples)\n"""
+ normal     : It is the default output of the script, considering one(1) as the
+              default value the perturbed samples, (m = 1). It prints the
+              corresponding timestep, then the factor concentration lists (for
+              each timestep) of all the factors in the initial and the perturbed
+              timeseries and in the last column the Euclidean distance between
+              instances for each timestep.
+	      (this file has 2g+2 columns, where g is the number of genes at
+	      the coresponding transsys program)
+ final_state: It is the output format in any other number of perturbed samples
+              (m > 1). In the first column the timesteps are printed again but
+              they are followed by the different Euclidean distance lists
+              for each of the perturbed samples.
+              (this file has m+1 columns, m is the number of perturbed samples)
+ factors    :
+ factors_SVD:\n"""
 
 
 def equilibration(instance, e):
