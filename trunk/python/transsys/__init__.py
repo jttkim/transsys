@@ -176,12 +176,17 @@ class ExpressionNode :
 
 
   def unresolved_copy(self) :
+    """Return an unresolved copy of this node."""
     return copy.deepcopy(self)
 
 
   def getValueNodes(self) :
-    """get all constant value nodes in expression subtree. This
-is the default implementation which returns an empty list."""
+    """Return all constant value nodes in expression subtree. This
+is the default implementation which returns an empty list.
+
+@return: a list of value nodes in the subtree rooted at this node
+@rtype: C{list}
+"""
     return []
 
 
@@ -192,10 +197,20 @@ is the default implementation which returns an empty list."""
 
 
 class ExpressionNodeValue(ExpressionNode) :
+  """Expression node holding a constant floating point value.
+
+@ivar value: the value
+@type value: C{float}
+"""
   # v should be a numeric type (float or int, or perhaps long). Other
   # types may be accepted now, but are not guaranteed to work in the
   # future.
   def __init__(self, v) :
+    """Constructor.
+
+@param v: the constant value
+@type v: C{float}
+"""
     self.value = float(v)
 
 
@@ -203,6 +218,7 @@ class ExpressionNodeValue(ExpressionNode) :
     return str(self.value)
 
 
+  # FIXME: this is obsolete now that simulation is available through the clib module.
   def evaluate(self, transsys_instance_list) :
     return self.value
 
@@ -225,6 +241,17 @@ Both parameters may be C{None} to specify an open-ended interval.
 
 
 class ExpressionNodeIdentifier(ExpressionNode) :
+  """Node representing an identifier, i.e. a factor, possibly qualified by a
+transsys label.
+
+Qualification by a transsys label occurs within L-transsys contexts.
+
+@ivar factor: The factor identified by this node
+@type factor: Either a C{Factor} instance (resolved case) or a C{string}
+  (unresolved case).
+@ivar transsys_label: the transsys label, C{None} if no label
+@type transsys_label: C{string}
+"""
 
   def __init__(self, factor, transsys_label = None) :
     if not (isinstance(factor, Factor) or (type(factor) is types.StringType)) :
@@ -754,7 +781,21 @@ class PromoterElementRepress(PromoterElementLink) :
 
 
 class Factor :
+  """Class representing a transsys factor.
 
+@ivar name: the factor's name
+@type name: C{string}
+@ivar decay_expression: expression to compute the factor's decay rate
+@type decay_expression: C{ExpressionNode} subclass
+@ivar diffusibility_expression: expression to compute the factor's diffusibility
+@type diffusibility_expression: C{ExpressionNode} subclass
+@ivar comments: comments pertaining to the factor
+@type comments: C{list} of C{string}s
+@ivar dot_attributes: attributes for rendering the factor in the dot (graphviz)
+  language
+@type dot_attributes: C{dictionary}, keys are attribute names, values are
+  attribute values
+"""
   def __init__(self, name, decay_expr, diffusibility_expr, dot_attrs = None) :
     if not isinstance(decay_expr, ExpressionNode) :
       raise StandardError, 'Factor::__init__: bad decay_expr type'
@@ -837,9 +878,11 @@ class Gene :
   """Class to represent a gene.
 
 @ivar name: name of the gene
-@ivar product: product of this gene, either a string (unresolved) or a
-  C{Factor} (resolved)
-@ivar promoter: list of promoter elements.
+@type name: C{string}
+@ivar product: product of this gene
+@type product: C{string} (unresolved) or C{Factor} (resolved)
+@ivar promoter: list of promoter elements
+@type promoter: C{list} of C{PromoterElement} subclass instances
 """
 
   def __init__(self, name, product, promoter = None, dot_attrs = None) :
@@ -1004,7 +1047,7 @@ promoter elements (activate, repress) of this gene."""
       p.canonicalise()
 
 
-class TranssysProgram :
+class TranssysProgram(object) :
   """Class to represent a transsys program.
 
 References to objects within the transsys program can in some
@@ -1022,10 +1065,14 @@ is required to return the derived class, these classes will have to
 re-implement this method.
 
 @ivar name: name of the transsys program
+@type name: C{string}
 @ivar factor_list: list containing the factors of the program
+@type factor_list: C{list} of C{Factor} instances
 @ivar gene_list: list containing the genes of the program
+@type gene_list: C{list} of C{Gene} instances
 @ivar comments: list of strings that will be provided as
   comments upon converting the transsys program to a string
+@type comments: C{list} of C{string}s
 """
 
   def __init__(self, name, factor_list = None, gene_list = None, resolve = True) :
@@ -1857,10 +1904,10 @@ class TranssysInstance :
 
   magic = '# transsys expression records 1.0'
 
-  def __init__(self, tp, timestep = None) :
-    if not isinstance(tp, TranssysProgram) :
-      raise StandardError, 'TranssysInstance::__init__: unsuitable type of tp (no TranssysProgram)'
-    self.transsys_program = tp
+  def __init__(self, transsys_program, timestep = None) :
+    if not isinstance(transsys_program, TranssysProgram) :
+      raise StandardError, 'TranssysInstance::__init__: unsuitable type of transsys_program (no TranssysProgram)'
+    self.transsys_program = transsys_program
     self.timestep = timestep
     self.factor_concentration = [0.0] * self.transsys_program.num_factors()
     # FIXME (conceptual issue):
@@ -2007,8 +2054,8 @@ copy.deepcopy on it."""
 
 class CollectionStatistics :
 
-  def __init__(self, tp = None) :
-    self.transsys_program = tp
+  def __init__(self, transsys_program = None) :
+    self.transsys_program = transsys_program
     self.average = None
     self.standard_deviation = None
     self.shannon_entropy = None
