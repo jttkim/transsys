@@ -1,9 +1,0 @@
-transsys zerotest
-# A geneless transsys program for testing zero.
-{
-  factor ZEROTEST
-  {
-    decay: 0.0;
-    diffusibility: 0.0;
-  }
-}

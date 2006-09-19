@@ -1,9 +1,0 @@
-transsys deCaytest
-# A geneless transsys program for testing decay rate.
-{
-  factor DECAYTEST
-  {
-    decay: 0.5;
-    diffusibility: 0.25;
-  }
-}
