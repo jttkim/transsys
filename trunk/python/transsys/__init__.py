@@ -2053,12 +2053,29 @@ copy.deepcopy on it."""
 
 
 class CollectionStatistics :
+  """Aggregate statistics computed from a C{TranssysInstanceCollection}.
+
+@ivar transsys_program: the transsys program of the collection
+@type transsys_program: C{TranssysProgram} or C{None}
+@ivar average: list of average factor concentrations
+@type average: C{List} of C{float}s, or C{None}
+@ivar standard_deviation: list of standard deviation values of factor concentrations
+@type standard_deviation: C{List} of C{float}s, or C{None}
+@ivar shannon_entropy: list of Shannon entropy values of factor concentrations
+@type shannon_entropy: C{List} of C{float}s, or C{None}
+@ivar min_factor_concentration: list of minimal values of factor concentrations
+@type min_factor_concentration: C{List} of C{float}s, or C{None}
+@ivar max_factor_concentration: list of maximal values of factor concentrations
+@type max_factor_concentration: C{List} of C{float}s, or C{None}
+"""
 
   def __init__(self, transsys_program = None) :
     self.transsys_program = transsys_program
     self.average = None
     self.standard_deviation = None
     self.shannon_entropy = None
+    self.min_factor_concentration = None
+    self.max_factor_concentration = None
 
 
   def __str__(self) :
@@ -2067,7 +2084,7 @@ class CollectionStatistics :
     s = '# %s\n' % self.transsys_program.name
     s = s + 'factor\taverage\tstddev\tentropy\n'
     for i in xrange(self.transsys_program.num_factors()) :
-      s = s + '%s\t%1.17e\t%1.17e\t%1.17e\n' % (self.transsys_program.factor_list[i].name, self.average[i], self.standard_deviation[i], self.shannon_entropy[i])
+      s = s + '%s\t%1.17e\t%1.17e\t%1.17e\t%1.17e\t%1.17e\n' % (self.transsys_program.factor_list[i].name, self.average[i], self.standard_deviation[i], self.shannon_entropy[i], self.min_factor_concentration[i], self.max_factor_concentration[i])
     return s
     
 
@@ -2131,6 +2148,14 @@ also override write_table_header accordingly.
 
 
   def statistics(self) :
+    """Compute an instance of C{CollectionStatistics} from this collection.
+
+If the collection is empty, a C{CollectionStatistics} instance containing
+C{None} values for all statistics is produced.
+
+@return: A C{CollectionStatistics} instance or C{None}
+@rtype: A C{CollectionStatistics} instance or C{None}
+"""
     tp = self.get_transsys_program()
     if tp is None :
       return None
@@ -2138,9 +2163,19 @@ also override write_table_header accordingly.
     ti_list = self.transsys_instance_list()
     n = tp.num_factors()
     fc_sum = [0.0] * n
+    if len(ti_list) == 0 :
+      stats.min_factor_concentration = [None] * n
+      stats.max_factor_concentration = [None] * n
+    else :
+      stats.min_factor_concentration = ti_list[0].factor_concentration[:]
+      stats.max_factor_concentration = ti_list[0].factor_concentration[:]
     for ti in ti_list :
       for i in xrange(n) :
         fc_sum[i] = fc_sum[i] + ti.factor_concentration[i]
+        if stats.min_factor_concentration[i] > ti.factor_concentration[i] :
+          stats.min_factor_concentration[i] = ti.factor_concentration[i]
+        if stats.max_factor_concentration[i] < ti.factor_concentration[i] :
+          stats.max_factor_concentration[i] = ti.factor_concentration[i]
     stats.average = [None] * n
     for i in xrange(n) :
       stats.average[i] = fc_sum[i] / len(ti_list)
