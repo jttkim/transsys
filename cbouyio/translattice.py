@@ -52,12 +52,14 @@ class GaussianRNG :
     Takes the random seed, the mean and the standard deviation.
 
     @param rndseed: The random seed of the random number generator.
-    @type rndseed: C{float} or C{int}
+    @type rndseed: C{int}
     @param mu: The mean of the Gaussian distribution.
     @type mu: C{float} or C{int}
     @param sigma: The standard deviation of the Gaussian distribution.
     @type sigma: C{float} or C{int}
     """
+    if not isinstance(rndseed, int) :
+      raise StandardError, 'The random number generator accepts only integers.'
     self.rng   = random.Random(rndseed)
     self.mu    = mu
     self.sigma = sigma
@@ -92,8 +94,10 @@ class UniformRNG :
     Takes only the random seed as parameter.
 
     @param rndseed: The random seed of the random number generator.
-    @type rndseed: C{float} or C{int}
+    @type rndseed: C{int}
     """
+    if not isinstance(rndseed, int) :
+      raise StandardError, 'The random number generator accepts only integers.'
     self.rng = random.Random(rndseed)
 
   def random_value(self, a, b) :
@@ -217,7 +221,8 @@ class TranssysInstanceCoordinates(transsys.TranssysInstance) :
     return tsCoordinates
 
 
-class TranssysProgramLattice(transsys.TranssysInstanceCollection) :
+
+class TranssysInstanceLattice(transsys.TranssysInstanceCollection) :
   """
   The main class of the simulator, contains a lattice of transsys programs.
 
@@ -235,9 +240,11 @@ class TranssysProgramLattice(transsys.TranssysInstanceCollection) :
   @type transsysProgram: C{class 'transsys.TranssysProgram'}
   @ivar size: The size of the lattice.
   @type size: C{list}
+  @Ivar timestep: The timestep.
+  @type timestep: C{int}
   """
 
-  def __init__(self, tp, size) :
+  def __init__(self, tp, size, timestep=None) :
     """
     Constructor of the class.
 
@@ -245,12 +252,15 @@ class TranssysProgramLattice(transsys.TranssysInstanceCollection) :
     @type tp: C{class 'transsys.TranssysProgram'}
     @param size: The size of the lattice.
     @type size: C{list}
+    @param timestep: The timestep.
+    @type timestep: C{int}
     """
     # The name of the lattice.
     self.name = tp.name + '_on_a_toroidal_two_dimentional_' + str(size[0]) + 'x' + str(size[1]) + '_lattice'
     self.lattice = self.lattice_generator(tp, size)
     self.transsysProgram = tp
     self.size = size
+    self.timestep = timestep
     # Safeguard for acceptable diffusibility parameters.
     # Diffusibility ought to be a number between 0 and 1 [0, 1] to be accepted
     # by the update function.
@@ -342,7 +352,6 @@ class TranssysProgramLattice(transsys.TranssysInstanceCollection) :
     Method to assign the initial factor concentrations on the lattice.
 
     Initialising the random seed and call the L{randomise_lattice}.
-    (FIXME: it can be merged with the randomise_lattice)
 
     @param homogenise: The homogenisation switch.
     @type homogenise: C{bool}
@@ -350,16 +359,16 @@ class TranssysProgramLattice(transsys.TranssysInstanceCollection) :
     further explanation)
     @type borderRange: C{float}
     @param rndSeed: The seed for the random number genetaror.
-    @type rndSeed: C{float} or C{int} or C{str}
+    @type rndSeed: C{int}
     @rtype: C{None}
+    @todo: This method might be merged with the L{randomise_lattice}
     """
-    # FIXME: This method can be merged with the previous one.
     if not homogenise :
       rng = UniformRNG(rndSeed)
       self.randomise_lattice(rng, borderRange, homogenise)
     else :
       rng = ConstantRNG(borderRange * math.e)
-      # Maybe is usefull (gives an homogenized matrix).
+      # Maybe this is usefull (gives an randomised and homogenised matrix).
       self.randomise_lattice(rng, None, homogenise)
 
 
@@ -380,7 +389,7 @@ class TranssysProgramLattice(transsys.TranssysInstanceCollection) :
     Overrides the transsys_instance_list method of the superclass.
 
     Returns a list of all the transsys programs from a
-    TranssysProgramCollection.
+    TranssysInstanceCollection.
 
     @return: A list of the transsys programs.
     @rtype: C{list} of C{transsys.TranssysProgram} objects
@@ -444,15 +453,15 @@ class TranssysProgramLattice(transsys.TranssysInstanceCollection) :
     "updated" factor concentrations.
 
     @param currentState: A transsys program lattice.
-    @type currentState: C{class 'TranssysProgramLattice'}
+    @type currentState: C{class 'TranssysInstanceLattice'}
     @param size: The size of the lattice.
     @type size: C{list} of C{int}
     @param rndseed: The random seed for the random number generator. (It is
     used only in cases that we want to incorporate some noise in the)
-    @type rndseed: C{float} or C{int} or C{str}
+    @type rndseed: C{int}
     @return: A transsys program lattice containing the updated factor
     concentrations, after the diffusibility effects have been calculated.
-    @rtype: C{class 'TranssysProgramLattice'}
+    @rtype: C{class 'TranssysInstanceLattice'}
     """
     # Calculate the updated factor concentrations.
     # All the instances in the lattice are interacting with the 4 neighbour
@@ -463,8 +472,10 @@ class TranssysProgramLattice(transsys.TranssysInstanceCollection) :
     y = size[1]
     latticeFactorConcentrations = []
     # Include some noise or not.
-#    rng = GaussianRNG(rndseed, 0, 0.1)
-    rng = ConstantRNG(0)
+    if rndseed is None :
+      rng = ConstantRNG(0)
+    else :
+      rng = GaussianRNG(rndseed, 0, 0.1)
     for i in xrange(len(self.lattice)) :
       latticeFactorConcentrations.append([])
       for j in xrange(len(self.lattice[i])) :
@@ -485,7 +496,7 @@ class TranssysProgramLattice(transsys.TranssysInstanceCollection) :
     return latticeFactorConcentrations
 
 
-  def update_function(self, timesteps, rndseed) :
+  def update_function(self, timesteps, rndseed=None) :
     """
     Calculates the new transsys instance.
 
@@ -499,7 +510,7 @@ class TranssysProgramLattice(transsys.TranssysInstanceCollection) :
     @type timesteps: C{int}
     @param rndseed: The random seed for the random number generator. (It is
     used only in cases that we want to incorporate some noise in the)
-    @type rndseed: C{float} or C{int} or C{str}
+    @type rndseed: C{int}
     @rtype: C{None}
     """
     # Produce a copy of the current state of the simulator.
@@ -518,7 +529,7 @@ class TranssysProgramLattice(transsys.TranssysInstanceCollection) :
           # one all the time. Update it, to take the number of the current
           # timestep.
           self.lattice[i][j] = self.lattice[i][j].time_series(2)[1]
-          self.lattice[i][j].timestep = (timesteps + 1)
+          self.lattice[i][j].timestep = timesteps
 
 
   def signal_factor_concentration(self, xCenter, yCenter, signal, factor=None) :
@@ -602,6 +613,84 @@ class TranssysProgramLattice(transsys.TranssysInstanceCollection) :
       # Alternatively, set a randomly choosen factor concentration.
 #      k = random.randint(0, (self.transsysProgram.num_factors() - 1))
 #      self.lattice[i][j].factor_concentration[k] = random.gauss(signalC, 1)
+
+
+
+class TranssysLatticeTimeseries(TranssysInstanceLattice) :
+  """
+  Class to keep the whole timeseries of the simulator.
+
+  Keeps record of all the important things during the simulation process. The
+  position of the transys instance on the lattice the timestep and the
+  factor(s) concentration(s).
+
+  Also calulates the maximum value of factor concentration that is observed
+  during the simulation proccess.
+  @ivar maxFactorConcentration: The maximum factor concentration observed in
+  the simulation.
+  @type : C{float}
+  """
+
+
+  def __init__(self, transsysLattice) :
+    """
+    Constructor of the class.
+    """
+#    self.factor_table = factor_table()
+    self.maxFactorConcentration = max_factor_concentration()
+    self.name = transsysLattice.name
+    self.timestep = transsysLattice.timestep
+    self.transsysLatticeTimeseries = transsys_lattice_timeseries(transsysLattice, timestep)
+
+
+  def transsys_lattice_timeseries(self, transsysLattice, timestep = None) :
+    """
+    Keep all the L{TranssysInstanceLattice} instances in a list.
+
+    @param transsysLattice: A transsys lattice.
+    @type transsysLattice: C{class 'TranssysInstanceLattice'}
+    @param timestep: The timesteps of the simulation.
+    @type timestep: C{int}
+    @return: A list with all the C{TranssysInstanceLattice} instances of the
+    simulator.
+    @rtype: C{list} of C{TranssysInstanceLattice} objects
+    """
+    transsysLatticeTimeseries = []
+    transsysLatticeTimeseries.append(transsysLattice)
+    if timestep :
+      for i in xrange(timestep) :
+        newLattice = transsysLattice.update_function((i + 1))
+        transsysLatticeList.append(newLattice)
+    return transsysLatticeTimeseries
+
+
+  def write_factor_table(self, f) :
+    """
+    Writes the whole factor table in a file.
+
+    Calls the L{write_table} for the whole transsys lattice timeseries.
+
+    @param f: An open file object ready for writing.
+    @type f: C{file}
+    """
+    for til in self.transsysLatticeTimeseries :
+      self.write_table(f)
+
+
+  def max_factor_concentration(self, tll) :
+    """
+    Calculates the maximum factor concentration that is observed during the
+    whole simulation proccess.
+    
+    """
+    factorList = []
+    for til in self.transsysLatticeTimeseries :
+      for ti in til.transsys_instance_list() :
+        for fc in ti.factor_concentration :
+          factroList.append(fc)
+    maxC = max(factorList)
+    return maxC
+
 
 
 def generate_pgm(fileObj, transsysLattice, maxCon) :
