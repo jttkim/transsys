@@ -25,6 +25,7 @@ reference and the lisence is kept free.
 
 import random
 import math
+import copy
 
 import transsys
 
@@ -496,7 +497,7 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection) :
     return latticeFactorConcentrations
 
 
-  def update_function(self, timesteps, rndseed=None) :
+  def update_function(self, timesteps, rndseed = None) :
     """
     Calculates the new transsys instance.
 
@@ -524,15 +525,11 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection) :
           self.lattice[i][j].factor_concentration = updateFactorConcentrations[i][j]
           # The timeseries doesn't work with timestep 1, returns zero.
           # Thats why a timestep = 2 is used.
-          # FIXME: The number of timesteps of each transsys instance on the
-          # lattice timeseries is awlays one because of the usage of timestep
-          # one all the time. Update it, to take the number of the current
-          # timestep.
           self.lattice[i][j] = self.lattice[i][j].time_series(2)[1]
           self.lattice[i][j].timestep = timesteps
 
 
-  def signal_factor_concentration(self, xCenter, yCenter, signal, factor=None) :
+  def signal_factor_concentration(self, xCenter, yCenter, signal, factor = None) :
     """
     Set the factor's concentration to signal.
 
@@ -616,31 +613,45 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection) :
 
 
 
-class TranssysLatticeTimeseries(TranssysInstanceLattice) :
+class TranssysLatticeTimeseries :
   """
-  Class to keep the whole timeseries of the simulator.
+  Keep the whole timeseries of the simulator.
 
-  Keeps record of all the important things during the simulation process. The
+  Keep record of all the important things during the simulation process. The
   position of the transys instance on the lattice the timestep and the
   factor(s) concentration(s).
 
   Also calulates the maximum value of factor concentration that is observed
   during the simulation proccess.
+  @ivar transsysLatticeName: The transsys lattice name. Contains information
+  of the type and the size of the structure.
+  @type transsysLatticeName: C{str}
+  @ivar timesteps: The number of timesteps of the simulator.
+  @type timesteps: C{int}
+  @ivar transsysLatticeTimeseries: A list containing all the transsys lattice
+  instances of each timestep of the simulator.
+  @type transsysLatticeTimeseries: C{list} of C{TranssysInstanceLattice}
+  objects
   @ivar maxFactorConcentration: The maximum factor concentration observed in
   the simulation.
   @type : C{float}
   """
 
 
-  def __init__(self, transsysLattice) :
+  def __init__(self, transsysLattice, timesteps=None):
     """
     Constructor of the class.
+    @param transsysLattice: A transsys instance lattice object.
+    L{TranssysInstanceLattice}
+    @type : C{class 'TranssysInstanceLattice'}
+    @param timesteps; The number of timesteps for the simulator.
+    @type : C{int}
     """
-#    self.factor_table = factor_table()
-    self.maxFactorConcentration = max_factor_concentration()
-    self.name = transsysLattice.name
-    self.timestep = transsysLattice.timestep
-    self.transsysLatticeTimeseries = transsys_lattice_timeseries(transsysLattice, timestep)
+#    self.factorTable = factor_table(fileObject)
+    self.transsysLatticeName = transsysLattice.name
+    self.timesteps = timesteps
+    self.transsysLatticeTimeseries = self.transsys_lattice_timeseries(transsysLattice, timesteps)
+    self.maxFactorConcentration = self.max_factor_concentration()
 
 
   def transsys_lattice_timeseries(self, transsysLattice, timestep = None) :
@@ -655,12 +666,17 @@ class TranssysLatticeTimeseries(TranssysInstanceLattice) :
     simulator.
     @rtype: C{list} of C{TranssysInstanceLattice} objects
     """
-    transsysLatticeTimeseries = []
-    transsysLatticeTimeseries.append(transsysLattice)
+    # Put the first transsys lattice instance in the timeseries list.
+    transsysLatticeTimeseries = [transsysLattice]
+    # make a copy of it
+    newLattice = copy.deepcopy(transsysLattice)
     if timestep :
       for i in xrange(timestep) :
-        newLattice = transsysLattice.update_function((i + 1))
-        transsysLatticeList.append(newLattice)
+        newLattice.update_function((i + 1))
+        newLattice.timestep = (i + 1)
+        transsysLatticeTimeseries.append(newLattice)
+        # Copy itself for the next timestep.
+        newLattice = copy.deepcopy(newLattice)
     return transsysLatticeTimeseries
 
 
@@ -668,28 +684,44 @@ class TranssysLatticeTimeseries(TranssysInstanceLattice) :
     """
     Writes the whole factor table in a file.
 
-    Calls the L{write_table} for the whole transsys lattice timeseries.
+    Calls the L{TranssysInstanceLattice.write_table} for the whole transsys
+    lattice timeseries.
 
     @param f: An open file object ready for writing.
     @type f: C{file}
+    @rtype: C{None}
     """
+    self.transsysLatticeTimeseries[0].write_table_header(f)
     for til in self.transsysLatticeTimeseries :
-      self.write_table(f)
+      til.write_table(f)
 
 
-  def max_factor_concentration(self, tll) :
+  def max_factor_concentration(self) :
     """
     Calculates the maximum factor concentration that is observed during the
     whole simulation proccess.
-    
+
+    @return: The maximal factor concentration of the whole simulation proccess.
+    @rtype: C{float}
     """
-    factorList = []
+    maxFC = 0.0
     for til in self.transsysLatticeTimeseries :
       for ti in til.transsys_instance_list() :
         for fc in ti.factor_concentration :
-          factroList.append(fc)
-    maxC = max(factorList)
-    return maxC
+          if fc > maxFC :
+            maxFC = fc
+    return maxFC
+
+
+  def factor_table(self, f) :
+    """
+    Returns the factor table out of a file that contain it in a string format.
+    @param f: An open file object ready for reading.
+    @type f: C{file}
+    """
+    self.write_factor_table(f)
+    factorTable = f.read()
+    return factorTable
 
 
 
