@@ -398,7 +398,7 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection) :
     @rtype: C{None}
     """
     f.write('# Table of coordinated (i,j) factor concentrations (Header)\n')
-    f.write('timestep i j')
+    f.write('timestep x y')
     for factor in self.transsysProgram.factor_list :
       f.write(' %s' % factor.name)
     f.write('\n')

@@ -9,17 +9,21 @@ readTransLattice <- function(filename)
 # rows of the time steps specified by the timesteps parameter.
 
 getTimeSteps <- function(latticeFrame, timesteps)
-{
+{  
 }
 
 
 getXCoordinates <- function(latticeFrame)
 {
+  xCoords <- latticeFrame[2];
+  return(xCoords);
 }
 
 
 getYCoordinates <- function(latticeFrame)
 {
+  yCoords <- latticeFrame[3];
+  return(xCoords);
 }
 
 
@@ -30,6 +34,7 @@ getYCoordinates <- function(latticeFrame)
 
 getFactorConcentrationMatrix <- function(latticeFrame, factorName)
 {
+  m <- matrix(NA, ncol= , nrow= , byrow=TRUE)
 }
 
 
