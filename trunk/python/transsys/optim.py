@@ -1253,7 +1253,7 @@ that factor is 2.
             raise StandardError, 'expression level of factor "%s" is NaN' % factor_name
           v.append(x)
         if min(v) < max(v) :
-          cc = 1.0 - transsys.utils.correlation_coefficient(self.series[factor_name], v)
+          cc = 1.0 - transsys.utils.uncentered_correlation(self.series[factor_name], v)
           cc_sum = cc_sum + cc
         else :
           cc_sum = cc_sum + 2.0
