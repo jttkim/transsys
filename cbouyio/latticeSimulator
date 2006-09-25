@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+"""
+latticeSimulator: A program to conduct simulation studies on a lattice.
+"""
+
 # latticeSimulator: A program that simulates a lattice of trannsys instances
 # on a nxn lattice, each cell of the lattice cantains one transsys program.
 # The program applies communication between neighbour cells and is an attempt
@@ -22,70 +26,40 @@ import transsys
 
 
 def usage() :
-  print """Usage:
+  print """
+Usage:
 ./latticeSimulator [options] arguments
   Options:
-  -h, --help:               Prints this screen.
-          -a: switch        Animation switch. Pops a window with a graphical
-                            animation of the lattice, in greyscale.
-                            (Default: None)
-          -b: Float         The range (0, -b) of the borders of a uniform
-                            distribution, recomended to be in the [0, 1].
-                            (Default: 0.25)
+          -a: switch        Animation switch.
+  -h, --help:               Prints this screen and exit.
           -n: NumberxNumber The size of the nxm lattice.
                             (Default: 5x5)
-                            *Please be very precise on the input format, there
-                            should be an 'x' separating the two numbers. Any
-                            other characters are not accepted.
-          -t: Integer       The number of the timesteps for the simulation.
-                            (Default: 30)
-          -r: Integer       The rundom number generator seed.
+          -p: filename      Print in the specified file the summary statistics
+                            of the simulation.
+                            (Default: Print the factor table in the outfile)
+          -r: Integer       The random number generator seed.
                             (Default: 1)
-          -m: Float         A maximum value of factor concentration that can
-                            be represented to the image output. The image color
-                            range is 0-256 gradients of grey.
-                            (Deafult: 20)
-          -u: switch        Homogenisation switch. Assigns to all factor
-                            concentrations a constant value (related to the
-                            range (-b option)).
-                            (Default: Nane)
-          -s: String:Number Signal switcher, (FactorName:FactorConcentration)
-                            if it is defined, a factor gets the defined
-                            concentration (signal) in the beginning of the
-                            simulation.
-                            (Default: None)
-                            *WARNING, Please be very precise on the input
-                             format, there should be a colon (:) between the
-                             two variables and NO whitespaces at all.
-          -x: Number:Number Signal swicher, (FactorConcentration:Timestep) in
-                            this case ALL the factors will get the defined
-                            concentration on the defined timestep.
-                            (Default: None)
-                            *WARNING, as above.
-          -p: String        Choose to print between the available fornmats.
-                            (Default: ALL)
-                            Available formats (String):
-                              statistics: Print the statistics of the transsys
-                                          instance collection.
-                            factor_table: Print the table of the factor
-                                          concentrations with the relative
-                                          timestep and the coordinates of the
-                                          instance on the spatial model.
-                                     ALL: Print both statistics and
-                                          factor_table.
-                                          (Default)
+          -s: String:Number Signal switch, (FactorName:FactorConcentration)
+                            Factor gets the defined concentration (signal) in
+                            the beginning of the simulation.
+          -t: Integer       The number of timesteps.
+                            (Default: 30)
+          -u: Float         The range (0, [b]) of the borders of a uniform
+                            distribution.
+          -x: Number:Number Signal switch, (FactorConcentration:Timestep)
+                            All factors will get the defined concentration at
+                            the defined timestep.
 
   Arguments:
-     <infile>: A valid transsys program file. (.tra)
-    <outfile>: The output file, the printout.
-
-    *Both arguments are optional as the program is able to read/write from the
-     STDIN/STDOUT in case of one/two arguments are ommited.
+     <infile>: A valid transsys program (.tra) file. (<STDIN> if not specified)
+    <outfile>: An output file. (<STDOUT> if not specified)
 """
 
 
 def os_manipulation(tpname) :
-  """Function to conduct the file and the out data storage directory manipulation."""
+  """
+  Function to conduct the file and the out data storage directory manipulation.
+  """
   # First check for the existance of the directory.
   if os.path.exists(tpname) :
     shutil.rmtree(tpname)
@@ -94,32 +68,27 @@ def os_manipulation(tpname) :
   os.chdir(tpname)
 
 
-def printing(statList, printformat) :
-  """Manipulates the different printouts."""
-#  if printformat in ('ALL', 'factor_table') :
-#    pass
-  if printformat in ('ALL', 'statistics') :
-    outfile.write('# Statistics file for testing and further analysis (Header).\n')
-    outfile.write('timestep:\tfactor:\taverage:\tstddev:\tentropy:\n')
-    for i, stat in enumerate(statList) :
-      for f in stat.transsys_program.factor_list :
-        outfile.write('%i\t%s\t%f\t%e\t%e\n' % (i, f.name, stat.average[stat.transsys_program.find_factor_index(f.name)], stat.standard_deviation[stat.transsys_program.find_factor_index(f.name)], stat.shannon_entropy[stat.transsys_program.find_factor_index(f.name)]))
+def printing(statList, sumFileObj) :
+  """
+  Print the summary file.
+  """
+  sumFileObj.write('# Statistics file for testing and further analysis (Header).\n')
+  sumFileObj.write('timestep:\tfactor:\taverage:\tstddev:\tentropy:\n')
+  for i, stat in enumerate(statList) :
+    for f in stat.transsys_program.factor_list :
+      sumFileObj.write('%i\t%s\t%f\t%e\t%e\n' % (i, f.name, stat.average[stat.transsys_program.find_factor_index(f.name)], stat.standard_deviation[stat.transsys_program.find_factor_index(f.name)], stat.shannon_entropy[stat.transsys_program.find_factor_index(f.name)]))
+  sumFileObj.close()
 
 
-def run_simulator(timesteps, printf) :
-  """Function which integrates all the necesary calculations for the simulator run cycles and handles the printouts as well."""
-  # Print the header of the table file.
-  if printf in ('ALL', 'factor_table') :
-    transInstanceLattice.write_table_header(outfile)
+#def run_simulator(timesteps) :
+  """
+  Function which integrates all the necesary calculations for the simulator
+  run cycles and handles the printouts as well.
+  """
   statList = [] # The statistics list.
-  factorTable = [] # The factor table.
   # Make the first calculation befor run the simulation.
   # Calculate the statistics.
-  if printf in ('ALL', 'statistics') :
-    statList.append(transInstanceLattice.statistics())
-  # Write the table to outfile.
-  if printf in ('ALL', 'factor_table') :
-    transInstanceLattice.write_table(outfile)
+  statList.append(transInstanceLattice.statistics())
 
   # Iterate the simulation proccess.
   for i in xrange(timesteps) :
@@ -135,12 +104,7 @@ def run_simulator(timesteps, printf) :
     transInstanceLattice.timestep = (i + 1)
 
     # Calculate the statistics.
-    if printf in ('ALL', 'statistics') :
-      statList.append(transInstanceLattice.statistics())
-
-    # Write the table to outfile.
-    if printf in ('ALL', 'factor_table') :
-      transInstanceLattice.write_table(outfile)
+    statList.append(transInstanceLattice.statistics())
 
     # Open the graphics file.
     filename = transsysProgram.name + '_t%04d' % (i + 1) + '.pgm'
@@ -149,13 +113,14 @@ def run_simulator(timesteps, printf) :
     translattice.generate_pgm(figureFile, transInstanceLattice, maxConcentration)
 
   # Print out the statistics.
-  if not printf in ('NO') :
-    printing(statList, printf)
+  #printing(statList, printf)
 
 
 
 def animating() :
-  """Produces the animated movie of the simulator."""
+  """
+  Produces the animated movie of the simulator.
+  """
   # Convert the images to a more readable size and produce the movie file.
   os.system('convert -sample 480x480 -delay 35 *.pgm ' + transsysProgram.name + 'Movie.mng')
   # Animate.
@@ -166,25 +131,22 @@ def animating() :
 
 
 ####### Simulator's Parameter Initialization #################################
-latticeSize      = [5, 5] # The dimensions of the lattice.
-noTimesteps      = 30     # The running timesteps of the simulation.
-randomSeed       = 1      # The seed for the random number generators.
-maxConcentration = 2      # The maximum concentration that can be drawn.
-signalTimestep   = False  # The 'signal on a timestep', introduction switch.
-signalFactor     = False  # The 'signal of a factor', introduction switch.
-animate          = False  # The animation switch.
-printFormat      = 'ALL'  # The default printing format.
-border_range     = 0.25   # The border range (%) of the uniform distribution.
-homogenise       = False  # The homogenisation switch.
+latticeSize      = [5, 5] # The dimensions of the lattice.(-n)
+noTimesteps      = 30     # The running timesteps of the simulation.(-t)
+randomSeed       = 1      # The seed for the random number generators.(-r)
+#maxConcentration = 10.0   # The maximum concentration that can be drawn.(-m)
+# Not used anymore... the maxFactorConcentration from the lattice Timeseries
+# class is used instead
+signalTimestep   = False  # The 'signal on a timestep', introduction switch.(-x)
+signalFactor     = False  # The 'signal of a factor', introduction switch.(-s)
+animate          = False  # The animation switch.(-a)
+border_range     = None   # The border range of the uniform distribution.(-u)
+summaryFile      = None   # The filename of the summary statistics file.(-p)
+
 
 
 ## Command line parsing.
-#try :
-optlist, args = getopt.getopt(sys.argv[1:], 'ab:hm:n:p:r:s:t:ux:', ['help'])
-#except getopt.GetoptError, errorMessage :
-#  errorMessage = 'Error in arguments parsing, please give -h or --help for help '
-#  print errorMessage
-#  sys.exit(1)
+optlist, args = getopt.getopt(sys.argv[1:], 'ahm:n:p:r:s:t:u:x:', ['help'])
 
 for opt, par in optlist :
   if opt in ('-h', '--help') :
@@ -200,10 +162,7 @@ for opt, par in optlist :
   if opt in ('-t') :
     noTimesteps = int(par)
   if opt in ('-r') :
-    if par == 'None' :
-      randomSeed = None
-    else :
-      randomSeed = int(par)
+    randomSeed = int(par)
   if opt in ('-m') :
     maxConcentration = float(par)
   if opt in ('-x') :
@@ -211,8 +170,6 @@ for opt, par in optlist :
     if len(var) != 2 :
       raise TypeError, 'Error in the format of -x input options, please check the help (-h, --help) for more information.'
     if float(var[0]) :
-    # No need to raise an exeption Python will raise one for you!!!
-#      raise TypeError, 'Please give a valid floating point representation for the concentration parameter, Check help (--help) for more information.'
       signalTimestep = True
       tConcentration = float(var[0])
       tTimestep = int(var[1])
@@ -227,15 +184,13 @@ for opt, par in optlist :
   if opt in ('-a') :
     animate = True
   if opt in ('-p') :
-    printFormat = par
-    if printFormat not in ('ALL', 'statistics', 'factor_table', 'NO') :
-      raise StandardError, "Error in the -p input options, invalid printing format. Please choose one of 'ALL', 'NO', 'factor_table' or 'statistics' and be careful of typos!"
-  if opt in ('-b') :
-    border_range = float(par)
+    summaryFile = par
   if opt in ('-u') :
-    homogenise = True
+    border_range = float(par)
 
-#print optilist
+#print optlist
+#sys.exit()
+
 
 
 ## I/O manipulation.
@@ -268,26 +223,40 @@ transInstanceLattice = translattice.TranssysInstanceLattice(transsysProgram, lat
 # Main part of the simulator
 ############################
 
-# Use the os module to make a directory where all the image files will be
-# stored.
-os_manipulation(transsysProgram.name)
-
-# Initialise the factor concentrations on the lattice. Homogenus or not.
-transInstanceLattice.initialise_lattice_concentrations(homogenise, border_range, randomSeed)
+# Initialise (or not) the factor concentrations on the lattice.
+if border_range :
+  transInstanceLattice.initialise_lattice_concentrations(border_range, randomSeed)
 
 # Introduce a signal by specifing a factor and the desired concentration.
 if signalFactor :
   transInstanceLattice.introduce_signal(sFactorConcentration, sFactorName)
 
 # Initialise the timeseries class.
-transLatticeTimeseries = translattice.TranssysLatticeTimeseries(transInstanceLattice, noTimesteps)
+transsysLatticeTimeseries = translattice.TranssysLatticeTimeseries(transInstanceLattice, noTimesteps)
 
-# Print the factor table to te output file.
-transLatticeTimeseries.write_factor_table(outfile)
+# Print the factor table to the output file.
+transsysLatticeTimeseries.write_factor_table(outfile)
 
-# Run the simulator, this function wraps everything!!!
-run_simulator(noTimesteps, printFormat)
+# Print the summary statistics to a user specified file.
+if summaryFile :
+  statList = []
+  for til in transsysLatticeTimeseries.latticeTimeseries :
+    statList.append(til.statistics())
+  sumFileObj = open(summaryFile, 'w')
+  printing(statList, sumFileObj)
 
+# Image file production and directory manipulation.
+# Use the os module to make a directory where all the image files will be
+# stored.
+os_manipulation(transsysProgram.name)
+# Image file production.
+maxConcentration = transsysLatticeTimeseries.maxFactorConcentration
+for i in xrange(len(transsysLatticeTimeseries.latticeTimeseries)) :
+  # Open the graphics file.
+  filename = transsysProgram.name + '_t%04d' % i + '.pgm'
+  figureFile = open(filename, 'w')
+  # Produce the raster graphics files.
+  translattice.generate_pgm(figureFile, transsysLatticeTimeseries.latticeTimeseries[i], maxConcentration)
 # Image file conversion and animation.
 if animate :
   animating()

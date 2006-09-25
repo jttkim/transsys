@@ -153,7 +153,7 @@ class ConstantRNG :
 
 
 
-class TranssysInstanceCoordinates(transsys.TranssysInstance) :
+class TranssysInstanceCoordinated(transsys.TranssysInstance) :
   """
   Extended TranssysInstance class.
 
@@ -197,19 +197,19 @@ class TranssysInstanceCoordinates(transsys.TranssysInstance) :
   def time_series(self, num_timesteps, sampling_period = 1, lsys_lines = None, lsys_symbol = None ) :
     """
     Overrides the time_series method with a timeseries containing
-    TranssysInstanceCoordinates instances instead.
+    TranssysInstanceCoordinated instances instead.
 
     @param num_timesteps: The number of steps (runs) of the timeseries.
     @type num_timesteps: C{int}
-    @returns: A list of TranssysInstanceCoordinates instances (The length of
+    @returns: A list of TranssysInstanceCoordinated instances (The length of
     list equals the number of timesteps).
-    @rtype: C{list} of C{TranssysInstanceCoordinates} objects
+    @rtype: C{list} of C{TranssysInstanceCoordinated} objects
     """
     timeseries = transsys.TranssysInstance.time_series(self, num_timesteps)
     # This list contains the timeseries with the coordinates.
-    tsCoordinates = []
+    tsCoordinated = []
     for t in timeseries:
-      a = TranssysInstanceCoordinates(t.transsys_program, t.timestep)
+      a = TranssysInstanceCoordinated(t.transsys_program, t.timestep)
       a.transsys_program = t.transsys_program
       a.timestep = t.timestep
       a.factor_concentration = t.factor_concentration
@@ -218,8 +218,8 @@ class TranssysInstanceCoordinates(transsys.TranssysInstance) :
 #      a.factor_concentration_stddev = t.factor_concentration_stddev
 #      a.factor_concentration_entropy = t.factor_concentration_entropy
       a.coordinates = self.coordinates
-      tsCoordinates.append(a)
-    return tsCoordinates
+      tsCoordinated.append(a)
+    return tsCoordinated
 
 
 
@@ -288,14 +288,14 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection) :
     for i in xrange(size[0]) :
       lattice.append([])
       for j in xrange(size[1]) :
-        lattice[i].append(TranssysInstanceCoordinates(tp))
+        lattice[i].append(TranssysInstanceCoordinated(tp))
         lattice[i][j].coordinates.append(i + 1)
         lattice[i][j].coordinates.append(j + 1)
         lattice[i][j].timestep = 0
     return lattice
 
 
-  def randomise_factor(self, fc, rng, rangeb, homogenise) :
+  def randomise_factor(self, fc, rng, rangeb) :
     """
     Returns a factor concentration out of a uniform distribution.
 
@@ -310,22 +310,17 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection) :
     @param rangeb: The range notion for the Uniform distribution. (needs
     further explanation)
     @type rangeb: C{float}
-    @param homogenise: The homogenisation switch.
-    @type homogenise: C{bool}
     @return: A randomize value for the factor concentration.
     @rtype: C{float}
   """
-    if not homogenise :
-      if fc != 0 :
-        fc = rng.random_value((fc - fc * rangeb), (fc + fc * rangeb)) # This is a way to make sure that after a perturbation the factor concentration will remain positive.
-      else :
-        fc = rng.random_value(0, rangeb)
-    else : # Populates the matrix with a "random" constant number
-      fc = rng.random_value()
+    if fc != 0 :
+      fc = rng.random_value((fc - fc * rangeb), (fc + fc * rangeb)) # This is a way to make sure that after a perturbation the factor concentration will remain positive.
+    else :
+      fc = rng.random_value(0, rangeb)
     return fc
 
 
-  def randomise_lattice (self, rng, rangeb, homogenise) :
+  def randomise_lattice (self, rng, rangeb) :
     """
     Method to randomise the factor concentrations of the lattice.
 
@@ -337,40 +332,29 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection) :
     @param rangeb: The range notion for the Uniform distribution. (needs
     further explanation)
     @type rangeb: C{float}
-    @param homogenise: The homogenisation switch.
-    @type homogenise: C{bool}
     @rtype: C{None}
     """
-#    k = self.transsysProgram.find_factor_index('Activator')
     for i in xrange(self.size[0]) :
       for j in xrange(self.size[1]) :
-#        self.lattice[i][j].factor_concentration[k] = self.random_uniform_factor(self.lattice[i][j].factor_concentration[k], rng, rangeb)
-        self.lattice[i][j].factor_concentration = map(lambda fc: self.randomise_factor(fc, rng, rangeb, homogenise), self.lattice[i][j].factor_concentration)
+        self.lattice[i][j].factor_concentration = map(lambda fc: self.randomise_factor(fc, rng, rangeb), self.lattice[i][j].factor_concentration)
 
 
-  def initialise_lattice_concentrations (self, homogenise, borderRange, rndSeed) :
+  def initialise_lattice_concentrations (self, borderRange, rndSeed) :
     """
     Method to assign the initial factor concentrations on the lattice.
 
     Initialising the random seed and call the L{randomise_lattice}.
 
-    @param homogenise: The homogenisation switch.
-    @type homogenise: C{bool}
-    @param borderRange: The range notion for the Uniform distribution. (needs
-    further explanation)
+    @param borderRange: The upper limit for the Uniform distribution border.
+    (Uniform returns random real number from the [0, borderRange) interval)
     @type borderRange: C{float}
     @param rndSeed: The seed for the random number genetaror.
     @type rndSeed: C{int}
     @rtype: C{None}
     @todo: This method might be merged with the L{randomise_lattice}
     """
-    if not homogenise :
-      rng = UniformRNG(rndSeed)
-      self.randomise_lattice(rng, borderRange, homogenise)
-    else :
-      rng = ConstantRNG(borderRange * math.e)
-      # Maybe this is usefull (gives an randomised and homogenised matrix).
-      self.randomise_lattice(rng, None, homogenise)
+    rng = UniformRNG(rndSeed)
+    self.randomise_lattice(rng, borderRange)
 
 
   def get_transsys_program(self) :
@@ -504,7 +488,7 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection) :
     The method first updates the factor concentrations by calling the
     L{update_factor_concentrations} function, and then calculates the new
     instance of the lattice (next timestep) by calling the
-    L{TranssysInstanceCoordinates.time_series} for all the TranssysInstances
+    L{TranssysInstanceCoordinated.time_series} for all the TranssysInstances
     in each cell of the lattice (it's a wrapper).
 
     @param timesteps: The number of timestep of the simulator proccedure.
@@ -628,9 +612,9 @@ class TranssysLatticeTimeseries :
   @type transsysLatticeName: C{str}
   @ivar timesteps: The number of timesteps of the simulator.
   @type timesteps: C{int}
-  @ivar transsysLatticeTimeseries: A list containing all the transsys lattice
+  @ivar latticeTimeseries: A list containing all the transsys lattice
   instances of each timestep of the simulator.
-  @type transsysLatticeTimeseries: C{list} of C{TranssysInstanceLattice}
+  @type latticeTimeseries: C{list} of C{TranssysInstanceLattice}
   objects
   @ivar maxFactorConcentration: The maximum factor concentration observed in
   the simulation.
@@ -638,19 +622,19 @@ class TranssysLatticeTimeseries :
   """
 
 
-  def __init__(self, transsysLattice, timesteps=None):
+  def __init__(self, transsysLattice, timesteps = None) :
     """
     Constructor of the class.
     @param transsysLattice: A transsys instance lattice object.
     L{TranssysInstanceLattice}
-    @type : C{class 'TranssysInstanceLattice'}
-    @param timesteps; The number of timesteps for the simulator.
-    @type : C{int}
+    @type transsysLattice: C{class 'TranssysInstanceLattice'}
+    @param timesteps: The number of timesteps for the simulator.
+    @type timesteps: C{int}
     """
 #    self.factorTable = factor_table(fileObject)
     self.transsysLatticeName = transsysLattice.name
     self.timesteps = timesteps
-    self.transsysLatticeTimeseries = self.transsys_lattice_timeseries(transsysLattice, timesteps)
+    self.latticeTimeseries = self.transsys_lattice_timeseries(transsysLattice, timesteps)
     self.maxFactorConcentration = self.max_factor_concentration()
 
 
@@ -667,17 +651,17 @@ class TranssysLatticeTimeseries :
     @rtype: C{list} of C{TranssysInstanceLattice} objects
     """
     # Put the first transsys lattice instance in the timeseries list.
-    transsysLatticeTimeseries = [transsysLattice]
+    latticeTimeseries = [transsysLattice]
     # make a copy of it
     newLattice = copy.deepcopy(transsysLattice)
     if timestep :
       for i in xrange(timestep) :
         newLattice.update_function((i + 1))
         newLattice.timestep = (i + 1)
-        transsysLatticeTimeseries.append(newLattice)
+        latticeTimeseries.append(newLattice)
         # Copy itself for the next timestep.
         newLattice = copy.deepcopy(newLattice)
-    return transsysLatticeTimeseries
+    return latticeTimeseries
 
 
   def write_factor_table(self, f) :
@@ -691,8 +675,8 @@ class TranssysLatticeTimeseries :
     @type f: C{file}
     @rtype: C{None}
     """
-    self.transsysLatticeTimeseries[0].write_table_header(f)
-    for til in self.transsysLatticeTimeseries :
+    self.latticeTimeseries[0].write_table_header(f)
+    for til in self.latticeTimeseries :
       til.write_table(f)
 
 
@@ -705,7 +689,7 @@ class TranssysLatticeTimeseries :
     @rtype: C{float}
     """
     maxFC = 0.0
-    for til in self.transsysLatticeTimeseries :
+    for til in self.latticeTimeseries :
       for ti in til.transsys_instance_list() :
         for fc in ti.factor_concentration :
           if fc > maxFC :
