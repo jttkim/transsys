@@ -381,6 +381,26 @@ Uses binary search.
   return imin
 
 
+def unique(l) :
+  """Compute a nonredundant list of elements in C{l}.
+
+The order of elements is preserved. Redundant elements are determined
+by comparison, and the first element is placed in the nonredundant list.
+Notice that if elementa are equal but not identical (e.g. 0 and 0.0),
+only the first one in C{l} appears in the unique list.
+
+@param l: a list or other iterable type
+@type l: iterable
+@return: list of unique elements
+@rtype: C{list}
+"""
+  u = []
+  for e in l :
+    if e not in u :
+      u.append(e)
+  return u
+
+
 class transrnd :
   """Random number generator class.
 

@@ -1204,6 +1204,26 @@ this instance itself.
     return self.gene_list[i]
 
 
+  def check_uniqueness(self) :
+    """Verify that factor and gene names are unique.
+
+This method raises an exception if problems are found and has no useful
+return value.
+
+@raise StandardError: if duplicate factor or gene names found
+"""
+    fnames = []
+    for factor in self.factor_list :
+      if factor.name in fnames :
+        raise StandardError, 'factor name "%s" duplicated' % factor.name
+      fnames.append(factor.name)
+    gnames = []
+    for gene in self.gene_list :
+      if gene.name in self.gene_list :
+        raise StandardError, 'gene name "%s" duplicated' % gene.name
+      gnames.append(gene.name)
+
+
   def resolve(self) :
     """The resolve() method replaces all gene and factor specifications
 by strings with references to the gene object or factor object, respectively.
@@ -1211,6 +1231,7 @@ Strings which do not properly resolve trigger an exception. resolve()
 should be called whenever alterations are done to a TranssysProgram instance in
 which strings are used to specify genes or factors. Only after resolving,
 gene names and factor names can be altered without changing the network."""
+    self.check_uniqueness()
     for factor in self.factor_list :
       factor.resolve(self)
     for gene in self.gene_list :
@@ -1895,7 +1916,7 @@ class LsysProgram :
     return clib.stringseries(self, nsteps, sampling_period)
 
 
-class TranssysInstance :
+class TranssysInstance(object) :
 
   # the 'magic first line' of transexpr output. If this is not found
   # an error is triggered, as a safeguard against nonsense due to

@@ -177,7 +177,7 @@ typedef enum
 } CLIB_MSG_IMPORTANCE;
 
 
-static CLIB_MSG_IMPORTANCE message_importance_threshold = CLIB_MSG_DEVMESSAGE;
+static CLIB_MSG_IMPORTANCE message_importance_threshold = CLIB_MSG_WARNING;
 
 
 /* #define REFCOUNTDEBUG */
@@ -401,6 +401,15 @@ static PyObject *_refcountDebug_PyInstance_New(PyObject *pyClass, PyObject *args
 }
 
 
+static PyObject *_refcountDebug_PyObject_Call(PyObject *callable_object, PyObject *args, PyObject *kw, const char *name, int line)
+{
+  PyObject *python_object = PyObject_Call(callable_object, args, kw);
+
+  _refcountDebug_findOrNewAndIncrement(python_object, name, line);
+  return (python_object);
+}
+
+
 static int _refcountDebug_PyTuple_SetItem(PyObject *tuple, int i, PyObject *item, const char *name, int line)
 {
   _refcountDebug_checkAndDecrement(item, "PyTuple_SetItem", name, line);
@@ -482,6 +491,7 @@ static void refcountDebug_init(void)
 #define PyInt_FromLong(v) _refcountDebug_PyInt_FromLong(v, #v, __LINE__)
 #define PyFloat_FromDouble(v) _refcountDebug_PyFloat_FromDouble(v, #v, __LINE__)
 #define PyInstance_New(pyclass, args, kw) _refcountDebug_PyInstance_New(pyclass, args, kw, #pyclass, __LINE__)
+#define PyObject_Call(callable_object, args, kw) _refcountDebug_PyObject_Call(callabe_object, args, kw, #pyclass, __LINE__)
 #define PyTuple_SetItem(tuple, i, item) _refcountDebug_PyTuple_SetItem(tuple, i, item, #item, __LINE__)
 #define PyList_SetItem(list, i, item) _refcountDebug_PyList_SetItem(list, i, item, #item, __LINE__)
 #undef Py_INCREF
@@ -1109,13 +1119,14 @@ static PyObject *newTranssysInstance(PyObject *python_transsys, const TRANSSYS_I
     Py_DECREF(a);
     return (NULL);
   }
-  python_ti = PyInstance_New(pythonClasses.TranssysInstance, a, kw);
+  python_ti = PyObject_Call(pythonClasses.TranssysInstance, a, kw);
+  Py_DECREF(a);
+  Py_DECREF(kw);
   if (python_ti == NULL)
   {
     clib_message(CLIB_MSG_TRACE, "newTranssysInstance: PyInstance_New failed\n");
+    return (NULL);
   }
-  Py_DECREF(a);
-  Py_DECREF(kw);
   if (ti != NULL)
   {
     if (initTranssysInstance(python_ti, ti) != 0)
@@ -1125,6 +1136,7 @@ static PyObject *newTranssysInstance(PyObject *python_transsys, const TRANSSYS_I
       return (NULL);
     }
   }
+  clib_message(CLIB_MSG_TRACE, "newTranssysInstance: returning %p\n", ti);
   return (python_ti);
 }
 
@@ -1168,10 +1180,10 @@ static PyObject *newSymbolInstance(PyObject *python_symbol, PyObject *python_ti,
     Py_DECREF(a);
     return (NULL);
   }
-  python_si = PyInstance_New(pythonClasses.SymbolInstance, a, kw);
+  python_si = PyObject_Call(pythonClasses.SymbolInstance, a, kw);
   if (python_si == NULL)
   {
-    clib_message(CLIB_MSG_TRACE, "newSymbolInstance: PyInstance_New failed\n");
+    clib_message(CLIB_MSG_TRACE, "newSymbolInstance: PyObject_Call failed\n");
   }
   Py_DECREF(a);
   Py_DECREF(kw);
@@ -1201,10 +1213,10 @@ static PyObject *newLsysSymbolString(PyObject *python_lsys)
     Py_DECREF(a);
     return (NULL);
   }
-  python_lstr = PyInstance_New(pythonClasses.LsysSymbolString, a, kw);
+  python_lstr = PyObject_Call(pythonClasses.LsysSymbolString, a, kw);
   if (python_lstr == NULL)
   {
-    clib_message(CLIB_MSG_TRACE, "newLsysSymbolString: PyInstance_New failed\n");
+    clib_message(CLIB_MSG_TRACE, "newLsysSymbolString: PyObject_Call failed\n");
   }
   Py_DECREF(a);
   Py_DECREF(kw);
@@ -3121,7 +3133,9 @@ static PyObject *transsysInstanceTimeSeries(PyObject *python_ti_start, long num_
   {
     if (i % sampling_period == 0)
     {
-      PyObject *python_ti = newTranssysInstance(python_tp, ti);
+      PyObject *python_ti;
+      clib_message(CLIB_MSG_TRACE, "transsysInstanceTimeSeries: time step %d\n", i);
+      python_ti = newTranssysInstance(python_tp, ti);
       if (python_ti == NULL)
       {
 	clib_message(CLIB_MSG_TRACE, "transsysInstanceTimeSeries: newTranssysInstance failed\n");
@@ -3224,6 +3238,11 @@ static PyObject *clib_timeseries(PyObject *self, PyObject *args)
   Py_INCREF(python_ti_start);
   clib_message(CLIB_MSG_TRACE, "num_timesteps = %ld, sampling_period = %ld\n", num_timesteps, sampling_period);
   python_ti_list = transsysInstanceTimeSeries(python_ti_start, num_timesteps, sampling_period);
+  if (python_ti_list == NULL)
+  {
+    clib_message(CLIB_MSG_TRACE, "transsysInstanceTimeSeries failed\n");
+    return (NULL);
+  }
   Py_DECREF(python_ti_start);
   if (PyErr_Occurred() != NULL)
   {
