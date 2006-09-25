@@ -80,43 +80,6 @@ def printing(statList, sumFileObj) :
   sumFileObj.close()
 
 
-#def run_simulator(timesteps) :
-  """
-  Function which integrates all the necesary calculations for the simulator
-  run cycles and handles the printouts as well.
-  """
-  statList = [] # The statistics list.
-  # Make the first calculation befor run the simulation.
-  # Calculate the statistics.
-  statList.append(transInstanceLattice.statistics())
-
-  # Iterate the simulation proccess.
-  for i in xrange(timesteps) :
-    # Introduce the signal in the signal Timestep.
-    if signalTimestep :
-      if i == (tTimestep):
-        transInstanceLattice.introduce_signal(tConcentration)
-
-    # Calculate the new lattice instance.
-    transInstanceLattice.update_function((i + 1))
-
-    # Increase the lattice timestep.
-    transInstanceLattice.timestep = (i + 1)
-
-    # Calculate the statistics.
-    statList.append(transInstanceLattice.statistics())
-
-    # Open the graphics file.
-    filename = transsysProgram.name + '_t%04d' % (i + 1) + '.pgm'
-    figureFile = open(filename, 'w')
-    # Produce the raster graphics files.
-    translattice.generate_pgm(figureFile, transInstanceLattice, maxConcentration)
-
-  # Print out the statistics.
-  #printing(statList, printf)
-
-
-
 def animating() :
   """
   Produces the animated movie of the simulator.
