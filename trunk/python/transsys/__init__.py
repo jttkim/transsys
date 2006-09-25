@@ -166,7 +166,7 @@ def _comment_lines(clines, prefix = '') :
 # the transsys_instance argument may be replaced with some more adequate
 # evaluation_context thingy...
 
-class ExpressionNode :
+class ExpressionNode(object) :
   """Base class for nodes in expression trees.
 """
 
@@ -570,7 +570,7 @@ class ExpressionNodeGaussianRandom(ExpressionNodeFunction) :
     return arg1 + arg2 * transsys_instance[0].rng.gauss()
 
 
-class PromoterElement :
+class PromoterElement(object) :
   pass
 
 
@@ -780,7 +780,7 @@ class PromoterElementRepress(PromoterElementLink) :
     PromoterElementLink.write_dot_edge(self, f, target_name, dot_parameters.display_factors, dot_parameters.repress_arrowhead, transsys)
 
 
-class Factor :
+class Factor(object) :
   """Class representing a transsys factor.
 
 @ivar name: the factor's name
@@ -874,7 +874,7 @@ class Factor :
       self.diffusibility_expression.clip(0.0, 1.0)
 
 
-class Gene :
+class Gene(object) :
   """Class to represent a gene.
 
 @ivar name: name of the gene
@@ -1471,7 +1471,7 @@ may have identical dynamics even though their canonical forms differ.
       gene.canonicalise()
 
 
-class GraphicsPrimitive :
+class GraphicsPrimitive(object) :
 
   def __init__(self) :
     pass
@@ -1656,7 +1656,7 @@ class GraphicsPrimitiveColor(GraphicsPrimitive) :
     self.blueExpression.resolve(tp)
 
 
-class Symbol :
+class Symbol(object) :
 
   def __init__(self, name, transsys, graphics = None) :
     self.name = name
@@ -1718,7 +1718,7 @@ class Symbol :
       
 
 
-class Assignment :
+class Assignment(object) :
 
   def __init__(self, transsys, factor, expression) :
     self.transsys = transsys
@@ -1744,7 +1744,7 @@ class Assignment :
     self.expression.resolve(tp)
 
 
-class LhsSymbol :
+class LhsSymbol(object) :
 
   def __init__(self, symbol, transsys_label) :
     self.symbol = symbol
@@ -1758,7 +1758,7 @@ class LhsSymbol :
       return self.symbol_name
 
 
-class ProductionElement :
+class ProductionElement(object) :
 
   def __init__(self, symbol, template_label, assignments) :
     self.symbol = symbol
@@ -1791,7 +1791,7 @@ class ProductionElement :
       a.associate_transsys(tp)
 
 
-class Rule :
+class Rule(object) :
 
   def __init__(self, name, lhs, condition, rhs) :
     self.name = name
@@ -1832,7 +1832,7 @@ class Rule :
       r.associate_transsys(tp)
 
 
-class LsysProgram :
+class LsysProgram(object) :
 
   def __init__(self, name, symbols, axiom, diffusionrange, rules) :
     self.name = name
@@ -2073,7 +2073,7 @@ copy.deepcopy on it."""
     return tseries
 
 
-class CollectionStatistics :
+class CollectionStatistics(object) :
   """Aggregate statistics computed from a C{TranssysInstanceCollection}.
 
 @ivar transsys_program: the transsys program of the collection
@@ -2109,7 +2109,7 @@ class CollectionStatistics :
     return s
     
 
-class TranssysInstanceCollection :
+class TranssysInstanceCollection(object) :
   """Abstract base class of collections of transsys instances which
 are all instances of the same transsys program. This base
 class provides generic functions for computing average
@@ -2269,7 +2269,7 @@ class TimeSeries(TranssysInstanceCollection) :
     return self.series
 
 
-class SymbolInstance :
+class SymbolInstance(object) :
 
   def __init__(self, symbol, transsys_instance = None, rule = None) :
     if not isinstance(symbol, Symbol) :
@@ -2333,7 +2333,7 @@ class LsysSymbolString(TranssysInstanceCollection) :
     return ti_list
 
 
-class DotParameters :
+class DotParameters(object) :
 
   def __init__(self) :
     self.display_genes = 1
@@ -2343,7 +2343,7 @@ class DotParameters :
 
 
 
-class CyclicSequence :
+class CyclicSequence(object) :
   """A convenience class for use with RandomTranssysParameters. Implements an
 object from which numerical values can be pulled out indefinitely using the
 nextval() method. Values are taken sequentially from a list, repeating from
@@ -2402,7 +2402,7 @@ all methods will have to be overridden anyway."""
     self.i = len(self.l) - 1
 
 
-class RandomTranssysParameters :
+class RandomTranssysParameters(object) :
   """A factory for generating "random" transsys programs.
 The name "RandomTranssysParameters" really is a historical accident,
 this class started out as a dumb class with just a bunch of member
@@ -2783,7 +2783,7 @@ This function does not create any multilinks."""
     return tp
 
 
-class TranssysProgramScanner :
+class TranssysProgramScanner(object) :
 
   def __init__(self, f) :
     self.infile = f
@@ -2860,7 +2860,7 @@ class TranssysProgramScanner :
     return lines
 
 
-class TranssysProgramParser :
+class TranssysProgramParser(object) :
 
   def __init__(self, infile) :
     if type(infile) is types.StringType :
@@ -3511,7 +3511,7 @@ def expression_level_dict(transsys_filename, num_timesteps, sampling_period, ini
   return level_dict, factor_list
 
 
-class ArrayIntensityFunction :
+class ArrayIntensityFunction(object) :
   """A basic intensity function which computes the intensity by
 taking the expression level and adding background and noise
 """
@@ -3529,7 +3529,7 @@ taking the expression level and adding background and noise
     return intensity
 
 
-class ArraySeries :
+class ArraySeries(object) :
 
   def __init__(self, transsys_filename, initial_state, num_timesteps_init, exp_threshold = 0.0) :
     self.transsys_program = initial_state.transsys_program
