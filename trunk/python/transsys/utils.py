@@ -285,19 +285,61 @@ def shannon_entropy(v) :
     if p > 0.0 :
       e = e - p * math.log(p, 2.0)
   return e
-  
 
-def correlation_coefficient(x, y) :
-  """Compute the Pearson correlation coefficient of C{x} and C{y}."""
+
+def uncentered_correlation(x, y) :
+  """Uncentered correlation of C{x} and C{y}.
+
+The uncentered correlation is the cosine of the angle of
+C{x} and C{y}. This amounts to computing the correlation,
+"but without centering".
+
+Notice that this is not a proper correlation. This function is used
+as a similarity score of gene expression profiles by Eisen et.al.,
+and it is provided only as a means to implement their approach.
+
+@param x, y: vectors
+@type x, y: C{list} of numeric
+@return: cosine of angle of x and y
+@rtype: C{float}
+"""
   if len(x) != len(y) :
     raise StandardError, 'x and y have unequal length'
+  if len(x) == 0 :
+    raise StandardError, 'x and y have 0 components'
   nx = euclidean_norm(x)
   if nx == 0.0 :
-    raise StandardError, 'standard deviation of x is zero'
+    raise StandardError, 'euclidean norm of x is 0'
   ny = euclidean_norm(y)
   if ny == 0.0 :
+    raise StandardError, 'euclidean norm of y is 0'
+  r = inner_product(x, y) / nx / ny
+  return r
+
+
+def correlation_coefficient(x, y) :
+  """Compute the Pearson correlation coefficient of C{x} and C{y}.
+
+@param x, y: vectors
+@type x, y: C{list} of numeric
+@return: Pearson correlation coefficient
+@rtype: C{float}
+"""
+  if len(x) != len(y) :
+    raise StandardError, 'x and y have unequal length'
+  if len(x) == 0 :
+    raise StandardError, 'x and y have 0 components'
+  x_mean = float(sum(x)) / float(len(x))
+  xc = map(lambda v: float(v) - x_mean, x)
+  nx = euclidean_norm(xc)
+  if nx == 0.0 :
+    raise StandardError, 'standard deviation of x is zero'
+  y_mean = float(sum(y)) / float(len(y))
+  yc = map(lambda v: float(v) - y_mean, y)
+  ny = euclidean_norm(yc)
+  if ny == 0.0 :
     raise StandardError, 'standard deviation of y is zero'
-  r = inner_product(x, y) / euclidean_norm(x) / euclidean_norm(y)
+  r = inner_product(xc, yc) / nx / ny
   return r
 
 
