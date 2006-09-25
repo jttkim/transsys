@@ -47,3 +47,7 @@ plotConcentrationSeries <- function(latticeFrame, factorName, concentrationRange
 {
 }
 
+# ./latticeSimulator onegene.tra  onegene.dat
+# lframe <- readTransLattice("onegene.dat");
+# plotConcentrationMatrix(lframe, "f", c(0, 1));
+
