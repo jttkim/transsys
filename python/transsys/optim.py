@@ -15,7 +15,7 @@ import transsys.optim
 import transsys.utils
 
 
-class Interval :
+class Interval(object) :
   """Represents an interval [a, b].
 """
 
@@ -275,7 +275,7 @@ def disparity_fitness(lsys_program, transsys_program, factor_names, num_timestep
   return LsysDisparityFitnessResult(fitness / float(len(lsys_program.rules)), best_factor_list, score_table)
 
 
-class Mutator :
+class Mutator(object) :
 
   def __init__(self, rng, replacement_rate, insertion_rate = 0.0, deletion_rate = 0.0, alphabet = 'acgt') :
     self.rng = rng
