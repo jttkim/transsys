@@ -159,6 +159,8 @@ Currently supported types are:
     return '%d' % x
   elif type(x) is types.FloatType :
     return '%1.17e' % x
+  elif type(x) is types.StringType :
+    return x
   elif type(x) is types.BooleanType :
     if x :
       return 'TRUE'
