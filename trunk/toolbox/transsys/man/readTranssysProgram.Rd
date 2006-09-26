@@ -9,7 +9,7 @@ readTranssysProgram(f)
 }
 \arguments{
   \item{f}{A string specifying a file name, or a file object (anything
-    that works with \code{read.table}}
+    that works with \code{read.table})}
 }
 \details{
   \code{transsys} programs are currently represented by character

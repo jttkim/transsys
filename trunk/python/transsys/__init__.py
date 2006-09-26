@@ -2805,6 +2805,16 @@ class TranssysProgramScanner(object) :
     return return_token
 
 
+  def isdelimiter(self, c) :
+    if len(c) != 1 :
+      raise StandardError, 'attempt to classify multicharacter string as delimiter'
+    if c.isspace() :
+      return False
+    if c in '_' :
+      return False
+    return True
+
+
   def get_token(self) :
     # FIXME: lineno reflects line of lookahead token
     if len(self.buffer) > 0 :
@@ -2821,8 +2831,10 @@ class TranssysProgramScanner(object) :
           self.buffer = ''
     for kw in self.keywords :
       if self.buffer[:len(kw)] == kw :
-        self.buffer = string.strip(self.buffer[len(kw):])
-        return kw, None
+        # check that keyword is delimited and not a prefix of an identifier
+        if re.match('%s($|[^A-Za-z0-9_])' % kw, self.buffer) is not None :
+          self.buffer = string.strip(self.buffer[len(kw):])
+          return kw, None
     m = self.identifier_re.match(self.buffer)
     if m :
       s = m.group()
