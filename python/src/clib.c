@@ -491,7 +491,7 @@ static void refcountDebug_init(void)
 #define PyInt_FromLong(v) _refcountDebug_PyInt_FromLong(v, #v, __LINE__)
 #define PyFloat_FromDouble(v) _refcountDebug_PyFloat_FromDouble(v, #v, __LINE__)
 #define PyInstance_New(pyclass, args, kw) _refcountDebug_PyInstance_New(pyclass, args, kw, #pyclass, __LINE__)
-#define PyObject_Call(callable_object, args, kw) _refcountDebug_PyObject_Call(callabe_object, args, kw, #pyclass, __LINE__)
+#define PyObject_Call(callable_object, args, kw) _refcountDebug_PyObject_Call(callable_object, args, kw, #callable_object, __LINE__)
 #define PyTuple_SetItem(tuple, i, item) _refcountDebug_PyTuple_SetItem(tuple, i, item, #item, __LINE__)
 #define PyList_SetItem(list, i, item) _refcountDebug_PyList_SetItem(list, i, item, #item, __LINE__)
 #undef Py_INCREF
@@ -3156,6 +3156,7 @@ static PyObject *transsysInstanceTimeSeries(PyObject *python_ti_start, long num_
 	Py_DECREF(python_ti_list);
 	return (NULL);
       }
+      Py_DECREF(python_ts);
       if (PyList_Append(python_ti_list, python_ti) == -1)
       {
 	clib_message(CLIB_MSG_TRACE, "transsysInstanceTimeSeries: PyList_Append failed for timestep %d\n", i);
@@ -3170,6 +3171,8 @@ static PyObject *transsysInstanceTimeSeries(PyObject *python_ti_start, long num_
     }
     process_expression(ti);
   }
+  free_transsys_instance(ti);
+  free_transsys_list(tp);
   Py_DECREF(python_tp);
   return (python_ti_list);
 }
