@@ -30,7 +30,7 @@ import copy
 import transsys
 
 
-class GaussianRNG :
+class GaussianRNG(object) :
   """
   Class of random objects out of a Gaussian distribution.
 
@@ -77,7 +77,7 @@ class GaussianRNG :
     return self.rng.gauss(self.mu, self.sigma)
 
 
-class UniformRNG :
+class UniformRNG(object) :
   """
   Class of random objects out of a Uniform distribution.
   By calling the random.uniform method, produces a "random" number out of a
@@ -121,7 +121,7 @@ class UniformRNG :
     return self.rng.uniform(a, b)
 
 
-class ConstantRNG :
+class ConstantRNG(object) :
   """
   Class of "random" objects with constant values.
 
@@ -597,7 +597,7 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection) :
 
 
 
-class TranssysLatticeTimeseries :
+class TranssysLatticeTimeseries(object) :
   """
   Keep the whole timeseries of the simulator.
 
@@ -709,7 +709,7 @@ class TranssysLatticeTimeseries :
 
 
 
-def generate_pgm(fileObj, transsysLattice, maxCon) :
+def generate_pgm(fileObj, transsysLattice, pgmFactor, maxCon) :
   """
   Produce the contents of the portable gray map (.pgm) image file.
 
@@ -721,14 +721,18 @@ def generate_pgm(fileObj, transsysLattice, maxCon) :
   @type fileObj: C{file}
   @param transsysLattice: The whole transsys lattice.
   @type transsysLattice: C{class 'TranssysLattice'}
+  @param pgmFactor: The name of the factor that will be imaged.
+  @type pgmFactor: C{str}
   @param maxCon: The maximum nuber of factor concentration that can be drawn
   by the imaging proccedure. (constant provided by the user)
   @type maxCon: C{int}
   @rtype: C{None}
   """
+  # Find the index of the apropriate factor.
+  factorIndex = transsysLattice.transsysProgram.find_factor_index(pgmFactor)
   # Generate the apropriate .pgm image format.
   pgmMagic = 'P2' # .pgm file magic line, P2 for .pgm,
-  pgmComment = '# ' + transsysLattice.name + ' .pgm image of ' + ' timestep'
+  pgmComment = '# Raster .pgm image representation of factor' + pgmFactor + ' on a' + transsysLattice.name
   pgmSize = str(transsysLattice.size[0]) + ' ' + str(transsysLattice.size[1])
   pgmMaxval = 256
   pgmRaster = ''
@@ -737,10 +741,14 @@ def generate_pgm(fileObj, transsysLattice, maxCon) :
     for j in xrange(transsysLattice.size[1]) :
       #FIXME: this should simplified more and produce one image file for EACH
       # factor at more complicated transsys programs.
-      p = pgmMaxval - int(round(sum(transsysLattice.lattice[i][j].factor_concentration) * pgmMaxval / maxCon))
+      # Safeguard for zero maximum factor concentration.
+      if maxCon == 0 :
+        p = pgmMaxval
+      else :
+        p = int(pgmMaxval - round(transsysLattice.lattice[i][j].factor_concentration[factorIndex] * pgmMaxval / maxCon))
       # Safeguard for negative color values.
       if p < 0 :
-        raise StandardError, 'Netpbm raster image get a negative value. Please select a biger number for the maximum factor concentration (option -m)'
+        raise StandardError, 'Netpbm raster image gets a negative value. Please select a biger number for the maximum factor concentration (option -m)'
       pgmRasterLine = pgmRasterLine + str(p) + ' '
     pgmRaster = pgmRaster + pgmRasterLine + '\n'
   pgmText = pgmMagic + '\n' + pgmComment + '\n' + pgmSize + '\n' + str(pgmMaxval)  + '\n' + pgmRaster
