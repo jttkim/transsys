@@ -11,7 +11,7 @@ readTransLattice <- function(filename)
 # Returns a lattice data frame containing only the
 # rows of the time steps specified by the timesteps parameter.
 
-getTimeSteps <- function(latticeFrame, timesteps)
+getTimeSlice <- function(latticeFrame, timesteps)
 {
   # Take a subset of the data.frame where the timestep is specified.
   timestepFrame <- subset(latticeFrame, timestep==timesteps);
@@ -19,56 +19,71 @@ getTimeSteps <- function(latticeFrame, timesteps)
 }
 
 
+# Return a vector containing the permissible values of
+# x coordinates for the lattice frame
+
 getXCoordinates <- function(latticeFrame)
 {
   xCoords <- latticeFrame$x;
-  return(xCoords);
+  return(unique(xCoords));
 }
 
 
 getYCoordinates <- function(latticeFrame)
 {
   yCoords <- latticeFrame$y;
-  return(xCoords);
+  return(unique(yCoords));
 }
 
 
-getConcsntrationRange <- function(latticeFrame, factorName)
+getTimeSteps <- function(latticeFrame)
+{
+  return(unique(latticeFrame[["timestep"]]));
+}
+
+
+getConcentrationRange <- function(latticeFrame, factorName)
 {
   cr <- c(min(latticeFrame$factorName), max(latticeFrame$factorName));
   return(cr)
 }
 
 
-# Construct a matrix containing the concentration values
-# of the factor specified by factorName.
-# Notice that this function cannot properly work if the
-# latticeFrame contains multiple time steps.
-
-getFactorConcentrationMatrix <- function(latticeFrame, factorName)
+getXSize <- function(latticeFrame)
 {
-  # Populate a matrix of the disered dimensions with NAs.
-  m <- matrix(NA, ncol=getYCoordinates(latticeFrame), nrow=getXCoordinates(latticeFrame), byrow=TRUE);
-  fc <- latticeFrame$factorName;
-  # Populate the matrix with the factor concentrations.
-  for (k in fc);
+  return(max(getXCoordinates(latticeFrame)));
+}
+
+
+getYSize <- function(latticeFrame)
+{
+  return(max(getYCoordinates(latticeFrame)));
+}
+
+
+# Construct a matrix containing the concentration values
+# of the factor specified by factorName at timestep.
+
+getFactorConcentrationMatrix <- function(latticeFrame, factorName, timestep)
+{
+  if (length(timestep) != 1)
   {
-    for (i in getXCoordinates(latticeFrame));
-    {
-      for (j in getYCoordinates(latticeFrame));
-      {
-        m[i, j]  <- k;
-      }
-    }
+    stop("multiple timesteps specified");
+  }
+  # Populate a matrix of the disered dimensions with NAs.
+  timestepLattice <- getTimeSlice(latticeFrame, timestep);
+  m <- matrix(NA, ncol=getYSize(timestepLattice), nrow=getXSize(timestepLattice));
+  # Populate the matrix with the factor concentrations.
+  for (i in 1:nrow(timestepLattice))
+  {
+    x <- timestepLattice[["x"]][i];
+    y <- timestepLattice[["y"]][i];
+    m[x, y] <- timestepLattice[[factorName]][i];
   }
   # Check for the existance of NA's in the matrix. (validation check)
-  for (e in as.double(m));
+  if (any(is.na(m)))
   {
-    if (is.na(e));
-    {
-      print('Error in factor_concentration matrix population.');
-      # The program should exit in this case
-    }
+    stop("Error in factor_concentration matrix population");
   }
   return(m);
 }
@@ -77,30 +92,41 @@ getFactorConcentrationMatrix <- function(latticeFrame, factorName)
 plotConcentrationMatrix <- function(concentrationMatrix, xCoordinates, yCoordinates, concentrationRange)
 {
   # All the job is done by the image function.
-  image(concentrationMatrix, axes = FALSE, xlab="x", ylab="y");
-  axis(1, 0:(max(xCoordinates))); # Some problems have been observed
-  axis(2, 0:(max(yCoordinates))); # in axis drawing
-  box();
-  gid(max(xCoordinates), max(yCoordinates), col="black", lty="solid");
+  image(xCoordinates, yCoordinates, concentrationMatrix, zlim = concentrationRange, xlab="x", ylab="y");
+  # gid(max(xCoordinates), max(yCoordinates), col="black", lty="solid");
   # Should also decide the way the gradient will be reproduced.
   # The concentrationRange faunction will be used for that.
 }
 
 
-plotConcentrationSeries <- function(latticeFrame, factorName, concentrationRange) # The concentration range can be obtained from the function above, maybe we can incorporate a timesteps and a delay option as well.
+plotConcentrationSeries <- function(latticeFrame, factorName, concentrationRange, timeframeEndFunction) # The concentration range can be obtained from the function above, maybe we can incorporate a timesteps and a delay option as well.
 {
   # Some check about number of timesteps should precede.
-  delay <- 1
-  for i in (0:max(latticeFrame$timestep));
+  for (i in getTimeSteps(latticeFrame))
   {
-    tframe <- getTimeSteps(latticeFrame, i);
-    plotConcentrationMatrix(getFactorConcentrationMatrix(tframe, factorName), getXCoordinates(tframe), getYCoordinates(tframe));
-    Sys.sleep(delay);
+    plotConcentrationMatrix(getFactorConcentrationMatrix(latticeFrame, factorName, i), getXCoordinates(latticeFrame), getYCoordinates(latticeFrame), concentrationRange);
+    timeframeEndFunction(i);
   }
 }
 
 
+oneSecondDelay <- function(timestep)
+{
+  print(sprintf("timestep %d", as.integer(timestep)));
+  Sys.sleep(1);
+}
+
+
+hitReturn <- function(timestep)
+{
+  readline(sprintf("timestep %d -- hit return", as.integer(timestep)));
+}
+
+
 # ./latticeSimulator onegene.tra  onegene.dat
-# lframe <- readTransLattice("onegene.dat");
-# plotConcentrationMatrix(lframe, "f", c(0, 1));
+lframe <- readTransLattice("onegene.dat");
+m1 <- getFactorConcentrationMatrix(lframe, "f", 1);
+m2 <- getFactorConcentrationMatrix(lframe, "f", 2);
+plotConcentrationSeries(getTimeSlice(lframe, 3), "f", c(0, 1), hitReturn);
+# plotConcentrationSeries(lframe, "f", c(0, 1), hitReturn);
 
