@@ -1,0 +1,14 @@
+SimulatedAnnealer-0.1
+stepsize_learning_rate: 0.0
+target_improvement_ratio: 0.2
+stepsize_init: 1.0
+stepvector_learning_rate: 0.0
+stepvector_learning_decay: 0.0
+cooling_rate: 0.995
+temperature_init: None
+termination_temperature: 1e-4
+termination_objective: None
+termination_iteration: None
+perturbation_method: uniform
+rndseed: 1
+ParameterTransformer
