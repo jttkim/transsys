@@ -80,18 +80,6 @@ def os_manipulation(dir_name) :
   os.chdir(dir_name)
 
 
-def printing(statList, sumFileObj) :
-  """
-  Print the summary file.
-  """
-  sumFileObj.write('# Statistics file for testing and further analysis (Header).\n')
-  sumFileObj.write('timestep:\tfactor:\taverage:\tstddev:\tentropy:\n')
-  for i, stat in enumerate(statList) :
-    for f in stat.transsys_program.factor_list :
-      sumFileObj.write('%i\t%s\t%f\t%e\t%e\n' % (i, f.name, stat.average[stat.transsys_program.find_factor_index(f.name)], stat.standard_deviation[stat.transsys_program.find_factor_index(f.name)], stat.shannon_entropy[stat.transsys_program.find_factor_index(f.name)]))
-  sumFileObj.close()
-
-
 def pgm_framework(pgmDir, pgmFactor, maxConcentration, transLatticeTimeseries) :
   """
   Function to integrate the .pgm file production.
@@ -107,6 +95,7 @@ def pgm_framework(pgmDir, pgmFactor, maxConcentration, transLatticeTimeseries) :
     figureFile = open(filename, 'w')
     # Produce the raster graphics files.
     translattice.generate_pgm(figureFile, transLatticeTimeseries[i], pgmFactor, maxConcentration)
+    figureFile.close()
   # Return to the current directory.
   os.chdir(os.pardir)
 
@@ -239,7 +228,7 @@ if infile is not sys.stdin :
 # Print the transsys factors names.
 if pgmFactor :
   if pgmFactor not in transsysProgram.factor_names() :
-    raise StandardError, 'Factor %s doesnot belong to transsys program please choose one from the list: %s' % (pgmFactor, transsysProgram.factor_names())
+    raise StandardError, 'Factor %s does not belong to transsys program please choose one from the list: %s' % (pgmFactor, transsysProgram.factor_names())
 if transsysFactors :
   for factorName in transsysProgram.factor_names() :
     outfile.write('%s\n' % factorName)
@@ -265,15 +254,13 @@ if signalFactor :
 transsysLatticeTimeseries = translattice.TranssysLatticeTimeseries(transInstanceLattice, noTimesteps)
 
 # Print the factor table to the output file.
-transsysLatticeTimeseries.write_factor_table(outfile)
+transsysLatticeTimeseries.write_factor_table(outfile, randomSeed)
 
 # Print the summary statistics to a user specified file.
 if summaryFile :
-  statList = []
-  for til in transsysLatticeTimeseries.latticeTimeseries :
-    statList.append(til.statistics())
-  sumFileObj = open(summaryFile, 'w')
-  printing(statList, sumFileObj)
+  fileObj = open(summaryFile, "w")
+  translattice.print_summary_statistics(transsysLatticeTimeseries.latticeTimeseries, fileObj)
+  fileObj.close()
 
 # The image files production framework.
 if pgmDir :

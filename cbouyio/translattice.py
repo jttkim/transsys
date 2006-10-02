@@ -1,15 +1,18 @@
 #!/usr/bin/env python
 
 """
-Here will be the translattice module description....
+A module wich contains the essential tools for building structured 2D
+transsys systems.
+
+A 2D toroidal matrix is the main structure that has been implemented until now.
 
 @author: Costas Bouyioukos
 @organization: University of East Anglia
 @since: Aprill 2006 (converted to a module on 08/09/2006)
-@copyright: The program is coming as it is... You have the right to
-redistribute, transform and change the source code presuming the apropriate
-reference and the lisence is kept free.
-@license: GNU GPL
+@copyright: The program is coming as it is. You have the right to redistribute,
+transform and change the source code presuming the apropriate reference and
+the lisence is kept free.
+@license: GNU GPL2 or newer.
 @contact: U{Costas Bouyioukos<mailto:konsb@cmp.uea.ac.uk>}
 """
 
@@ -386,7 +389,7 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection) :
     return ti_list
 
 
-  def write_table_header(self, f) :
+  def write_table_header(self, f, rndseed=None) :
     """
     Overrides the write_table_header method of the superclass.
 
@@ -395,9 +398,13 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection) :
 
     @param f: An open for writing C{file} object.
     @type f: C{file}
+    @param rndseed: The random seed of the simulator.
+    @type rndseed: C{int}
     @rtype: C{None}
+    @precondition: An open, ready for writting file object.
     """
     f.write('# Table of coordinated (i,j) factor concentrations (Header)\n')
+    f.write('# random seed: %i \n' % rndseed)
     f.write('timestep x y')
     for factor in self.transsysProgram.factor_list :
       f.write(' %s' % factor.name)
@@ -414,6 +421,7 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection) :
     @param f: An open for writing C{file} object.
     @type f: C{file}
     @rtype: C{None}
+    @precondition: An open, ready for writting file object.
     """
     for ti in self.transsys_instance_list() :
       if ti.timestep is None :
@@ -642,6 +650,9 @@ class TranssysLatticeTimeseries(object) :
     """
     Keep all the L{TranssysInstanceLattice} instances in a list.
 
+    Returns a timeseries of C{TranssysInstanceLattice} objects for all the
+    simulation in the form of a list.
+
     @param transsysLattice: A transsys lattice.
     @type transsysLattice: C{class 'TranssysInstanceLattice'}
     @param timestep: The timesteps of the simulation.
@@ -664,18 +675,21 @@ class TranssysLatticeTimeseries(object) :
     return latticeTimeseries
 
 
-  def write_factor_table(self, f) :
+  def write_factor_table(self, f, rndSeed) :
     """
     Writes the whole factor table in a file.
 
     Calls the L{TranssysInstanceLattice.write_table} for the whole transsys
     lattice timeseries.
 
+    @param rndSeed: The random seed of the simulator.
+    @type rndSeed: C{int}
     @param f: An open file object ready for writing.
     @type f: C{file}
     @rtype: C{None}
+    @precondition: An open, ready for writting file object.
     """
-    self.latticeTimeseries[0].write_table_header(f)
+    self.latticeTimeseries[0].write_table_header(f, rndSeed)
     for til in self.latticeTimeseries :
       til.write_table(f)
 
@@ -727,8 +741,9 @@ def generate_pgm(fileObj, transsysLattice, pgmFactor, maxCon) :
   by the imaging proccedure. (constant provided by the user)
   @type maxCon: C{int}
   @rtype: C{None}
+  @precondition: An open, ready for writting file object.
   """
-  # Find the index of the apropriate factor.
+  # Find the index (on  the transsys program level) of the apropriate factor.
   factorIndex = transsysLattice.transsysProgram.find_factor_index(pgmFactor)
   # Generate the apropriate .pgm image format.
   pgmMagic = 'P2' # .pgm file magic line, P2 for .pgm,
@@ -739,8 +754,6 @@ def generate_pgm(fileObj, transsysLattice, pgmFactor, maxCon) :
   for i in xrange(transsysLattice.size[0]) :
     pgmRasterLine = ''
     for j in xrange(transsysLattice.size[1]) :
-      #FIXME: this should simplified more and produce one image file for EACH
-      # factor at more complicated transsys programs.
       # Safeguard for zero maximum factor concentration.
       if maxCon == 0 :
         p = pgmMaxval
@@ -753,5 +766,27 @@ def generate_pgm(fileObj, transsysLattice, pgmFactor, maxCon) :
     pgmRaster = pgmRaster + pgmRasterLine + '\n'
   pgmText = pgmMagic + '\n' + pgmComment + '\n' + pgmSize + '\n' + str(pgmMaxval)  + '\n' + pgmRaster
   fileObj.write(pgmText)
-  fileObj.close()
+
+
+def print_summary_statistics(tlt, fileObj) :
+  """
+  Function to calculate and print the collection statistics of the simulator.
+
+  The calculation of the statistics is implemented in the
+  L{transsys.CollectionStatistics} class.
+
+  @param tlt: A transsys lattice timeseries.
+  @type tlt: C{class 'TranssysLatticeTimeseries'}
+  @param fileObj: An open ready for writting file object.
+  @type fileObj: C{file}
+  @precondition: An open, ready for writting file object.
+  """
+  statList = []
+  for til in tlt :
+    statList.append(til.statistics())
+  fileObj.write('# Summary file for statistical analysis (Header).\n')
+  fileObj.write('timestep:\tfactor:\taverage:\tstddev:\tentropy:\n')
+  for i, stat in enumerate(statList) :
+    for f in stat.transsys_program.factor_list :
+      fileObj.write('%i\t%s\t%f\t%e\t%e\n' % (i, f.name, stat.average[stat.transsys_program.find_factor_index(f.name)], stat.standard_deviation[stat.transsys_program.find_factor_index(f.name)], stat.shannon_entropy[stat.transsys_program.find_factor_index(f.name)]))
 
