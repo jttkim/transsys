@@ -56,7 +56,7 @@ Usage:
                              the beginning of the simulation.
            -t: Integer       The number of timesteps.
                              (Mandatory)
-           -u: Float         The range (0, [b]) of the borders of a uniform
+           -u: Number:Number The range (a, b) of the borders of a uniform
                              distribution.
            -x: Number:Number Signal switch, (FactorConcentration:Timestep)
                              All factors will get the defined concentration at
@@ -116,19 +116,20 @@ def animate(pgmDir, pgmFactor) :
 
 
 ####### Simulator's Parameter Initialization #################################
-latticeSize      = None # The dimensions of the lattice.(-n)
-noTimesteps      = None # The running timesteps of the simulation.(-t)
-randomSeed       = 1    # The seed for the random number generators.(-r)
-maxConcentration = None # The maximum concentration that can be drawn.(-m)
-signalTimestep   = None # The 'signal on a timestep', introduction switch.(-x)
-signalFactor     = None # The 'signal of a factor', introduction switch.(-s)
-animation        = None # The animation switch.(-a)
-border_range     = None # The border range of the uniform distribution.(-u)
-summaryFile      = None # The filename of the summary statistics file.(-p)
-pgmDir           = None # The .pgm production framework.(-g)
-pgmFactor        = None # The factor that will be used for the imaging.(-c)
-transsysFactors  = None # The factor names switch.(-f, --factors) 
-
+latticeSize      = None  # The dimensions of the lattice.(-n)
+noTimesteps      = None  # The running timesteps of the simulation.(-t)
+randomSeed       = 1     # The seed for the random number generators.(-r)
+maxConcentration = None  # The maximum concentration that can be drawn.(-m)
+signalTimestep   = False # The 'signal on a timestep', introduction switch.(-x)
+signalFactor     = False # The 'signal of a factor', introduction switch.(-s)
+animation        = False # The animation switch.(-a)
+border_range     = False # The border range of the uniform distribution.(-u)
+summaryFile      = None  # The filename of the summary statistics file.(-p)
+pgmDir           = None  # The .pgm production framework.(-g)
+pgmFactor        = None  # The factor that will be used for the imaging.(-c)
+transsysFactors  = False # The factor names switch.(-f, --factors) 
+alpha            = None  # Lower border of uniform disttribution.
+beta             = None  # Upper border of uniform disttribution.
 
 
 ## Command line parsing.
@@ -172,7 +173,14 @@ for opt, par in optlist :
   if opt in ('-p') :
     summaryFile = par
   if opt in ('-u') :
-    border_range = float(par)
+    var = par.split(':')
+    if len(var) != 2 :
+      raise StandardError, 'Error in the format of -u input options, please check the help (-h, --help) for more information.'
+    if float(var[0]) < 0 or float(var[1]) <= 0 :
+      raise StandardError, 'Factor concentrations can take only positive values, please specify a positive range.'
+    border_range = True
+    alpha = float(var[0])
+    beta = float(var[1])
   if opt in ('-g') :
     pgmDir = par
   if opt in ('-f', '--factors'):
@@ -181,8 +189,9 @@ for opt, par in optlist :
     pgmFactor = par
 
 
-#print optlist
-#sys.exit()
+print optlist
+sys.exit()
+
 
 # Mandatory options checking.
 if not transsysFactors :
@@ -244,7 +253,7 @@ transInstanceLattice = translattice.TranssysInstanceLattice(transsysProgram, lat
 
 # Initialise (or not) the factor concentrations on the lattice.
 if border_range :
-  transInstanceLattice.initialise_lattice_concentrations(border_range, randomSeed)
+  transInstanceLattice.initialise_lattice_concentrations(alpha, beta, randomSeed)
 
 # Introduce a signal by specifing a factor and the desired concentration.
 if signalFactor :
@@ -254,7 +263,10 @@ if signalFactor :
 transsysLatticeTimeseries = translattice.TranssysLatticeTimeseries(transInstanceLattice, noTimesteps)
 
 # Print the factor table to the output file.
-transsysLatticeTimeseries.write_factor_table(outfile, randomSeed)
+# First write the comments and the header.
+transInstanceLattice.write_table_header(outfile, randomSeed)
+# Then write the whole stuff.
+transsysLatticeTimeseries.write_factor_table(outfile)
 
 # Print the summary statistics to a user specified file.
 if summaryFile :

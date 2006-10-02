@@ -4,7 +4,7 @@
 A module wich contains the essential tools for building structured 2D
 transsys systems.
 
-A 2D toroidal matrix is the main structure that has been implemented until now.
+A 2D toroidal shaped grid (lattice) is the main structure that has been implemented until now.
 
 @author: Costas Bouyioukos
 @organization: University of East Anglia
@@ -168,10 +168,10 @@ class TranssysInstanceCoordinated(transsys.TranssysInstance) :
   @ivar timestep: The number of timesteps that the simulator runs.
   @type timestep: C{int}
   @ivar factor_concentration: A list with the factor concentrations.
-  @type factor_concentration: C{list} of floating point numbers
+  @type factor_concentration: C{list} of C{float}s
   @ivar coordinates: A list denoting the coordinates on the lattice. (the
   length of the list equals the dimension of the lattice)
-  @type coordinates: C{list} of integers
+  @type coordinates: C{list} of C{int}s
   """
 
   def __init__(self, tp, coords=None, timestep=None) :
@@ -184,7 +184,7 @@ class TranssysInstanceCoordinated(transsys.TranssysInstance) :
     @type tp: C{class 'transsys.TranssysProgram'}
     @param coords: A list denoting the coordinates on the lattice. (the
     length of the list equals the dimension of the lattice)
-    @type coords: C{list} of integers
+    @type coords: C{list} of C{int}s
     @param timestep: The number of timesteps that the simulator runs.
     @type timestep: C{int}
     """
@@ -283,7 +283,7 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection) :
     @param tp: The transsys program.
     @type tp: C{class 'transsys.TranssysProgram'}
     @param size: The size of the lattice.
-    @type size: C{list} of integers
+    @type size: C{list} of C{int}s
     @return: A lattice populated with transsys program instances.
     @rtype: C{list} of C{list} of C{transsys.TranssysProgram} objects
     """
@@ -298,7 +298,7 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection) :
     return lattice
 
 
-  def randomise_factor(self, fc, rng, rangeb) :
+  def randomise_factor(self, fc, rng, a, b) :
     """
     Returns a factor concentration out of a uniform distribution.
 
@@ -310,20 +310,23 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection) :
     @type fc: C{float}
     @param rng: The random number generator.
     @type rng: C{class 'xxxxxRNG'}
-    @param rangeb: The range notion for the Uniform distribution. (needs
-    further explanation)
-    @type rangeb: C{float}
+    @param a: The lower limit for the Uniform distribution border.
+    @type a: C{float}
+    @param b: The upper limit for the Uniform distribution border.
+    (Uniform returns random real number from the [a, b) interval)
+    @type b: C{float}
     @return: A randomize value for the factor concentration.
     @rtype: C{float}
-  """
-    if fc != 0 :
-      fc = rng.random_value((fc - fc * rangeb), (fc + fc * rangeb)) # This is a way to make sure that after a perturbation the factor concentration will remain positive.
+    """
+    rndValue = rng.random_value(a, b)
+    if fc == 0 :
+      fc = rndValue
     else :
-      fc = rng.random_value(0, rangeb)
+      fc = fc + rndValue # This is a way to make sure that after a perturbation the factor concentration will remain positive.
     return fc
 
 
-  def randomise_lattice (self, rng, rangeb) :
+  def randomise_lattice (self, rng, a, b) :
     """
     Method to randomise the factor concentrations of the lattice.
 
@@ -332,32 +335,36 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection) :
 
     @param rng: The random number generator.
     @type rng: C{class 'xxxxxRNG'}
-    @param rangeb: The range notion for the Uniform distribution. (needs
-    further explanation)
-    @type rangeb: C{float}
+    @param a: The lower limit for the Uniform distribution border.
+    @type a: C{float}
+    @param b: The upper limit for the Uniform distribution border.
+    (Uniform returns random real number from the [a, b) interval)
+    @type b: C{float}
     @rtype: C{None}
     """
     for i in xrange(self.size[0]) :
       for j in xrange(self.size[1]) :
-        self.lattice[i][j].factor_concentration = map(lambda fc: self.randomise_factor(fc, rng, rangeb), self.lattice[i][j].factor_concentration)
+        self.lattice[i][j].factor_concentration = map(lambda fc: self.randomise_factor(fc, rng, a, b), self.lattice[i][j].factor_concentration)
 
 
-  def initialise_lattice_concentrations (self, borderRange, rndSeed) :
+  def initialise_lattice_concentrations (self, a, b, rndSeed) :
     """
     Method to assign the initial factor concentrations on the lattice.
 
     Initialising the random seed and call the L{randomise_lattice}.
 
-    @param borderRange: The upper limit for the Uniform distribution border.
-    (Uniform returns random real number from the [0, borderRange) interval)
-    @type borderRange: C{float}
+    @param a: The lower limit for the Uniform distribution border.
+    @type a: C{float}
+    @param b: The upper limit for the Uniform distribution border.
+    (Uniform returns random real number from the [a, b) interval)
+    @type b: C{float}
     @param rndSeed: The seed for the random number genetaror.
     @type rndSeed: C{int}
     @rtype: C{None}
     @todo: This method might be merged with the L{randomise_lattice}
     """
     rng = UniformRNG(rndSeed)
-    self.randomise_lattice(rng, borderRange)
+    self.randomise_lattice(rng, a, b)
 
 
   def get_transsys_program(self) :
@@ -403,7 +410,7 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection) :
     @rtype: C{None}
     @precondition: An open, ready for writting file object.
     """
-    f.write('# Table of coordinated (i,j) factor concentrations (Header)\n')
+    f.write('# Table of coordinated (x, y) factor concentrations (Header file)\n')
     f.write('# random seed: %i \n' % rndseed)
     f.write('timestep x y')
     for factor in self.transsysProgram.factor_list :
@@ -626,7 +633,7 @@ class TranssysLatticeTimeseries(object) :
   objects
   @ivar maxFactorConcentration: The maximum factor concentration observed in
   the simulation.
-  @type : C{float}
+  @type maxFactorConcentration: C{float}
   """
 
 
@@ -675,37 +682,46 @@ class TranssysLatticeTimeseries(object) :
     return latticeTimeseries
 
 
-  def write_factor_table(self, f, rndSeed) :
+  def write_factor_table(self, f) :
     """
     Writes the whole factor table in a file.
 
     Calls the L{TranssysInstanceLattice.write_table} for the whole transsys
     lattice timeseries.
 
-    @param rndSeed: The random seed of the simulator.
-    @type rndSeed: C{int}
     @param f: An open file object ready for writing.
     @type f: C{file}
     @rtype: C{None}
     @precondition: An open, ready for writting file object.
     """
-    self.latticeTimeseries[0].write_table_header(f, rndSeed)
+    # Then write the whole table.
     for til in self.latticeTimeseries :
       til.write_table(f)
 
 
-  def max_factor_concentration(self) :
+  def max_factor_concentration(self, factorName=None) :
     """
-    Calculates the maximum factor concentration that is observed during the
-    whole simulation proccess.
+    The maximal observed factor concentration.
 
-    @return: The maximal factor concentration of the whole simulation proccess.
+    Returns the maximum value of a factor concentration that is observed during
+    the whole simulation proccess. If it is called without specifing a factor
+    name calculate the maximum concentration value of all factors.
+
+    @param factorName: The name of the factor that we maximum is wanted.
+    @type factorName: C{str}
+    @return: Maximum of factor concentration.
     @rtype: C{float}
     """
     maxFC = 0.0
     for til in self.latticeTimeseries :
       for ti in til.transsys_instance_list() :
-        for fc in ti.factor_concentration :
+        if not factorName :
+          for fc in ti.factor_concentration :
+            if fc > maxFC :
+              maxFC = fc
+        else :
+          factorIndex = ti.transsys_program.find_factor_index(factorName)
+          fc = ti.factor_concentration[factorIndex]
           if fc > maxFC :
             maxFC = fc
     return maxFC
@@ -713,11 +729,14 @@ class TranssysLatticeTimeseries(object) :
 
   def factor_table(self, f) :
     """
-    Returns the factor table out of a file that contain it in a string format.
+    Returns the factor table from a file that contains it.
+
+    @todo: The return value might be usefull as an instance variable...
     @param f: An open file object ready for reading.
     @type f: C{file}
+    @rtype: C{str}
+    @precondition: An open, ready for reading file object.
     """
-    self.write_factor_table(f)
     factorTable = f.read()
     return factorTable
 
