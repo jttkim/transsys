@@ -643,10 +643,22 @@ def parse_transformation_function(f) :
 class ParameterTransformer(object) :
   """Base class for parameter transformers.
 
-No transformation, this base class implements an identity transformer.
+This base class implements an identity transformer, i.e. the transformed
+value of a parameter is just its actual value.
+
+@ivar transsys_program: the transsys program
+@type transsys_program: C{TranssysProgram}
+@ivar target_node_list: list of expression nodes holding the values subject to
+  optimisation
+@type target_node_list: C{list} of C{ExpressionNodeValue}
 """
 
   savefile_magic = 'ParameterTransformer'
+
+
+  def __init__(self) :
+    self.transsys_program = None
+    self.target_node_list = None
 
 
   def __str__(self) :
@@ -671,62 +683,68 @@ No transformation, this base class implements an identity transformer.
     self.parse_variables(f)
 
 
-  def clipParameters(self, transsys_program) :
+  def setTranssysProgram(self, transsys_program) :
+    """Set the transsys program on which the transformer is to operate.
+
+@param transsys_program: the transsys program
+@type transsys_program: C{TranssysProgram}
+"""
+    self.transsys_program = transsys_program
+    self.target_node_list = self.transsys_program.getValueNodes()
+
+
+  def clipParameters(self) :
     """Clip the parameters in C{transsys_program} to the range
 required by the respective transformer."""
-    pass
+    if self.transsys_program is None :
+      raise StandardError, 'no transsys program, cannot clip'
 
 
-  def randomiseParametersUniform(self, transsys_program, parameterRange, rng) :
+  def randomiseParametersUniform(self, parameterRange, rng) :
     """Randomise the numeric values in C{transsys_program}.
 
 Random values are drawn from a uniform distribution over
 [-C{parameterRange}, C{parameterRange}[ and the numeric values
 are set to the corresponding transformed values.
 """
-    state = self.getParameters(transsys_program)
+    state = self.getParameters()
     for i in xrange(len(state)) :
       state[i] = (rng.random() * 2.0 - 1.0) * parameterRange
-    self.setParameters(state, transsys_program)
+    self.setParameters(state)
 
 
-  def getParameters(self, transsys_program) :
+  def getParameters(self) :
     """Get numeric parameters from the C{transsys_program}, converted to
 the unconstrained optimiser space.
 """
-    nodes = transsys_program.getValueNodes()
-    return map(lambda n : n.value, nodes)
+    if self.transsys_program is None :
+      raise StandardError, 'no transsys program, cannot get parameters'
+    return map(lambda n : n.value, self.target_node_list)
 
 
-  def setParameters(self, parameter_list, transsys_program) :
+  def setParameters(self, parameter_list) :
     """Set parameters in C{transsys_program} according to the optimiser space
 values provided by C{parameter_list}.
 """
-    nodes = transsys_program.getValueNodes()
-    if len(nodes) != len(parameter_list) :
+    if self.transsys_program is None :
+      raise StandardError, 'no transsys program, cannot set parameters'
+    if len(self.target_node_list) != len(parameter_list) :
       raise StandardError,  'parameter list incompatible with transsys program'
     for i in xrange(len(parameter_list)) :
-      nodes[i].value = parameter_list[i]
+      self.target_node_list[i].value = parameter_list[i]
 
 
 class TranssysTypedParameterTransformer(ParameterTransformer) :
   """
 Parameter transformer differentiating decay, diffusibility, constitutive,
 aspec, amax, rspec and rmax nodes.
-
-This transformer keeps track of the instance of C{TranssysProgram} that
-was used to to C{getParameters} and allows C{setParameters} only for
-the same instance. Upon changing state of the transformer (i.e. by
-altering transformations), the remembered C{TranssysProgram} is
-forgotten. Obviously, this mechanism is only triggered when accessing
-the transformer's state through methods, not when altering it by
-direct assignment to its members.
 """
 
   savefile_magic = 'TranssysTypedParameterTransformer'
 
   
   def __init__(self, decayTransformation = TransformationFunction(), diffusibilityTransformation = TransformationFunction(), constitutiveTransformation = TransformationFunction(), aspecTransformation = TransformationFunction(), amaxTransformation = TransformationFunction(), rspecTransformation = TransformationFunction(), rmaxTransformation = TransformationFunction()) :
+    super(TranssysTypedParameterTransformer, self).__init__()
     self.decayTransformation = decayTransformation
     self.diffusibilityTransformation = diffusibilityTransformation
     self.constitutiveTransformation = constitutiveTransformation
@@ -734,7 +752,13 @@ direct assignment to its members.
     self.amaxTransformation = amaxTransformation
     self.rspecTransformation = rspecTransformation
     self.rmaxTransformation = rmaxTransformation
-    self.transsys_program = None
+    self.decay_nodes = None
+    self.diffusibility_nodes = None
+    self.constitutive_nodes = None
+    self.aspec_nodes = None
+    self.amax_nodes = None
+    self.rspec_nodes = None
+    self.rmax_nodes = None
 
 
   def __str__(self) :
@@ -813,93 +837,89 @@ direct assignment to its members.
     self.transsys_program = None
 
 
-  def clipParameters(self, transsys_program) :
-    for n in transsys_program.getDecayValueNodes() :
+  def setTranssysProgram(self, transsys_program) :
+    self.transsys_program = transsys_program
+    self.decay_nodes = transsys_program.getDecayValueNodes()
+    self.diffusibility_nodes = transsys_program.getDiffusibilityValueNodes()
+    self.constitutive_nodes = transsys_program.getConstitutiveValueNodes()
+    self.aspec_nodes = transsys_program.getActivateSpecValueNodes()
+    self.amax_nodes = transsys_program.getActivateMaxValueNodes()
+    self.rspec_nodes = transsys_program.getRepressSpecValueNodes()
+    self.rmax_nodes = transsys_program.getRepressMaxValueNodes()
+
+
+  def clipParameters(self) :
+    if self.transsys_program is None :
+      raise StandardError, 'no transsys program, cannot clip'
+    for n in self.decay_nodes :
       n.value = self.decayTransformation.clip(n.value)
-    for n in transsys_program.getDiffusibilityValueNodes() :
+    for n in self.diffusibility_nodes :
       n.value = self.diffusibilityTransformation.clip(n.value)
-    for n in transsys_program.getConstitutiveValueNodes() :
+    for n in self.constitutive_nodes :
       n.value = self.constitutiveTransformation.clip(n.value)
-    for n in transsys_program.getActivateSpecValueNodes() :
+    for n in self.aspec_nodes :
       n.value = self.aspecTransformation.clip(n.value)
-    for n in transsys_program.getActivateMaxValueNodes() :
+    for n in self.amax_nodes :
       n.value = self.amaxTransformation.clip(n.value)
-    for n in transsys_program.getRepressSpecValueNodes() :
+    for n in self.rspec_nodes :
       n.value = self.rspecTransformation.clip(n.value)
-    for n in transsys_program.getRepressMaxValueNodes() :
+    for n in self.rmax_nodes :
       n.value = self.rmaxTransformation.clip(n.value)
 
 
-  def getParameters(self, transsys_program) :
+  def getParameters(self) :
     """Get unconstrained parameters from a transsys program.
 
-The C{transsys_program} is remembered and subsequent calls to
-C{setParameters} are only accepted for the same C{TranssysProgram}
-instance.
-
-@param transsys_program: the program from which to get the parameters
 @return: a list of the unconstrained parameters
     """
     parameter_list = []
-    for p in map(lambda n : n.value, transsys_program.getDecayValueNodes()) :
+    for p in map(lambda n : n.value, self.decay_nodes) :
       parameter_list.append(self.decayTransformation.inverse(p))
-    for p in map(lambda n : n.value, transsys_program.getDiffusibilityValueNodes()) :
+    for p in map(lambda n : n.value, self.diffusibility_nodes) :
       parameter_list.append(self.diffusibilityTransformation.inverse(p))
-    for p in map(lambda n : n.value, transsys_program.getConstitutiveValueNodes()) :
+    for p in map(lambda n : n.value, self.constitutive_nodes) :
       parameter_list.append(self.constitutiveTransformation.inverse(p))
-    for p in map(lambda n : n.value, transsys_program.getActivateSpecValueNodes()) :
+    for p in map(lambda n : n.value, self.aspec_nodes) :
       parameter_list.append(self.aspecTransformation.inverse(p))
-    for p in map(lambda n : n.value, transsys_program.getActivateMaxValueNodes()) :
+    for p in map(lambda n : n.value, self.amax_nodes) :
       parameter_list.append(self.amaxTransformation.inverse(p))
-    for p in map(lambda n : n.value, transsys_program.getRepressSpecValueNodes()) :
+    for p in map(lambda n : n.value, self.rspec_nodes) :
       parameter_list.append(self.rspecTransformation.inverse(p))
-    for p in map(lambda n : n.value, transsys_program.getRepressMaxValueNodes()) :
+    for p in map(lambda n : n.value, self.rmax_nodes) :
       parameter_list.append(self.rmaxTransformation.inverse(p))
-    self.transsys_program = transsys_program
     return parameter_list
 
 
-  def setParameters(self, parameter_list, transsys_program) :
+  def setParameters(self, parameter_list) :
     """Set values in a transsys program based on a list of unconstrained parameters.
 
 Notice that the parameter list must have the same length as that obtained
 by C{getParameters}.
 
-@raise StandardError: when the C{transsys_program} is not the one used
-  in the last C{getParameters} call or the parameter list is too long or
-  too short
+@raise StandardError: if the parameter list is too long or too short
 """
-    if transsys_program is not self.transsys_program :
-      raise StandardError, 'parameters must be set on same program from which they were got'
-    decay_nodes = transsys_program.getDecayValueNodes()
-    diffusibility_nodes = transsys_program.getDiffusibilityValueNodes()
-    constitutive_nodes = transsys_program.getConstitutiveValueNodes()
-    aspec_nodes = transsys_program.getActivateSpecValueNodes()
-    amax_nodes = transsys_program.getActivateMaxValueNodes()
-    rspec_nodes = transsys_program.getRepressSpecValueNodes()
-    rmax_nodes = transsys_program.getRepressMaxValueNodes()
-    if len(parameter_list) != len(decay_nodes) + len(diffusibility_nodes) + len(constitutive_nodes) + len(aspec_nodes) + len(amax_nodes) + len(rspec_nodes) + len(rmax_nodes):
+    if len(parameter_list) != len(self.decay_nodes) + len(self.diffusibility_nodes) + len(self.constitutive_nodes) + len(self.aspec_nodes) + len(self.amax_nodes) + len(self.rspec_nodes) + len(self.rmax_nodes):
       raise StandardError, 'parameter list incompatible with transsys program'
     i = 0
-    for n in decay_nodes :
+    for n in self.decay_nodes :
       n.value = self.decayTransformation(parameter_list[i])
       i = i + 1
-    for n in diffusibility_nodes :
+    for n in self.diffusibility_nodes :
       n.value = self.diffusibilityTransformation(parameter_list[i])
       i = i + 1
-    for n in constitutive_nodes :
+    for n in self.constitutive_nodes :
       n.value = self.constitutiveTransformation(parameter_list[i])
       i = i + 1
-    for n in aspec_nodes :
+    for n in self.aspec_nodes :
       n.value = self.aspecTransformation(parameter_list[i])
       i = i + 1
-    for n in amax_nodes :
+    for n in self.amax_nodes :
       n.value = self.amaxTransformation(parameter_list[i])
       i = i + 1
-    for n in rspec_nodes :
+    for n in self.rspec_nodes :
       n.value = self.rspecTransformation(parameter_list[i])
       i = i + 1
-    for n in rmax_nodes :
+    for n in self.rmax_nodes :
       n.value = self.rmaxTransformation(parameter_list[i])
       i = i + 1
 
@@ -1292,10 +1312,11 @@ of C{AbstractOptimiser} do not have any use.
 
   def initialiseTranssysProgramValues(self, transsys_program) :
     """Randomly initialise transsys program values if requested."""
+    self.transformer.setTranssysProgram(transsys_program)
     if self.randomInitRange is None :
-      self.transformer.clipParameters(transsys_program)
+      self.transformer.clipParameters()
     else :
-      self.transformer.randomiseParametersUniform(transsys_program, self.randomInitRange, self.rng)
+      self.transformer.randomiseParametersUniform(self.randomInitRange, self.rng)
 
 
   def optimise(self, transsys_program_init, objective_function) :
@@ -1499,7 +1520,7 @@ explicitly does so.
     self.initialiseTranssysProgramValues(transsys_program)
     # slightly silly to set the parameters in initialising and then getting them next thing
     # may help to maintain consistency, though.
-    state = self.transformer.getParameters(transsys_program)
+    state = self.transformer.getParameters()
     if self.verbose :
       sys.stderr.write('SimulatedAnnealer: optimising %d values\n' % len(state))
       # sys.stderr.write('state: %s\n' % str(state))
@@ -1538,7 +1559,7 @@ explicitly does so.
       for i in xrange(num_dimensions) :
         delta_state.append(state_alt[i] - state[i])
       state_distance = transsys.utils.euclidean_norm(delta_state)
-      self.transformer.setParameters(state_alt, transsys_program)
+      self.transformer.setParameters(state_alt)
       obj_alt = objective_function(transsys_program).fitness
       if self.verbose :
         # sys.stderr.write('  state_alt: %s, obj_alt = %f\n' % (str(state_alt), obj_alt))
@@ -1571,7 +1592,7 @@ explicitly does so.
         obj = obj_alt
       temperature = temperature * self.cooling_rate
       iteration = iteration + 1
-    self.transformer.setParameters(state, transsys_program)
+    self.transformer.setParameters(state)
     # FIXME: this one last evaluation of the objective function can be saved
     return SimulatedAnnealingResult(transsys_program, objective_function(transsys_program), records)
 
@@ -1745,7 +1766,7 @@ beginning of a valid save file.
   def optimise(self, transsys_program, objective_function, gene_name_list = None, factor_name_list = None) :
     tp = copy.deepcopy(transsys_program)
     self.initialiseTranssysProgramValues(tp)
-    current_values = self.transformer.getParameters(tp)
+    current_values = self.transformer.getParameters()
     if self.verbose :
       sys.stderr.write('optimising %d values\n' % len(current_values))
     current_obj = objective_function(tp).fitness
@@ -1765,16 +1786,16 @@ beginning of a valid save file.
         else :
           v = current_values[:]
           v[i] = current_values[i] - self.delta
-          self.transformer.setParameters(v, tp)
+          self.transformer.setParameters(v)
           o_minus = objective_function(tp).fitness
           numEvaluations = numEvaluations + 1
           v[i] = current_values[i] + self.delta
-          self.transformer.setParameters(v, tp)
+          self.transformer.setParameters(v)
           o_plus = objective_function(tp).fitness
           numEvaluations = numEvaluations + 1
           gradient.append(o_plus - o_minus)
           # restore current state
-          self.transformer.setParameters(current_values, tp)
+          self.transformer.setParameters(current_values)
       if self.verbose and self.eliminateFlatComponents :
         sys.stderr.write('num_zeros: %d\n' % num_zeros)
       gradient_norm = transsys.utils.euclidean_norm(gradient)
@@ -1791,7 +1812,7 @@ beginning of a valid save file.
       v = []
       for i in xrange(len(current_values)) :
         v.append(current_values[i] - gradient[i] * stepsize)
-      self.transformer.setParameters(v, tp)
+      self.transformer.setParameters(v)
       new_obj = objective_function(tp).fitness
       numEvaluations = numEvaluations + 1
       if new_obj < current_obj :
@@ -1800,7 +1821,7 @@ beginning of a valid save file.
         v = []
         for i in xrange(len(current_values)) :
           v.append(current_values[i] - gradient[i] * stepsize2)
-        self.transformer.setParameters(v, tp)
+        self.transformer.setParameters(v)
         new_obj2 = objective_function(tp).fitness
         numEvaluations = numEvaluations + 1
         if self.verbose :
@@ -1815,13 +1836,13 @@ beginning of a valid save file.
           v = []
           for i in xrange(len(current_values)) :
             v.append(current_values[i] - gradient[i] * stepsize2)
-          self.transformer.setParameters(v, tp)
+          self.transformer.setParameters(v)
           new_obj2 = objective_function(tp).fitness
           numEvaluations = numEvaluations + 1
           if self.verbose :
             sys.stderr.write('growth branch: tried stepsize %g, new_obj = %g, new_obj2 = %g\n' % (stepsize2, new_obj, new_obj2))
         if not new_obj2 < new_obj :
-          self.transformer.setParameters(new_values, tp)
+          self.transformer.setParameters(new_values)
       else :
         while new_obj >= current_obj and stepsize > self.termination_stepsize :
           stepsize = stepsize * self.stepsize_shrink
@@ -1830,7 +1851,7 @@ beginning of a valid save file.
           new_values = []
           for i in xrange(len(current_values)) :
             new_values.append(current_values[i] - gradient[i] * stepsize)
-          self.transformer.setParameters(new_values, tp)
+          self.transformer.setParameters(new_values)
           new_obj = objective_function(tp).fitness
           numEvaluations = numEvaluations + 1
       if stepsize > self.termination_stepsize :
