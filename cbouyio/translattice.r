@@ -24,14 +24,14 @@ getTimeSlice <- function(latticeFrame, timesteps)
 
 getXCoordinates <- function(latticeFrame)
 {
-  xCoords <- latticeFrame$x;
+  xCoords <- latticeFrame[["x"]];
   return(unique(xCoords));
 }
 
 
 getYCoordinates <- function(latticeFrame)
 {
-  yCoords <- latticeFrame$y;
+  yCoords <- latticeFrame[["y"]];
   return(unique(yCoords));
 }
 
@@ -44,8 +44,8 @@ getTimeSteps <- function(latticeFrame)
 
 getConcentrationRange <- function(latticeFrame, factorName)
 {
-  cr <- c(min(latticeFrame$factorName), max(latticeFrame$factorName));
-  return(cr)
+  cr <- c(min(latticeFrame[[factorName]]), max(latticeFrame[[factorName]]));
+  return(cr);
 }
 
 
@@ -92,20 +92,40 @@ getFactorConcentrationMatrix <- function(latticeFrame, factorName, timestep)
 plotConcentrationMatrix <- function(concentrationMatrix, xCoordinates, yCoordinates, concentrationRange)
 {
   # All the job is done by the image function.
-  image(xCoordinates, yCoordinates, concentrationMatrix, zlim = concentrationRange, xlab="x", ylab="y");
-  # gid(max(xCoordinates), max(yCoordinates), col="black", lty="solid");
-  # Should also decide the way the gradient will be reproduced.
-  # The concentrationRange faunction will be used for that.
+  image(xCoordinates, yCoordinates, concentrationMatrix, zlim = concentrationRange, xlab="x Coordinate", ylab="y Coordinate", col = heat.colors(32), main="Lattice");
+  legend("right", c(as.character(round(seq(concentrationRange[1], concentrationRange[2], length.out=32), digits=3))), fill=heat.colors(32), title="Gradient");
+  # grid(max(xCoordinates), max(yCoordinates));
 }
 
 
-plotConcentrationSeries <- function(latticeFrame, factorName, concentrationRange, timeframeEndFunction) # The concentration range can be obtained from the function above, maybe we can incorporate a timesteps and a delay option as well.
+plotConcentrationSeries <- function(latticeFrame, factorName, concentrationRange, timeframeEndFunction)
+# The concentration range can be obtained from the function above, maybe we can incorporate a timesteps and a delay option as well.
 {
   # Some check about number of timesteps should precede.
   for (i in getTimeSteps(latticeFrame))
   {
     plotConcentrationMatrix(getFactorConcentrationMatrix(latticeFrame, factorName, i), getXCoordinates(latticeFrame), getYCoordinates(latticeFrame), concentrationRange);
     timeframeEndFunction(i);
+  }
+}
+
+
+plotAllInstances <- function(dataFrame, factorName, concentrationRange)
+{
+  # First make the template plot using the first instance.
+  instance1 <- subset(dataFrame, x==1 & y==1)
+  factor1 <- instance1[[factorName]]
+  timesteps <- getTimeSteps(dataFrame)
+  plot(factor1, type="l", xlim=c(0, max(getTimeSteps(dataFrame))), ylim=concentrationRange, xlab="Timesteps", ylab="Factor Concentration")
+  # Then draw the lines.
+  for (i in 1:getXSize(dataFrame))
+  {
+    for (j in 1:getYSize(dataFrame))
+    {
+      instance <- subset(dataFrame, x==i & y==j)
+      factor <- instance[[factorName]]
+      lines(factor)
+    }
   }
 }
 
@@ -123,10 +143,9 @@ hitReturn <- function(timestep)
 }
 
 
-# ./latticeSimulator onegene.tra  onegene.dat
-lframe <- readTransLattice("onegene.dat");
-m1 <- getFactorConcentrationMatrix(lframe, "f", 1);
-m2 <- getFactorConcentrationMatrix(lframe, "f", 2);
-plotConcentrationSeries(getTimeSlice(lframe, 3), "f", c(0, 1), hitReturn);
+#lframe <- readTransLattice("onegene.dat");
+#m1 <- getFactorConcentrationMatrix(lframe, "f", 1);
+#m2 <- getFactorConcentrationMatrix(lframe, "f", 2);
+#plotConcentrationSeries(getTimeSlice(lframe, 3), "f", c(0, 1), hitReturn);
 # plotConcentrationSeries(lframe, "f", c(0, 1), hitReturn);
-
+# plotConcentrationSeries(lframe, "A", getConcentrationRange(lframe, "A"), oneSecondDelay)
