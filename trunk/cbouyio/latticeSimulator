@@ -189,8 +189,8 @@ for opt, par in optlist :
     pgmFactor = par
 
 
-print optlist
-sys.exit()
+#print optlist
+#sys.exit()
 
 
 # Mandatory options checking.
