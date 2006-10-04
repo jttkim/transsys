@@ -24,10 +24,12 @@ objective_function_name = None
 num_restarts = None
 optimiserfile_name = None
 transformerfile_name = None
+factor_name_list = None
+gene_name_list = None
 seriesfile_name = None
 optimisation_logfile_name = None
 verbose = 0
-options, args = getopt.getopt(sys.argv[1:], 'f:x:r:L:P:T:vh')
+options, args = getopt.getopt(sys.argv[1:], 'f:x:r:L:P:T:F:Gvh')
 for opt, par in options :
   if opt == '-h' :
     print '-f [squaresum | correlation]: specify objective function'
@@ -36,6 +38,8 @@ for opt, par in options :
     print '-L <filename>: specify optimisation log file'
     print '-P <optimiser specfile>: specify optimiser specification file to parse'
     print '-T <transformer specfile>: specify transformer specification file to parse'
+    print '-F <factor list>: specify factors to be optimised (comma separated)'
+    print '-G <factor list>: specify genes to be optimised (comma separated)'
     print '-v: verbose'
     print '-h: print this help and exit'
     sys.exit()
@@ -51,6 +55,10 @@ for opt, par in options :
     optimiserfile_name = par
   elif opt == '-T' :
     transformerfile_name = par
+  elif opt == '-F' :
+    factor_name_list = map(lambda x: x.strip(), par.split(','))
+  elif opt == '-G' :
+    gene_name_list = map(lambda x: x.strip(), par.split(','))
   elif opt == '-v' :
     verbose = 1
   else :
@@ -97,7 +105,7 @@ transsys_program = p.parse()
 tp_index = 0
 while transsys_program is not None :
   if num_restarts is None :
-    optResult = optimiser.optimise(transsys_program, objective)
+    optResult = optimiser.optimise(transsys_program, objective, factor_name_list, gene_name_list)
     sys.stderr.write('%s\n' % str(objective(optResult.optimised_transsys_program)))
     write_result(outfile, optResult)
     if logfile is not None :
@@ -105,7 +113,7 @@ while transsys_program is not None :
   else :
     optimiser.randomInitRange = 1.0
     for restart_index in xrange(num_restarts) :
-      optResult = optimiser.optimise(transsys_program, objective)
+      optResult = optimiser.optimise(transsys_program, objective, factor_name_list, gene_name_list)
       sys.stderr.write('%s\n' % str(objective(optResult.optimised_transsys_program)))
       write_result(outfile, optResult)
       if logfile is not None :
