@@ -643,11 +643,44 @@ def parse_transformation_function(f) :
 class ParameterTransformer(object) :
   """Base class for parameter transformers.
 
+Parameter transformation maps values from the domain ]-Inf, +Inf[ to
+limited ranges of the real numbers, using L{TransformationFunction}s.
+
+Furthermore, parameter transformers can restrict the set of factors
+and genes for which optimisation is performed. Notionally, this is
+equivalent to mapping all values from ]-Inf, +Inf[ to the constant
+found in the original transsys program.
+
+Notice that the factors and genes to be optimised must be specified
+by their names, not by references.
+
 This base class implements an identity transformer, i.e. the transformed
 value of a parameter is just its actual value.
 
+Technical note: Restriction of parameters that are subjected to
+optimisation is not implemented by clamping them to a constant value but
+by hiding the parameters of elements excluded from optimisation from the
+optimiser altogether.  Effectively, this reduces the dimensionality of
+the search space and therefore, it is much preferable from the notionally
+equivalent clamping. From this perspective, the C{ParameterTransformer}
+class currently combines the functions of transforming and selecting
+parameters, and the optimisation framework may in the future be changed
+to implement these separate function in separate classes.
+
+This design change should not effect high level users of
+C{ParameterTransformer} and its subclasses as the factor and gene
+lists are normally received through the C{optimise} methods of
+L{AbstractOptimiser} subclasses, and this interface will not be
+affected by the design change.
+
 @ivar transsys_program: the transsys program
 @type transsys_program: C{TranssysProgram}
+@ivar factor_name_list: list of names of factors for which parameters are to be
+  optimised
+@type factor_name_list: C{list} of C{string}s
+@ivar gene_name_list: list of names of genes for which parameters are to be
+  optimised
+@type gene_name_list: C{list} of C{string}s
 @ivar target_node_list: list of expression nodes holding the values subject to
   optimisation
 @type target_node_list: C{list} of C{ExpressionNodeValue}
@@ -683,14 +716,33 @@ value of a parameter is just its actual value.
     self.parse_variables(f)
 
 
-  def setTranssysProgram(self, transsys_program) :
+  def setTranssysProgram(self, transsys_program, factor_name_list, gene_name_list) :
     """Set the transsys program on which the transformer is to operate.
+
+Passing C{None} as factor name list selects all factor-related parameters for
+optimisation, and likewise, passing C{None} as gene name list selects all
+gene-related parameters for optimisation.
 
 @param transsys_program: the transsys program
 @type transsys_program: C{TranssysProgram}
+@param factor_name_list: factors for which parameters are to be optimised
+@type factor_name_list: C{list} of C{string}s, or C{None}
+@param gene_name_list: genes for which parameters are to be optimised
+@type gene_name_list: C{list} of C{string}s, or C{None}
 """
     self.transsys_program = transsys_program
-    self.target_node_list = self.transsys_program.getValueNodes()
+    self.target_node_list = []
+    if factor_name_list is None :
+      self.target_node_list.extend(self.transsys_program.getFactorValueNodes())
+    else :
+      for factor_name in factor_name_list :
+        factor = self.transsys_program.find_factor(factor_name)
+        self.target_node_list.extend(factor.getValueNodes())
+    if gene_name_list is None :
+      self.target_node_list.extend(self.transsys_program.getGeneValueNodes())
+    else :
+      for gene_name in gene_name_list :
+        self.target_node_list.extend(gene.getValueNodes())
 
 
   def clipParameters(self) :
@@ -837,15 +889,37 @@ aspec, amax, rspec and rmax nodes.
     self.transsys_program = None
 
 
-  def setTranssysProgram(self, transsys_program) :
+  def setTranssysProgram(self, transsys_program, factor_name_list, gene_name_list) :
     self.transsys_program = transsys_program
-    self.decay_nodes = transsys_program.getDecayValueNodes()
-    self.diffusibility_nodes = transsys_program.getDiffusibilityValueNodes()
-    self.constitutive_nodes = transsys_program.getConstitutiveValueNodes()
-    self.aspec_nodes = transsys_program.getActivateSpecValueNodes()
-    self.amax_nodes = transsys_program.getActivateMaxValueNodes()
-    self.rspec_nodes = transsys_program.getRepressSpecValueNodes()
-    self.rmax_nodes = transsys_program.getRepressMaxValueNodes()
+    if factor_name_list is None :
+      self.decay_nodes = transsys_program.getDecayValueNodes()
+      self.diffusibility_nodes = transsys_program.getDiffusibilityValueNodes()
+    else :
+      self.decay_nodes = []
+      self.diffusibility_nodes = []
+      for factor_name in factor_name_list :
+        factor = self.transsys_program.find_factor(factor_name)
+        self.decay_nodes.extend(factor.getDecayValueNodes())
+        self.diffusibility_nodes.extend(factor.getDiffusibilityValueNodes())
+    if gene_name_list is None :
+      self.constitutive_nodes = transsys_program.getConstitutiveValueNodes()
+      self.aspec_nodes = transsys_program.getActivateSpecValueNodes()
+      self.amax_nodes = transsys_program.getActivateMaxValueNodes()
+      self.rspec_nodes = transsys_program.getRepressSpecValueNodes()
+      self.rmax_nodes = transsys_program.getRepressMaxValueNodes()
+    else :
+      self.constitutive_nodes = []
+      self.aspec_nodes = []
+      self.amax_ondes = []
+      self.rspec_nodes = []
+      self.rmax_nodes = []
+      for gene_name in gene_name_list :
+        gene = self.transsys_program.find_gene(gene_name)
+        self.constitutive_nodes.extend(gene.getConstitutiveValueNodes())
+        self.aspec_nodes.extend(gene.getActivateSpecValueNodes())
+        self.amax_nodes.extend(gene.getActivateMaxValueNodes())
+        self.rspec_nodes.extend(gene.getRepressSpecValueNodes())
+        self.rmax_nodes.extend(gene.getRepressMaxValueNodes())
 
 
   def clipParameters(self) :
@@ -1310,16 +1384,16 @@ of C{AbstractOptimiser} do not have any use.
     self.verbose = verbose
 
 
-  def initialiseTranssysProgramValues(self, transsys_program) :
-    """Randomly initialise transsys program values if requested."""
-    self.transformer.setTranssysProgram(transsys_program)
+  def initialiseParameterTransformer(self, transsys_program, factor_name_list, gene_name_list) :
+    """Initialise the parameter transformer and randomise values if requested."""
+    self.transformer.setTranssysProgram(transsys_program, factor_name_list, gene_name_list)
     if self.randomInitRange is None :
       self.transformer.clipParameters()
     else :
       self.transformer.randomiseParametersUniform(self.randomInitRange, self.rng)
 
 
-  def optimise(self, transsys_program_init, objective_function) :
+  def optimise(self, transsys_program_init, objective_function, factor_name_list = None, gene_name_list = None) :
     """Abstract optimise method.
 
 Subclasses of C{AbstractOptimiser} must override this method and
@@ -1333,8 +1407,15 @@ variables.
 @param transsys_program_init: The transsys program to be optimised.
   Optimisers should not modify this transsys program, modifications
   should be done to a copy.
+@type transsys_program_init: C{TranssysProgram}
 @param objective_function: The objective function used to optimise the
-  transsys program."""
+  transsys program.
+@type objective_function: L{AbstractObjectiveFunction} (or subclass)
+@param factor_name_list: factors for which parameters are to be optimised
+@type factor_name_list: C{list} of C{string}s, or C{None}
+@param gene_name_list: genes for which parameters are to be optimised
+@type gene_name_list: C{list} of C{string}s, or C{None}
+"""
     raise StandardError, 'call to unimplemented AbstractOptimiser optimise method'
 
 
@@ -1511,13 +1592,11 @@ explicitly does so.
     return False
 
 
-  def optimise(self, transsys_program_init, objective_function, stepvector_init = None, rndseed = None) :
+  def optimise(self, transsys_program_init, objective_function, factor_name_list = None, gene_name_list = None, stepvector_init = None) :
     """Simulated annealing optimise method."""
     self.verifyTermination()
-    if rndseed is not None :
-      self.rng.seed(rndseed)
     transsys_program = copy.deepcopy(transsys_program_init)
-    self.initialiseTranssysProgramValues(transsys_program)
+    self.initialiseParameterTransformer(transsys_program, factor_name_list, gene_name_list)
     # slightly silly to set the parameters in initialising and then getting them next thing
     # may help to maintain consistency, though.
     state = self.transformer.getParameters()
@@ -1765,7 +1844,7 @@ beginning of a valid save file.
 
   def optimise(self, transsys_program, objective_function, gene_name_list = None, factor_name_list = None) :
     tp = copy.deepcopy(transsys_program)
-    self.initialiseTranssysProgramValues(tp)
+    self.initialiseParameterTransformer(tp, factor_name_list, gene_name_list)
     current_values = self.transformer.getParameters()
     if self.verbose :
       sys.stderr.write('optimising %d values\n' % len(current_values))
