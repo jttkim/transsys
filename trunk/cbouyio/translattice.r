@@ -89,34 +89,33 @@ getFactorConcentrationMatrix <- function(latticeFrame, factorName, timestep)
 }
 
 
-plotConcentrationMatrix <- function(concentrationMatrix, xCoordinates, yCoordinates, concentrationRange)
+plotConcentrationMatrix <- function(concentrationMatrix, xCoordinates, yCoordinates, concentrationRange, ...)
 {
   # All the job is done by the image function.
-  image(xCoordinates, yCoordinates, concentrationMatrix, zlim = concentrationRange, xlab="x Coordinate", ylab="y Coordinate", col = heat.colors(32), main="Lattice");
-  legend("right", c(as.character(round(seq(concentrationRange[1], concentrationRange[2], length.out=32), digits=3))), fill=heat.colors(32), title="Gradient");
+  image(xCoordinates, yCoordinates, concentrationMatrix, zlim = concentrationRange, xlab="x Coordinate", ylab="y Coordinate", col = heat.colors(32), main="Lattice", ...);
+  legend("right", c(as.character(round(seq(concentrationRange[1], concentrationRange[2], length.out=32), digits=3))), fill=heat.colors(32), title="Gradient", ...);
   # grid(max(xCoordinates), max(yCoordinates));
 }
 
 
-plotConcentrationSeries <- function(latticeFrame, factorName, concentrationRange, timeframeEndFunction)
+plotConcentrationSeries <- function(latticeFrame, factorName, concentrationRange, timeframeEndFunction, ...)
 # The concentration range can be obtained from the function above, maybe we can incorporate a timesteps and a delay option as well.
 {
   # Some check about number of timesteps should precede.
   for (i in getTimeSteps(latticeFrame))
   {
-    plotConcentrationMatrix(getFactorConcentrationMatrix(latticeFrame, factorName, i), getXCoordinates(latticeFrame), getYCoordinates(latticeFrame), concentrationRange);
+    plotConcentrationMatrix(getFactorConcentrationMatrix(latticeFrame, factorName, i), getXCoordinates(latticeFrame), getYCoordinates(latticeFrame), concentrationRange, ...);
     timeframeEndFunction(i);
   }
 }
 
 
-plotAllInstances <- function(dataFrame, factorName, concentrationRange)
+plotAllInstances <- function(dataFrame, factorName, concentrationRange=c(0, ceiling(max(dataFrame[[factorName]]))), ylim=concentrationRange, ...)
 {
   # First make the template plot using the first instance.
   instance1 <- subset(dataFrame, x==1 & y==1)
   factor1 <- instance1[[factorName]]
-  timesteps <- getTimeSteps(dataFrame)
-  plot(factor1, type="l", xlim=c(0, max(getTimeSteps(dataFrame))), ylim=concentrationRange, xlab="Timesteps", ylab="Factor Concentration")
+  plot(getTimeSteps(dataFrame), factor1, type="l", ylim=ylim, xlab="Timesteps", ylab="Factor Concentration", ...)
   # Then draw the lines.
   for (i in 1:getXSize(dataFrame))
   {
@@ -124,7 +123,7 @@ plotAllInstances <- function(dataFrame, factorName, concentrationRange)
     {
       instance <- subset(dataFrame, x==i & y==j)
       factor <- instance[[factorName]]
-      lines(factor)
+      lines(getTimeSteps(dataFrame), factor, ...)
     }
   }
 }
