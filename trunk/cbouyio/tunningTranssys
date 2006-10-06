@@ -1,0 +1,130 @@
+#!/usr/bin/env python
+
+"""
+A program to adjusting transsys programs parameters.
+
+@author: Costas Bouyioukos
+@since: 5 October 2006
+@organisation: University of East Anglia
+"""
+
+import getopt
+import sys
+import os.path
+import re
+
+import transsys
+
+
+def usage() :
+  print """
+  -h, --help       switch        : Prints this screen and exit.
+  -i, --identifier String        : Specify a transsys identifier name.
+  -v, --value      String:Number : Specify the transsys property and the
+                                   desired value.
+  -k, --keywords   switch        : Print the keywords and exit.
+
+Example: ./tunningTranssys -i factor_inhibitor -v diffusibility:1 patternFormation.tra (to change the diffusibility of factor factor_inhibitor to 1) """
+
+
+def keyWords() :
+  for k in keywords :
+    print k
+
+
+# Initialise parametrs.
+tpName     = None
+pair       = None
+identifier = None
+keywords   = ['diffusibility', 'decay', 'constitutive', 'VMax', 'Km']
+
+
+# Command line parsing
+optlist, args = getopt.getopt(sys.argv[1:], 'hi:kv:', ['help', 'identifier', 'keywords', 'value'])
+
+for opt, par in optlist :
+  if opt in ('-h', '--help') :
+    usage()
+    sys.exit()
+  if opt in ('-k', '--keywords') :
+    keyWords()
+    sys.exit()
+  if opt in ('-i', '--identifier') :
+    identifier = par
+  if opt in ('-v', '--value') :
+    pair = par.split(':')
+    if len(pair) != 2 :
+      raise StandardError, 'Error in the input of -v, --value parameter, please check -h , --help for more.'
+    prop = pair[0]
+    if not float(pair[1]) :
+      raise StandardError, 'Error in the input of -v, --value parameter format, please check -h , --help for more.'
+    else :
+      value = float(pair[1])
+
+
+# I/O manipulation.
+if len(args) > 0 :
+  infile = open(args[0], 'r')
+else :
+  infile = sys.stdin
+  tpName = 'STDIN_UserInput'
+if len(args) > 1 :
+  outfile = open(args[1], 'w')
+else :
+  sys.stderr.write('An automatic named outfile will be generated. \n')
+
+
+# Instantiate and parse the transsys program.
+tp = transsys.TranssysProgramParser(infile).parse()
+
+
+# Parameter validity check.
+if identifier :
+  if identifier in tp.factor_names() :
+    element = tp.find_factor(identifier)
+  elif identifier in tp.gene_names() :
+    element = tp.find_gene(identifier)
+    # Check for the existance of the value parameter.
+    if not pair :
+      raise StandardError, 'Value parameter (-v, --value) mandatory. Please check -h, --help for the correct format.'
+    # If it exist check for the keyword.
+    else :
+      if prop not in keywords :
+        raise StandardError, 'The %s is not a valid keyword for passing parameters.' % prop
+  else :
+    raise StandardError, 'The %s is not a valid identifier of the %s transsys program' % (identifier, infile.name)
+else :
+  raise StandardError, 'Identifier parameter (-i, --identifier) mandatory. Please check -h, --help for the correct format.'
+
+
+# Changing transsys parmeters.
+if isinstance(element, transsys.Factor) :
+  if prop == 'diffusibility' :
+    element.diffusibility_expression = value
+  elif prop == 'decay' :
+    element.decay_expression = value
+elif isinstance(element, transsys.Gene) :
+  if prop == 'constitutive' :
+    for e in element.promoter :
+      if isinstance(e, transsys.PromoterElementConstitutive) :
+        e.expression = transsys.ExpressionNodeValue(value)
+#      if isinstance(e, transsys.PromoterElementActivate) :
+#        pass
+#      if isinstance(e, transsys.PromoterElementRepress) :
+#        pass
+
+
+# Get the transsys program name.
+if tpName == None :
+  # Extract the name from the .tra file
+  tpName = os.path.splitext(infile.name)[0]
+
+
+# Output file manipulation.
+outfileName = tpName + '_' + prop + '_' + str(value) + '.tra'
+outfile = open(outfileName, 'w')
+
+outfile.write(tp.__str__())
+outfile.close()
+sys.exit()
+
