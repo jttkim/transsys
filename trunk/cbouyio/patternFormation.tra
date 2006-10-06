@@ -1,39 +1,40 @@
 transsys patternFormation
 {
-  factor Activator
+  factor factor_activator
   {
     decay: 0.1;
     diffusibility: 0.001;
   }
 
-  factor Inhibitor
+  factor factor_inhibitor
   {
     decay: 0.1;
     diffusibility: 1.0;
   }
 
-  gene activator
+  gene gene_activator
   {
     promoter
     {
-      Activator: activate(0.5, 3.0);
-      Inhibitor: repress(0.5, 2.0);
+      factor_activator: activate(0.5, 3.0);
+      factor_inhibitor: repress(0.5, 2.0);
     }
     product
     {
-      default: Activator;
+      default: factor_activator;
     }
   }
 
-  gene inhibitor
+  gene gene_inhibitor
   {
     promoter
     {
-      Activator: activate(0.5, 3.0);
+      constitutive: 1.0;
+      factor_activator: activate(0.5, 3.0);
     }
     product
     {
-      default: Inhibitor;
+      default: factor_inhibitor;
     }
   }
 }
