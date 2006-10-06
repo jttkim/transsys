@@ -89,16 +89,16 @@ getFactorConcentrationMatrix <- function(latticeFrame, factorName, timestep)
 }
 
 
-plotConcentrationMatrix <- function(concentrationMatrix, xCoordinates, yCoordinates, concentrationRange, ...)
+plotConcentrationMatrix <- function(concentrationMatrix, xCoordinates, yCoordinates, concentrationRange, main="Lattice", ...)
 {
   # All the job is done by the image function.
-  image(xCoordinates, yCoordinates, concentrationMatrix, zlim = concentrationRange, xlab="x Coordinate", ylab="y Coordinate", col = heat.colors(32), main="Lattice", ...);
+  image(xCoordinates, yCoordinates, concentrationMatrix, zlim = concentrationRange, xlab="x Coordinate", ylab="y Coordinate", col = heat.colors(32), main=main, ...);
   legend("right", c(as.character(round(seq(concentrationRange[1], concentrationRange[2], length.out=32), digits=3))), fill=heat.colors(32), title="Gradient", ...);
   # grid(max(xCoordinates), max(yCoordinates));
 }
 
 
-plotConcentrationSeries <- function(latticeFrame, factorName, concentrationRange, timeframeEndFunction, ...)
+plotConcentrationSeries <- function(latticeFrame, factorName, concentrationRange=c(0, ceiling(max(latticeFrame[[factorName]]))), timeframeEndFunction=hitReturn, ...)
 # The concentration range can be obtained from the function above, maybe we can incorporate a timesteps and a delay option as well.
 {
   # Some check about number of timesteps should precede.
