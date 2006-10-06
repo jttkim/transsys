@@ -61,11 +61,9 @@ Usage:
            -x: Number:Number Signal switch, (FactorConcentration:Timestep)
                              All factors will get the defined concentration at
                              the defined timestep.
-
   Arguments:
    <infile>: A valid transsys program (.tra) file. (<STDIN> if not specified)
-  <outfile>: An output file. (<STDOUT> if not specified)
-"""
+  <outfile>: An output file. (<STDOUT> if not specified)"""
 
 
 def os_manipulation(dir_name) :
