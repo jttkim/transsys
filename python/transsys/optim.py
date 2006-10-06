@@ -742,6 +742,7 @@ gene-related parameters for optimisation.
       self.target_node_list.extend(self.transsys_program.getGeneValueNodes())
     else :
       for gene_name in gene_name_list :
+        gene = self.transsys_program.find_gene(gene_name)
         self.target_node_list.extend(gene.getValueNodes())
 
 
@@ -910,7 +911,7 @@ aspec, amax, rspec and rmax nodes.
     else :
       self.constitutive_nodes = []
       self.aspec_nodes = []
-      self.amax_ondes = []
+      self.amax_nodes = []
       self.rspec_nodes = []
       self.rmax_nodes = []
       for gene_name in gene_name_list :
@@ -1090,9 +1091,8 @@ class GradientOptimisationRecord(OptimisationRecord) :
     self.stepsize = stepsize
     self.numEvaluations = numEvaluations
     gradient_abs = map(abs, gradient)
-    print transsys.utils.euclidean_norm(gradient)
-    #print gradient_abs
-    #print
+    # print transsys.utils.euclidean_norm(gradient)
+    # print gradient_abs
     self.gradient_entropy = transsys.utils.shannon_entropy(gradient_abs)
     self.gradient_max = max(gradient_abs)
 
@@ -1156,7 +1156,7 @@ class SimulatedAnnealingResult(OptimisationResult) :
 
 
   def __init__(self, tp, objectiveOptimum, optimisation_log = None) :
-    print 'annealing', objectiveOptimum
+    # print 'annealing', objectiveOptimum
     super(SimulatedAnnealingResult, self).__init__(tp, objectiveOptimum, optimisation_log)
 
 
@@ -1168,7 +1168,7 @@ class GradientOptimisationResult(OptimisationResult) :
 
 
   def __init__(self, tp, objectiveOptimum, optimisation_log = None) :
-    print 'gradient', objectiveOptimum
+    # print 'gradient', objectiveOptimum
     super(GradientOptimisationResult, self).__init__(tp, objectiveOptimum, optimisation_log)
 
 
@@ -1842,7 +1842,7 @@ beginning of a valid save file.
       return True
     
 
-  def optimise(self, transsys_program, objective_function, gene_name_list = None, factor_name_list = None) :
+  def optimise(self, transsys_program, objective_function, factor_name_list = None, gene_name_list = None) :
     tp = copy.deepcopy(transsys_program)
     self.initialiseParameterTransformer(tp, factor_name_list, gene_name_list)
     current_values = self.transformer.getParameters()

@@ -29,7 +29,7 @@ gene_name_list = None
 seriesfile_name = None
 optimisation_logfile_name = None
 verbose = 0
-options, args = getopt.getopt(sys.argv[1:], 'f:x:r:L:P:T:F:Gvh')
+options, args = getopt.getopt(sys.argv[1:], 'f:x:r:L:P:T:F:G:vh')
 for opt, par in options :
   if opt == '-h' :
     print '-f [squaresum | correlation]: specify objective function'
