@@ -58,8 +58,9 @@ for opt, par in optlist :
     prop = pair[0]
     if not float(pair[1]) :
       raise StandardError, 'Error in the input of -v, --value parameter format, please check -h , --help for more.'
-    else :
-      value = float(pair[1])
+    if not float(pair[1]) >= 0 :
+      raise StandardError, 'Expression values cannot be negative. Please specify a positive number or zero for -v.'
+    value = float(pair[1])
 
 
 # I/O manipulation.
@@ -71,7 +72,7 @@ else :
 if len(args) > 1 :
   outfile = open(args[1], 'w')
 else :
-  sys.stderr.write('An automatic named outfile will be generated. \n')
+  sys.stderr.write('An automaticaly named output file has been generated.\n')
 
 
 # Instantiate and parse the transsys program.
