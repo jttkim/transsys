@@ -115,7 +115,7 @@ plotAllInstances <- function(dataFrame, factorName, concentrationRange=c(0, ceil
   # First make the template plot using the first instance.
   instance1 <- subset(dataFrame, x==1 & y==1)
   factor1 <- instance1[[factorName]]
-  plot(getTimeSteps(dataFrame), factor1, type="l", ylim=ylim, xlab="Timesteps", ylab="Factor Concentration", ...)
+  plot(getTimeSteps(dataFrame), factor1, type="l", ylim=ylim, xlab="Timesteps", ylab="Factor Concentration", main=factorName, ...)
   # Then draw the lines.
   for (i in 1:getXSize(dataFrame))
   {
@@ -140,6 +140,7 @@ hitReturn <- function(timestep)
 {
   readline(sprintf("timestep %d -- hit return", as.integer(timestep)));
 }
+
 
 
 #lframe <- readTransLattice("onegene.dat");

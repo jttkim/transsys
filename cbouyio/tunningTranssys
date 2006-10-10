@@ -10,8 +10,8 @@ A program to adjusting transsys programs parameters.
 
 import getopt
 import sys
-import os.path
-import re
+#import os.path
+#import re
 
 import transsys
 
@@ -33,7 +33,7 @@ def keyWords() :
 
 
 # Initialise parametrs.
-tpName     = None
+#tpName     = None
 pair       = None
 identifier = None
 keywords   = ['diffusibility', 'decay', 'constitutive', 'VMax', 'Km']
@@ -68,11 +68,12 @@ if len(args) > 0 :
   infile = open(args[0], 'r')
 else :
   infile = sys.stdin
-  tpName = 'STDIN_UserInput'
+#  tpName = 'STDIN_UserInput'
 if len(args) > 1 :
   outfile = open(args[1], 'w')
 else :
-  sys.stderr.write('An automaticaly named output file has been generated.\n')
+  outfile = sys.stdout
+#  sys.stderr.write('An automaticaly named output file has been generated.\n')
 
 
 # Instantiate and parse the transsys program.
@@ -116,16 +117,20 @@ elif isinstance(element, transsys.Gene) :
 
 
 # Get the transsys program name.
-if tpName == None :
+#if tpName == None :
   # Extract the name from the .tra file
-  tpName = os.path.splitext(infile.name)[0]
+#  tpName = os.path.splitext(infile.name)[0]
 
 
 # Output file manipulation.
-outfileName = tpName + '_' + prop + '_' + str(value) + '.tra'
-outfile = open(outfileName, 'w')
+#outfileName = tpName + '_' + prop + '_' + str(value) + '.tra'
+#outfile = open(outfileName, 'w')
 
+# Export the tuned transsys program.
 outfile.write(tp.__str__())
-outfile.close()
+
+if outfile is not sys.stdout :
+  outfile.close()
+
 sys.exit()
 
