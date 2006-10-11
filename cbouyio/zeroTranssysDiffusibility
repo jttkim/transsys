@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+
+"""
+A script to zero all the diffusibility expression on a transsys program.
+
+@author: Costas Bouyioukos
+@since: 5 October 2006
+@organisation: University of East Anglia
+"""
+
+import getopt
+import sys
+
+import transsys
+
+
+def usage() :
+  print """
+  -h, --help  switch  : Prints this screen and exit.
+    Zero all factors' diffusibility expression.
+  """
+
+
+# Command line parsing
+optlist, args = getopt.getopt(sys.argv[1:], 'h', ['help'])
+
+for opt, par in optlist :
+  if opt in ('-h', '--help') :
+    usage()
+    sys.exit()
+
+
+# I/O implementation.
+if len(args) > 0 :
+  infile = open(args[0], 'r')
+else :
+  infile = sys.stdin
+if len(args) > 1 :
+  outfile = open(args[1], 'w')
+else :
+  outfile = sys.stdout
+
+
+# Instantiate and parse the transsys program.
+tp = transsys.TranssysProgramParser(infile).parse()
+
+
+# Zero all the diffusility expressions.
+fList = []
+for factor in tp.factor_list :
+  factor.diffusibility_expression = 0.0
+  fList.append(factor)
+
+tp.factor_list = fList
+
+# Print the transsys program.
+outfile.write(tp.__str__())
+
+if outfile is not sys.stdout :
+  outfile.close()
+
+sys.exit()
+
