@@ -7,6 +7,7 @@ setup(name='translattice',
   description='A python module for lattice simulation of transsys programs',
   long_description='pending...',
   py_modules=['translattice'],
+  scripts=['latticeSimulator', 'zeroTranssysDiffusibility'],
   author='Costas Bouyioukos',
   author_email='konsb@cmp.uea.ac.uk',
   )
