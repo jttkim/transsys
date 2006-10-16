@@ -94,7 +94,7 @@ plotConcentrationMatrix <- function(concentrationMatrix, xCoordinates, yCoordina
   # All the job is done by the image function.
   image(xCoordinates, yCoordinates, concentrationMatrix, zlim = concentrationRange, xlab="x Coordinate", ylab="y Coordinate", col = heat.colors(32), main=main, ...);
   legend("right", c(as.character(round(seq(concentrationRange[1], concentrationRange[2], length.out=32), digits=3))), fill=heat.colors(32), title="Gradient", ...);
-  # grid(max(xCoordinates), max(yCoordinates));
+#  grid(max(xCoordinates), max(yCoordinates));
 }
 
 
