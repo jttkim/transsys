@@ -3,8 +3,8 @@
 # $Author$
 # $Date$
 
-DISTCLEANFILES = 
-EXTRA_DIST = setup.py transsys src
+# DISTCLEANFILES = 
+# EXTRA_DIST =
 
 TESTS		= test_scripts
 
