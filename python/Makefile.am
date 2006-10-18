@@ -14,25 +14,25 @@ SUBDIRS		= scripts
 
 install-exec-local : pythonsetup-install
 
-pythonsetup-install :
-	python setup.py install --$(python_scheme)=$(python_prefix)
+pythonsetup-install : setup.py
+	cd $(<D) ; python setup.py install --$(python_scheme)=$(python_prefix)
 
-pythonsetup-testinstall :
+pythonsetup-testinstall : setup.py
 	rm -rf test
 	mkdir test
-	python setup.py install --home=test
+	cd $(<D) ; python setup.py install --home=test
 
 check-local : test_transsys pythonsetup-testinstall
 	./test_transsys
 
-clean-local :
-	python setup.py clean
+clean-local : setup.py
+	cd $(<D) ; python setup.py clean
 	rm -rf build doc test
 
 all-local : pythonsetup-build epydoc-html
 
-pythonsetup-build : transsys
-	python setup.py build
+pythonsetup-build : setup.py transsys
+	cd $(<D) ; python setup.py build
 
 # this is a weird kludge -- the problem is that the transsys
 # subdirectory is not accepted...
