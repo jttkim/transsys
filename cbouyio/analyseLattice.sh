@@ -2,6 +2,11 @@
 
 # Shell script to wrap all the lattice simulation procedure.
 
+# Variables
+TIMESTEPS=50
+LATTICESIZE=10x10
+UNI_RANGE=0:1
+
 # Usage.
 if test "$1" == "--help"  || test "$1" == "-h" ;
 then
@@ -17,63 +22,57 @@ then
   exit 1
 fi
 
+# Get the transsys program name.
 tpName=$1;
 
 if ! test -e "$tpName" ;
 then
-  echo "Input file $tpName does not exist"
+  echo "Input file $tpName does not exist."
   exit 
 fi
 
-bname=${tpName%\.tra}
+# Extract the basename.
+bname=`basename $tpName .tra`
 
-#if test $bname -eq 1 ;
-#then
-#  echo "Give a transsys program file .tra"
-#  exit 1
-#fi
-
-#echo $bname
-
-#bname=`basename $1`
-
-#echo $bname
-
-#exit 1
-
+if test "$bname" == "$tpname" ;
+then
+  echo "  Error in basename proccesing.
+  Specify a transsys program (.tra) filename."
+  exit
+fi
 
 # Start the process.
-if ! ./latticeSimulator -n 10x10 -t 10 -u 0:1 $tpName ${bname}_ftable.dat ;
+if ! ./latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE $tpName ${bname}_ftable.dat ;
 then
   exit $?
 fi
 
-# Invoke R (applies only to the patternFormation.tra transsys program)
-echo "source("\""translattice.r"\"")" | R CMD BATCH --no-restore
-echo "lframe <- readTransLattice("\""${bname}_ftable.dat"\"")" | R CMD BATCH
+# Produce the .R source file.
+echo "source("\""translattice.r"\"")" | cat > ${bname}_RData.R
+echo "lframe <- readTransLattice("\""${bname}_ftable.dat"\"")" | cat >> ${bname}_RData.R
 
+# Invoke R
+#echo "source("\""translattice.r"\"")" | R CMD BATCH --no-restore
+#echo "lframe <- readTransLattice("\""${bname}_ftable.dat"\"")" | R CMD BATCH
 #echo "postscript("\""patternFormation.ps"\"", width=10, height=10); plotConcentrationSeries(lframe, "\""factor_activator"\"", getConcentrationRange(lframe, "\""factor_activator"\""), oneSecondDelay); dev.off();" | R CMD BATCH
 
 
 # Generate the control.
-./zeroTranssysDiffusibility $tpName ${bname}_zeroDiff.tra
-
-if ! ./zeroTranssysDiffusibility $tpName ${bname}_zeroDiff.tra ;
+if ! ./zeroTranssysDiffusibility $tpName ${bname}_control.tra ;
 then
   exit $?
 fi
 
 # Run the control
-if ! ./latticeSimulator -n 10x10 -t 10 -u 0:1 ${bname}_zeroDiff.tra ${bname}_zeroDiff_ftable.dat ;
+if ! ./latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE ${bname}_control.tra ${bname}_control_ftable.dat ;
 then
   exit $?
 fi
 
+# Produce the .R source file.
+echo "lframe_control <- readTransLattice("\""${bname}_control_ftable.dat"\"")" | cat >> ${bname}_RData.R
+
 # Invoke R.
-echo "lframe_zero <- readTransLattice("\""${bname}_zeroDiff_ftable.dat"\"")" | R CMD BATCH
-
-#echo "postscript("\""patternFormation_zeroDiff.ps"\"", width=10, height=10); plotConcentrationSeries(lframe_zero, "\""factor_activator"\"", getConcentrationRange(lframe_zero, "\""factor_activator"\""), oneSecondDelay); dev.off();" | R CMD BATCH
-
-# Call an R procedure which contains all the necessary elements.
-R --no-save
+#echo "lframe_zero <- readTransLattice("\""${bname}_control_ftable.dat"\"")" | R CMD BATCH
+#echo "postscript("\""patternFormation_control.ps"\"", width=10, height=10); plotConcentrationSeries(lframe_zero, "\""factor_activator"\"", getConcentrationRange(lframe_zero, "\""factor_activator"\""), oneSecondDelay); dev.off();" | R CMD BATCH
 
