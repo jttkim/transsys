@@ -118,8 +118,8 @@ latticeSize      = None  # The dimensions of the lattice.(-n)
 noTimesteps      = None  # The running timesteps of the simulation.(-t)
 randomSeed       = 1     # The seed for the random number generators.(-r)
 maxConcentration = None  # The maximum concentration that can be drawn.(-m)
-signalTimestep   = False # The 'signal on a timestep', introduction switch.(-x)
-signalFactor     = False # The 'signal of a factor', introduction switch.(-s)
+signalTimestep   = False # The "signal" for an introduction to a timestep.(-x)
+signalFactor     = False # The "signal" for a factor introduction, switch.(-s)
 animation        = False # The animation switch.(-a)
 border_range     = False # The border range of the uniform distribution.(-u)
 summaryFile      = None  # The filename of the summary statistics file.(-p)
@@ -232,7 +232,7 @@ transsysProgram  = transsys.TranssysProgramParser(infile).parse()
 if infile is not sys.stdin :
   infile.close()
 
-# Print the transsys factors names.
+# Print the transsys factors names (if asked).
 if pgmFactor :
   if pgmFactor not in transsysProgram.factor_names() :
     raise StandardError, 'Factor %s does not belong to transsys program please choose one from the list: %s' % (pgmFactor, transsysProgram.factor_names())
@@ -241,7 +241,7 @@ if transsysFactors :
     outfile.write('%s\n' % factorName)
   sys.exit()
 
-# Instantiate the lattice of transsys programs class.
+# Instantiate the lattice of transsys programs.
 transInstanceLattice = translattice.TranssysInstanceLattice(transsysProgram, latticeSize)
 
 
