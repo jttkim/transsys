@@ -42,12 +42,22 @@ getTimeSteps <- function(latticeFrame)
 }
 
 
+getMaxTimestep <- function(latticeFrame)
+{
+  return(max(getTimeSteps(latticeFrame)));
+}
+
 getConcentrationRange <- function(latticeFrame, factorName)
 {
   cr <- c(min(latticeFrame[[factorName]]), max(latticeFrame[[factorName]]));
   return(cr);
 }
 
+getMaximumConcentration <- function(latticeFrame, factorName)
+{
+  mc <- max(latticeFrame[[factorName]])
+  return(mc)
+}
 
 getXSize <- function(latticeFrame)
 {
@@ -89,7 +99,7 @@ getFactorConcentrationMatrix <- function(latticeFrame, factorName, timestep)
 }
 
 
-plotConcentrationMatrix <- function(concentrationMatrix, xCoordinates, yCoordinates, concentrationRange, main="Lattice", ...)
+plotConcentrationMatrix <- function(concentrationMatrix, xCoordinates, yCoordinates, concentrationRange, main="Image Title", ...)
 {
   # All the job is done by the image function.
   image(xCoordinates, yCoordinates, concentrationMatrix, zlim = concentrationRange, xlab="x Coordinate", ylab="y Coordinate", col = heat.colors(32), main=main, ...);
@@ -98,13 +108,12 @@ plotConcentrationMatrix <- function(concentrationMatrix, xCoordinates, yCoordina
 }
 
 
-plotConcentrationSeries <- function(latticeFrame, factorName, concentrationRange=c(0, ceiling(max(latticeFrame[[factorName]]))), timeframeEndFunction=hitReturn, ...)
-# The concentration range can be obtained from the function above, maybe we can incorporate a timesteps and a delay option as well.
+plotConcentrationSeries <- function(latticeFrame, factorName, concentrationRange=c(0, getMaximumConcentration(latticeFrame, factorName)), timeframeEndFunction=hitReturn, ...)
 {
   # Some check about number of timesteps should precede.
   for (i in getTimeSteps(latticeFrame))
   {
-    plotConcentrationMatrix(getFactorConcentrationMatrix(latticeFrame, factorName, i), getXCoordinates(latticeFrame), getYCoordinates(latticeFrame), concentrationRange, ...);
+    plotConcentrationMatrix(getFactorConcentrationMatrix(latticeFrame, factorName, i), getXCoordinates(latticeFrame), getYCoordinates(latticeFrame), concentrationRange, main=sprintf("Image of FCs on Timestep %d", as.integer(i)), ...);
     timeframeEndFunction(i);
   }
 }
@@ -113,17 +122,17 @@ plotConcentrationSeries <- function(latticeFrame, factorName, concentrationRange
 plotAllInstances <- function(dataFrame, factorName, concentrationRange=c(0, ceiling(max(dataFrame[[factorName]]))), ylim=concentrationRange, ...)
 {
   # First make the template plot using the first instance.
-  instance1 <- subset(dataFrame, x==1 & y==1)
-  factor1 <- instance1[[factorName]]
-  plot(getTimeSteps(dataFrame), factor1, type="l", ylim=ylim, xlab="Timesteps", ylab="Factor Concentration", main=factorName, ...)
+  instance1 <- subset(dataFrame, x==1 & y==1);
+  factor1 <- instance1[[factorName]];
+  plot(getTimeSteps(dataFrame), factor1, type="l", ylim=ylim, xlab="Timesteps", ylab="Factor Concentration", main=sprintf("All Cells' Trajectories of Factor %s", factorName), ...);
   # Then draw the lines.
   for (i in 1:getXSize(dataFrame))
   {
     for (j in 1:getYSize(dataFrame))
     {
-      instance <- subset(dataFrame, x==i & y==j)
-      factor <- instance[[factorName]]
-      lines(getTimeSteps(dataFrame), factor, ...)
+      instance <- subset(dataFrame, x==i & y==j);
+      factor <- instance[[factorName]];
+      lines(getTimeSteps(dataFrame), factor, ...);
     }
   }
 }
@@ -142,7 +151,44 @@ hitReturn <- function(timestep)
 }
 
 
+# Calculate the spatial correlation distribution.
+spatialCorrelation <- function(dframe, factorName, timestep=getMaxTimestep(dframe))
+{
+#  m <- getFactorConcentrationMatrix(dframe, factorName, timestep) ;
+  # Calculate the maximum Manhatan distance
+  maxManhDist <- abs((1 - getXSize(dframe)) + (1 - getYSize(dframe)));
+  # Create the distribution data structure.
+  distribution <- as.list(1:maxManhDist);
+  # Get the time slice.
+  lFrame <- getTimeSlice(dframe, timestep);
+  # Begin the calculations.
+  for (a in 1:nrow(lFrame))
+  {
+    for (b in 1:nrow(lFrame))
+    {
+      manhD <- abs((lFrame[["x"]][a] - lFrame[["x"]][b]) + (lFrame[["y"]][a] - lFrame[["y"]][b]));
+      if (manhD != 0)
+      {
+        diff <- abs(lFrame[[factorName]][a] - lFrame[[factorName]][b]);
+        distribution[[manhD]] <- append(distribution[[manhD]], diff);
+      }
+    }
+  }
+  for (i in 1:length(distribution))
+  {
+    distribution[[i]] <- mean(distribution[[i]]);
+  }
+  return(as.double(distribution));
+}
 
+
+plotSpatialCorrelation <- function(dframe, factorName, timestep=getMaxTimestep(dframe))
+{
+  barplot(spatialCorrelation(dframe, factorName, timestep), main=sprintf("Barplot of Spatial Correlation on Timestep %d", as.integer(timestep)), xlab="Manhattan Distance", ylab="Mean of FC Differences");
+}
+
+
+# Some runs.
 #lframe <- readTransLattice("onegene.dat");
 #m1 <- getFactorConcentrationMatrix(lframe, "f", 1);
 #m2 <- getFactorConcentrationMatrix(lframe, "f", 2);
