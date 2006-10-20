@@ -3,7 +3,7 @@
 # Shell script to wrap all the lattice simulation procedure.
 
 # Variables
-TIMESTEPS=50
+TIMESTEPS=500
 LATTICESIZE=10x10
 UNI_RANGE=0:1
 
@@ -75,4 +75,7 @@ echo "lframe_control <- readTransLattice("\""${bname}_control_ftable.dat"\"")" |
 # Invoke R.
 #echo "lframe_zero <- readTransLattice("\""${bname}_control_ftable.dat"\"")" | R CMD BATCH
 #echo "postscript("\""patternFormation_control.ps"\"", width=10, height=10); plotConcentrationSeries(lframe_zero, "\""factor_activator"\"", getConcentrationRange(lframe_zero, "\""factor_activator"\""), oneSecondDelay); dev.off();" | R CMD BATCH
+
+# Remove some files.
+rm -rf ${bname}_control.tra 
 

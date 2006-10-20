@@ -119,7 +119,7 @@ plotConcentrationSeries <- function(latticeFrame, factorName, concentrationRange
 }
 
 
-plotAllInstances <- function(dataFrame, factorName, concentrationRange=c(0, ceiling(max(dataFrame[[factorName]]))), ylim=concentrationRange, ...)
+plotAllInstances <- function(dataFrame, factorName, concentrationRange=c(0, max(dataFrame[[factorName]])), ylim=concentrationRange, ...)
 {
   # First make the template plot using the first instance.
   instance1 <- subset(dataFrame, x==1 & y==1);
