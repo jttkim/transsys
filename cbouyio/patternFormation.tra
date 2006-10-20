@@ -3,7 +3,7 @@ transsys patternFormation
   factor factor_activator
   {
     decay: 0.1;
-    diffusibility: 0.001;
+    diffusibility: 0.01;
   }
 
   factor factor_inhibitor
@@ -17,7 +17,7 @@ transsys patternFormation
     promoter
     {
       factor_activator: activate(0.5, 3.0);
-      factor_inhibitor: repress(0.5, 2.0);
+      factor_inhibitor: repress(0.5, 2.15);
     }
     product
     {
