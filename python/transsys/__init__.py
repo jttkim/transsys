@@ -134,7 +134,6 @@ import random
 
 import clib
 
-import transrnd
 import utils
 
 # __all__ appears to interfere with epydoc documentation generation
@@ -3528,16 +3527,14 @@ class ArrayIntensityFunction(object) :
 taking the expression level and adding background and noise
 """
 
-  # FIXME: phase out transrnd stuff from here.
-  # this stuff should go to the array module anyway
   def __init__(self, offset, dispersion, rndseed) :
     self.offset = offset
     self.dispersion = dispersion
-    self.rng = transrnd.transrnd(rndseed)
+    self.rng = random.Random(rndseed)
 
 
   def __call__(self, factor_name, expression_level) :
-    intensity = expression_level + self.offset * math.exp(self.rng.gauss() * self.dispersion)
+    intensity = expression_level + self.offset * math.exp(self.rng.gauss(0.0, 1.0) * self.dispersion)
     return intensity
 
 
@@ -3664,19 +3661,18 @@ class ArraySeries(object) :
 
 if __name__ == '__main__' :
   import sys
-  import transrnd
 
   rtp = RandomTranssysParameters()
-  rtp.rng = transrnd.transrnd(1)
+  rtp.rng = random.Random(1)
   rtp.n = 3
   rtp.k = 2
   write_random_transsys(sys.stdout, 'rndtrans0', rtp)
 
-  rtp.rng = transrnd.transrnd(1)
+  rtp.rng = random.Random(1)
   rtp.set_constitutive(1.0)
   write_random_transsys(sys.stdout, 'rndtrans_c1', rtp)
 
-  rtp.rng = transrnd.transrnd(1)
+  rtp.rng = random.Random(1)
   rtp.set_km_activation([0.0, 1.0])
   rtp.set_km_repression([2.0, 3.0])
   rtp.set_vmax_activation([47.11, 8.15])
@@ -3685,6 +3681,6 @@ if __name__ == '__main__' :
   rtp.set_diffusibility([0.88, 0.99])
   write_random_transsys(sys.stdout, 'rndtrans_cycles', rtp)
 
-  rtp.rng = transrnd.transrnd(1)
+  rtp.rng = random.Random(1)
   rtp.set_topology([[0, 1], [], [0, 4], [0, -1, 1], [-1, -2, -3, -4, -5]])
   write_random_transsys(sys.stdout, 'rndtrans_topo', rtp)
