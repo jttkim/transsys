@@ -161,7 +161,16 @@ spatialCorrelation <- function(dframe, factorName, timestep=getMaxTimestep(dfram
   distribution <- vector("list", maxManhDist);
   # Get the time slice.
   lFrame <- getTimeSlice(dframe, timestep);
+  # distanceSum <- double of length maxDistance + 1, initialised to 0.0
+  # distanceCount <- integer of length maxDistance + 1, initialised to 0
   # Begin the calculations.
+  # for (x1, y1) in all coordinates on the lattice
+  #   for (x2 y2) in all coordinates "above" (x1, y1)
+  #     d <- manhattanDistance((x1, y1), (x2, y2))
+  #     distanceSum[d] <- distanceSum[d] + difference of factor concentrations at (x1, y1) and (x2, y2)
+  #     increment distanceCount[d]
+  # divide all distanceSum[i] by distanceCount[i]
+
   for (a in 1:nrow(lFrame))
   {
     for (b in 1:nrow(lFrame))
