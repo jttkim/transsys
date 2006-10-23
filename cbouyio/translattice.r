@@ -151,43 +151,52 @@ hitReturn <- function(timestep)
 }
 
 
-# Calculate the spatial correlation distribution.
-spatialCorrelation <- function(dframe, factorName, timestep=getMaxTimestep(dframe))
+getManhattanDistance <- function(x1, y1, x2, y2, X, Y)
+# Calculate the Manhattan Distance between two cells on the toroidal lattice.
 {
-#  m <- getFactorConcentrationMatrix(dframe, factorName, timestep) ;
-  # Calculate the maximum Manhatan distance
-  maxManhDist <- abs((1 - getXSize(dframe)) + (1 - getYSize(dframe)));
-  # Create the distribution data structure.
-  distribution <- vector("list", maxManhDist);
-  # Get the time slice.
-  lFrame <- getTimeSlice(dframe, timestep);
-  # distanceSum <- double of length maxDistance + 1, initialised to 0.0
-  # distanceCount <- integer of length maxDistance + 1, initialised to 0
-  # Begin the calculations.
-  # for (x1, y1) in all coordinates on the lattice
-  #   for (x2 y2) in all coordinates "above" (x1, y1)
-  #     d <- manhattanDistance((x1, y1), (x2, y2))
-  #     distanceSum[d] <- distanceSum[d] + difference of factor concentrations at (x1, y1) and (x2, y2)
-  #     increment distanceCount[d]
-  # divide all distanceSum[i] by distanceCount[i]
+  manhX <- min(abs(x2 - x1), abs(x1 + X - x2))
+  manhY <- min(abs(y2 - y1), abs(y1 + Y - y2))
+  manhattanDistance = manhX + manhY
+  return(manhattanDistance)
+}
 
-  for (a in 1:nrow(lFrame))
+
+spatialCorrelation <- function(dframe, factorName, timestep=getMaxTimestep(dframe))
+# Calculate the spatial correlation distribution.
+{
+  m <- getFactorConcentrationMatrix(dframe, factorName, timestep) ;
+  maxManhttanDist <- sum(dim(m) %/% 2);
+  distanceSum <- double(length=maxManhttanDist);
+  distanceCount <- integer(length=maxManhttanDist);
+  # Begin the calculations.
+  for (x1 in 1:dim(m)[1])
   {
-    for (b in 1:nrow(lFrame))
+    for (y1 in 1:dim(m)[2])
     {
-      manhD <- abs((lFrame[["x"]][a] - lFrame[["x"]][b]) + (lFrame[["y"]][a] - lFrame[["y"]][b]));
-      if (manhD != 0)
+      for (x2 in x1:dim(m)[1])
       {
-        diff <- abs(lFrame[[factorName]][a] - lFrame[[factorName]][b]);
-        distribution[[manhD]] <- append(distribution[[manhD]], diff);
+        for (y2 in y1:dim(m)[2])
+        {
+          d <- getManhattanDistance(x1, y1, x2, y2, dim(m)[1], dim(m)[2]);
+          if (d != 0)
+          {
+            distanceSum[d] <- distanceSum[d] + abs(m[x1, y1] - m[x2, y2]);
+            distanceCount[d] <- distanceCount[d] + 1;
+          }
+        }
       }
     }
   }
-  for (i in 1:length(distribution))
+  if (length(distanceSum) != length(distanceCount))
   {
-    distribution[[i]] <- mean(distribution[[i]]);
+    stop("Error in Length of vectors in Spatial Correlation function.");
   }
-  return(as.double(distribution));
+  # Calculate the mean.
+  for (i in 1:length(distanceSum))
+  {
+    distanceSum[i] <- distanceSum[i] / distanceCount[i];
+  }
+  return(distanceSum);
 }
 
 
