@@ -530,32 +530,27 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection) :
           self.lattice[i][j].timestep = timesteps
 
 
-  def signal_factor_concentration(self, xCenter, yCenter, signal, factor = None) :
+  def signal_factor_concentration(self, signal, factor = None, i = 0, j = 0) :
     """
     Set the factor's concentration to signal.
 
     Method wich implements the introduce signal functionality.
     Sets the concentration of the factor to the given value.
 
-    @param xCenter: A list containing the coordiantes of the x-axis lattice
-    center.
-    @type xCenter: C{list}
-    @param yCenter: A list containing the coordiantes of the y-axis lattice
-    center.
-    @type yCenter: C{list}
+    By the transsys instance cell which recieves the signal is always the
+    "first" cell (coordinates  (0,0))
+
     @param signal: The signal factor concentration.
     @type signal: C{float}
     @param factor: The signal factor name.
     @type factor: C{str}
     @rtype: C{None}
     """
-    for i in xCenter :
-      for j in yCenter :
-        if factor == None :
-          self.lattice[i][j].factor_concentration = [signal for fc in self.lattice[i][j].factor_concentration]
-        elif factor:
-          k = self.transsysProgram.find_factor_index(factor)
-          self.lattice[i][j].factor_concentration[k] = signal
+    if factor == None :
+      self.lattice[i][j].factor_concentration = [signal for fc in self.lattice[i][j].factor_concentration]
+    elif factor:
+      k = self.transsysProgram.find_factor_index(factor)
+      self.lattice[i][j].factor_concentration[k] = signal
 
 
   def introduce_signal(self, signalC, xFactor = None) :
@@ -585,23 +580,25 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection) :
     if xFactor != None :
       if not xFactor in self.transsysProgram.factor_names() :
         raise StandardError, 'Factor %s is not belonging to  %s transsys program. Please specify a valid factor name.' % (xFactor, self.transsysProgram.name)
-    # Find the center of the lattice.
-    # If abscissa is odd number.
-    if divmod(self.size[0], 2)[1] == 1 :
-      i = [divmod(self.size[0], 2)[0]]
-    # If abscissa is even number.
-    elif divmod(self.size[0], 2)[1] == 0 :
-      q = divmod(self.size[0], 2)[0]
-      i = range(q - 1, q + 1)
-    # If ordinate is odd.
-    if divmod(self.size[1], 2)[1] == 1 :
-      j = [divmod(self.size[1], 2)[0]]
-    # If ordinate is even.
-    elif divmod(self.size[1], 2)[1] == 0 :
-      q = divmod(self.size[1], 2)[0]
-      j = range(q - 1, q + 1)
+# Obsolete code, the toroidal lattice has NO center
+# The signal is always intraduced at the 0,0 transsys instance
+#    # Find the center of the lattice.
+#    # If abscissa is odd number.
+#    if divmod(self.size[0], 2)[1] == 1 :
+#      i = [divmod(self.size[0], 2)[0]]
+#    # If abscissa is even number.
+#    elif divmod(self.size[0], 2)[1] == 0 :
+#      q = divmod(self.size[0], 2)[0]
+#      i = range(q - 1, q + 1)
+#    # If ordinate is odd.
+#    if divmod(self.size[1], 2)[1] == 1 :
+#      j = [divmod(self.size[1], 2)[0]]
+#    # If ordinate is even.
+#    elif divmod(self.size[1], 2)[1] == 0 :
+#      q = divmod(self.size[1], 2)[0]
+#      j = range(q - 1, q + 1)
     # Call the signal_factor_concentration function.
-    self.signal_factor_concentration(i, j, signalC, xFactor)
+    self.signal_factor_concentration(signalC, xFactor)
     #######
     # Alternatively, set a randomly choosen factor concentration.
 #    k = random.randint(0, (self.ranssysProgram.num_factors() - 1))
