@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Shell script to wrap all the lattice simulation procedure.
-
+# and conduct the double control experiment.
 
 # Check parameters.
 if test $# != 3 ;
@@ -45,21 +45,36 @@ echo "source("\""~/devel/transsys/trunk/cbouyio/translattice.r"\"")" | cat > ${B
 echo "lframe <- readTransLattice("\""${BASENAME}_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.r
 
 
-# Generate the control.
-if ! zeroTranssysDiffusibility $TPNAME ${BASENAME}_control.tra ;
+# Generate the zero control.
+if ! alterTranssysDiffusibility -d 0.0 $TPNAME ${BASENAME}_zeroControl.tra ;
 then
   exit $?
 fi
 
-# Run the control
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE ${BASENAME}_control.tra ${BASENAME}_control_ftable.dat ;
+# Run the zero control.
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE ${BASENAME}_zeroControl.tra ${BASENAME}_zeroControl_ftable.dat ;
 then
   exit $?
 fi
 
 # Append to the .R source file.
-echo "lframeControl <- readTransLattice("\""${BASENAME}_control_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.r
+echo "lframeZeroControl <- readTransLattice("\""${BASENAME}_zeroControl_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.r
+
+
+# Generate the max control.
+if ! alterTranssysDiffusibility -d 0.0 $TPNAME ${BASENAME}_maxControl.tra ;
+then
+  exit $?
+fi
+
+# Run the control.
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE ${BASENAME}_maxControl.tra ${BASENAME}_maxControl_ftable.dat ;
+then
+  exit $?
+
+# Append to the .R source file.
+echo "lframeMaxControl <- readTransLattice("\""${BASENAME}_maxControl_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.r
 
 # Remove some files.
-rm -rf ${BASENAME}_control.tra
+rm -rf ${BASENAME}_zeroControl.tra ${BASENAME}_maxControl.tra
 
