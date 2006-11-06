@@ -14,7 +14,7 @@ fi
 # Variable assignment.
 LATTICESIZE=$1
 TIMESTEPS=$2
-UNI_RANGE=0:1
+UNI_RANGE=0.0:0.1
 TPNAME=$3
 
 # Check for the existance of the transsys program file.
@@ -35,7 +35,7 @@ then
 fi
 
 # Start the process.
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE $TPNAME ${BASENAME}_ftable.dat ;
+if ! ./latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE $TPNAME ${BASENAME}_ftable.dat ;
 then
   exit $?
 fi
@@ -46,13 +46,13 @@ echo "lframe <- readTransLattice("\""${BASENAME}_ftable.dat"\"")" | cat >> ${BAS
 
 
 # Generate the zero control.
-if ! alterTranssysDiffusibility -d 0.0 $TPNAME ${BASENAME}_zeroControl.tra ;
+if ! ./alterTranssysDiffusibility -d 0.0 $TPNAME ${BASENAME}_zeroControl.tra ;
 then
   exit $?
 fi
 
 # Run the zero control.
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE ${BASENAME}_zeroControl.tra ${BASENAME}_zeroControl_ftable.dat ;
+if ! ./latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE ${BASENAME}_zeroControl.tra ${BASENAME}_zeroControl_ftable.dat ;
 then
   exit $?
 fi
@@ -62,15 +62,16 @@ echo "lframeZeroControl <- readTransLattice("\""${BASENAME}_zeroControl_ftable.d
 
 
 # Generate the max control.
-if ! alterTranssysDiffusibility -d 0.0 $TPNAME ${BASENAME}_maxControl.tra ;
+if ! ./alterTranssysDiffusibility -d 1.0 $TPNAME ${BASENAME}_maxControl.tra ;
 then
   exit $?
 fi
 
 # Run the control.
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE ${BASENAME}_maxControl.tra ${BASENAME}_maxControl_ftable.dat ;
+if ! ./latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE ${BASENAME}_maxControl.tra ${BASENAME}_maxControl_ftable.dat ;
 then
   exit $?
+fi
 
 # Append to the .R source file.
 echo "lframeMaxControl <- readTransLattice("\""${BASENAME}_maxControl_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.r

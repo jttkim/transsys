@@ -1,9 +1,10 @@
 transsys patternFormation
 
-# This is the statrting point of the pattern formation studies.
-# It has been fine tuned manualy according to the simpliest Meinhardt pattern
-# formation principle, and so forth is the first transsys program suspectible
-# for pattern formation.
+# This is the tatrting point on the pattern dformation proccedure.
+# It is the first transsys program suspectible for pattern formation.
+# This is an experiment with constitutive expression on the activator.
+# It behavious is similar to the cycler system.
+# It is producing spots of high concentration.
 
 {
   factor factor_activator
@@ -14,16 +15,17 @@ transsys patternFormation
 
   factor factor_inhibitor
   {
-    decay: 0.1;
-    diffusibility: 1.0;
+    decay: 0.15;
+    diffusibility: 0.99;
   }
 
   gene gene_activator
   {
     promoter
     {
+      constitutive: 0.19;
       factor_activator: activate(0.5, 3.0);
-      factor_inhibitor: repress(0.5, 2.15);
+      factor_inhibitor: repress(0.5, 2.5);
     }
     product
     {
@@ -43,4 +45,3 @@ transsys patternFormation
     }
   }
 }
-
