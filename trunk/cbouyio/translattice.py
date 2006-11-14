@@ -29,6 +29,7 @@ the lisence is kept free.
 import random
 import math
 import copy
+import cPickle
 
 import transsys
 
@@ -169,7 +170,7 @@ class TranssysInstanceCoordinated(transsys.TranssysInstance) :
   @type transsys_program: C{class 'transsys.TranssysProgram'}
   @ivar timestep: The number of timesteps that the simulator runs.
   @type timestep: C{int}
-  @ivar factor_concentration: A list with the factor concentrations.
+  @ivar factor_concentration: A list containing the factor concentrations.
   @type factor_concentration: C{list} of C{float}s
   @ivar coordinates: A list denoting the coordinates on the lattice. (the
   length of the list equals the dimension of the lattice)
@@ -594,6 +595,7 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection) :
 #    if divmod(self.size[1], 2)[1] == 1 :
 #      j = [divmod(self.size[1], 2)[0]]
 #    # If ordinate is even.
+
 #    elif divmod(self.size[1], 2)[1] == 0 :
 #      q = divmod(self.size[1], 2)[0]
 #      j = range(q - 1, q + 1)
@@ -739,6 +741,27 @@ class TranssysLatticeTimeseries(object) :
     factorTable = f.read()
     return factorTable
 
+
+
+
+def pickle(object) :
+    """
+    Return the pickled representation of the object as a string.
+    @returns: A string representing the pickled object.
+    @rtype: C{str}
+    """
+    return cPickle.dumps(object)
+
+
+def unpickle(fileObj) :
+    """
+    Reconstructs and returns the original odject hierarchy from its pickled
+    file.
+    @returns: The pickled object.
+    @rtype: C{class 'object'}
+    @precondition: An open, ready for reading file object.
+    """
+    return cPickle.load(fileObj)
 
 
 def generate_pgm(fileObj, transsysLattice, pgmFactor, maxCon) :
