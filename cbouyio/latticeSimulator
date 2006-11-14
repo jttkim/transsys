@@ -49,6 +49,8 @@ Usage:
            -p: String        Print in the specified file the summary statistics
                              of the simulation.
                              (Default: Print the factor table in the outfile)
+           -q: String        Print in the specified file the pickle output of
+                             the simulation (The Lattice Timeseries Object).
            -r: Integer       The random number generator seed.
                              (Default: 1)
            -s: String:Number Signal switch, (FactorName:FactorConcentration)
@@ -128,10 +130,11 @@ pgmFactor        = None  # The factor that will be used for the imaging.(-c)
 transsysFactors  = False # The factor names switch.(-f, --factors) 
 alpha            = None  # Lower border of uniform disttribution.
 beta             = None  # Upper border of uniform disttribution.
+pickleFile       = None  # The picle file switch
 
 
 ## Command line parsing.
-optlist, args = getopt.getopt(sys.argv[1:], 'ac:fg:hm:n:p:r:s:t:u:x:', ['help', 'factors'])
+optlist, args = getopt.getopt(sys.argv[1:], 'ac:fg:hm:n:p:q:r:s:t:u:x:', ['help', 'factors'])
 
 for opt, par in optlist :
   if opt in ('-h', '--help') :
@@ -185,6 +188,8 @@ for opt, par in optlist :
     transsysFactors = True
   if opt in ('-c') :
     pgmFactor = par
+  if opt in ("-q") :
+    pickleFile = par
 
 
 #print optlist
@@ -275,6 +280,12 @@ if summaryFile :
 # The image files production framework.
 if pgmDir :
   pgm_framework(pgmDir, pgmFactor, maxConcentration, transsysLatticeTimeseries.latticeTimeseries)
+
+# Print the pickle file
+if pickleFile :
+  pickleFileObj = open(pickleFile, "w")
+  pickleFileObj.write(translattice.pickle(transInstanceLattice))
+  pickleFileObj.close()
 
 # Image file conversion and animation.
 if animation :
