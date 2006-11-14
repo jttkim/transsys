@@ -83,6 +83,14 @@ getYSize <- function(latticeFrame)
 }
 
 
+getTimeseries <- function(latticeFrame, X, Y)
+# Returns the timeseries corresponding to the defined instance coordinates.
+{
+  timeseries <- subset(latticeFrame, x==X & y==Y)
+  return(timeseries)
+}
+
+
 getFactorConcentrationMatrix <- function(latticeFrame, factorName, timestep)
 # Low level function. Returns a matrix of factor concentrations (it keeps
 # the same coordiantes with the original structure)
