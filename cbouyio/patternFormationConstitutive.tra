@@ -15,15 +15,15 @@ transsys patternFormation
 
   factor factor_inhibitor
   {
-    decay: 0.15;
-    diffusibility: 0.99;
+    decay: 0.1;
+    diffusibility: 1;
   }
 
   gene gene_activator
   {
     promoter
     {
-      constitutive: 0.19;
+      constitutive: 0.2;
       factor_activator: activate(0.5, 3.0);
       factor_inhibitor: repress(0.5, 2.5);
     }
