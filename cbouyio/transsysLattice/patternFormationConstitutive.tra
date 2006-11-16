@@ -1,10 +1,12 @@
-transsys patternFormation
+transsys patternFormationConstitutive
 
-# This is the tatrting point on the pattern dformation proccedure.
-# It is the first transsys program suspectible for pattern formation.
-# This is an experiment with constitutive expression on the activator.
-# It behavious is similar to the cycler system.
+# This is a patternFortmation.tra derivative.
+
+# It's an experiment with constitutive expression for the activator.
+# It behaves similar to the cycler.tra system.
 # It is producing spots of high concentration.
+
+# $Id$
 
 {
   factor factor_activator

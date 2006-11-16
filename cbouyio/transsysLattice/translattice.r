@@ -1,5 +1,9 @@
-
 # The .R plotting package for the lattice factor table.
+
+# $Rev::               $:  Revision of last commit
+# $Author::            $:  Author of last commit
+# $Date$:  Date of last commit
+
 # cbouyio, UEA, 28/09/2006
 
 
