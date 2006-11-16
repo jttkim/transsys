@@ -1,5 +1,11 @@
 #!/bin/sh
 
+
+# $Rev::               $:  Revision of last commit
+# $Author::            $:  Author of last commit
+# $Date$:  Date of last commit
+
+
 # Shell script to wrap all the lattice simulation procedure,
 # conduct all the control experiments and produce the R source file.
 
@@ -43,7 +49,7 @@ then
 fi
 
 # Generate the .R source file.
-echo "source("\""~/devel/transsys/trunk/cbouyio/translattice.r"\"")" | cat > ${BASENAME}_Rsource.r
+echo "source("\""~/devel/transsys/trunk/cbouyio/tarnssysLattice/translattice.r"\"")" | cat > ${BASENAME}_Rsource.r
 echo "lframe <- readTransLattice("\""${BASENAME}_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.r
 
 

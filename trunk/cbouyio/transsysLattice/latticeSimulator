@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 
+# $Rev::               $:  Revision of last commit
+# $Author::            $:  Author of last commit
+# $Date$:  Date of last commit
+
 """
-latticeSimulator: A program to conduct simulation studies on a lattice.
+latticeSimulator: Implement the simulation procedures on a lattice.
 """
 
 # latticeSimulator: A program that simulates a lattice of trannsys instances

@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+# $Rev::               $:  Revision of last commit
+# $Author::            $:  Author of last commit
+# $Date$:  Date of last commit
+
 from distutils.core import setup
 
 setup(name='translattice',
@@ -7,7 +11,7 @@ setup(name='translattice',
   description='A python module for lattice simulation of transsys programs',
   long_description='This setup apart from the python module, includes several scripts, installed in the prefix/bin directory. These scripts are essential for conducting any simulation studies and they include: the latticeSimulator script (runs the simulator according to the user specified control parameters), the alterTranssysDiffusibility (produces the two "control" transsys programs) and the conductWholeExperiment.sh (wraps all the scripts together and produce an .R source file ready to load and analyse the data to R) the conductWholeExperiment.sh is obvious that is not a python but a shell script',
   py_modules=['translattice'],
-  scripts=['latticeSimulator', 'alterTranssysDiffusibility', 'conductWholeExperiment.sh'],
+  scripts=['latticeSimulator', '../scripts/alterTranssysDiffusibility', 'conductWholeExperiment.sh'],
   author='Costas Bouyioukos',
   author_email='konsb@cmp.uea.ac.uk',
  classifiers=[

@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+# $Rev::               $:  Revision of last commit
+# $Author::            $:  Author of last commit
+# $Date$:  Date of last commit
+
 """
 A module wich contains the essential tools for building structured 2D
 transsys systems.
@@ -14,6 +18,7 @@ transform and change the source code presuming the apropriate reference and
 the lisence is kept free.
 @license: GNU GPL2 or newer.
 @contact: U{Costas Bouyioukos<mailto:konsb@cmp.uea.ac.uk>}
+@version: $Id$
 """
 
 # latticeSimulator: A program that simulates a lattice of trannsys instances
