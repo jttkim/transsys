@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 
-
-# $Rev::                          $:  Revision of last commit
-# $Author::                       $:  Author of last commit
-# $Date::                         $:  Date of last commit
+# $Rev::               $:  Revision of last commit
+# $Author::            $:  Author of last commit
+# $Date$:  Date of last commit
 
 
 # $Id: transsys_simulator,v 1.5 2005/12/22 15:34:33 konsb Exp $ 
@@ -78,7 +77,7 @@ def usage():
    transsys_simulator [list of arguments] input_file output_file
                   -d: Sampling intervals. (default = 1)
                   -e: Equilibration procedure switcher, enables the
-		      equilibration function, leads the system to an
+                      equilibration function, leads the system to an
                       equilibrium before starting any other procedure.
                       (default = DISABLED).
           -h, --help: Prints this screen.
@@ -132,8 +131,8 @@ def printhelp():
               each timestep) of all the factors in the initial and the perturbed
               timeseries and in the last column the Euclidean distance between
               instances for each timestep.
-	      (this file has 2g+2 columns, where g is the number of genes at
-	      the coresponding transsys program)
+              (this file has 2g+2 columns, where g is the number of genes at
+              the coresponding transsys program)
  final_state: It is the output format in any other number of perturbed samples
               (m > 1). In the first column the timesteps are printed again but
               they are followed by the different Euclidean distance lists
