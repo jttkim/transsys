@@ -1,5 +1,10 @@
 #!/bin/bash
 
++# $Rev::               $:  Revision of last commit
++# $Author::            $:  Author of last commit
++# $Date$:  Date of last commit
+
+
 # Changes on 07-11-2005 (r_01)
 # Uses the transsys_distances_r_02 script (r_01)
 # Automates the procedure of transsys examples

@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+# $Rev::               $:  Revision of last commit
+# $Author::            $:  Author of last commit
+# $Date$:  Date of last commit
+
 # A script that constructs a Transsys Programme using RegulonDB data.
 # Contributed by CBouyio, at UEA on 27/03/2006
 # Uploaded to the repository on 1/04/2006, version 1.

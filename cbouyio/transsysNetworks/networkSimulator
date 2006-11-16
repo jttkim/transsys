@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+# $Rev::               $:  Revision of last commit
+# $Author::            $:  Author of last commit
+# $Date$:  Date of last commit
+
 # First approach to calculate some network characteristc measurments within the
 # transsys framework.
 # CBouyio, UEA, 18-23 Jan 2006.

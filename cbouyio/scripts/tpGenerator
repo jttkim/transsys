@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+# $Rev::               $:  Revision of last commit
+# $Author::            $:  Author of last commit
+# $Date$:  Date of last commit
+
 # Generates a transsys program out of a .rtp file (random transsys parameters).
 # Inside an .rtp files one can declare parameters such as:
 # the model of the transsys program, NK, random graph etc.
