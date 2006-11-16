@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 
+
+# $Rev::                $:  Revision of last commit
+# $Author::             $:  Author of last commit
+# $Date::               $:  Date of last commit
+
+
 # $Id: transsys_simulator,v 1.5 2005/12/22 15:34:33 konsb Exp $ 
 
 # $Log: transsys_simulator,v $
@@ -162,6 +168,7 @@ def initialisation(instance, initial_value):
 # of different transsys programs (domain restricted to "legal" input of
 # instances of same transsys program.
 
+
 def euclidian_distance_instances(tp1, tp2):
   """Returns the Euclidean distance between two Transsys instances."""
   # Check if the two instances are valid transsys program instances.
@@ -278,6 +285,7 @@ def print_factors(MultTime, tp):
         outfile.write('%1.10e ' % fc)
     outfile.write('\n')
 
+
 def print_perturbed_factors(MultTime, tp):
   """Similar wioth the above. Prints ONLY the perturbed factor concentration.
 Used on the factors_SVD print option ONLY. (suitable for the SVD analysis of
@@ -298,6 +306,7 @@ network classes.)"""
     outfile.write('\n')
 
 
+
 # derive a subclass of transsys.TranssysInstance which has an additional
 # method called euclidean_distance, which takes another instance of
 # transsys.TranssysInstance as a parameter and returns the Euclidean
@@ -311,12 +320,16 @@ class TranssysInstanceAdvanced(transsys.TranssysInstance):
     Calculates the Euclidian distance between two Transsys Instances
     and randomize or make the perturbation of the factor concentration
     list elements."""
+
+
   def __init__(self, tp, timestep=None):
     transsys.TranssysInstance.__init__(self, tp, timestep)
+
 
   def euclidian_distance(self, transsys_instance2):
     d = euclidian_distance_instances(self, transsys_instance2)
     return d
+
 
   def time_series(self, num_timesteps, sampling_period = 1, lsys_lines = None, lsys_symbol = None):
     """Produces a timeseries with TranssysInstanceAdvanced instances"""
@@ -364,6 +377,7 @@ class TranssysInstanceAdvanced(transsys.TranssysInstance):
     self.factor_concentration = pertubed_list
 
 
+
 class GaussianRNG:
   """Constructs a random object. By calling the random_gauss method it
      produces a "random" number out of a Gauss distribution"""
@@ -374,6 +388,7 @@ class GaussianRNG:
 
   def randomValue(self):
     return self.rng.gauss(self.mu, self.sigma)
+
 
 
 class ConstantRNG:
@@ -577,3 +592,4 @@ if infile is not sys.stdin:
   infile.close()
 if outfile is not sys.stdout:
   outfile.close()
+
