@@ -21,60 +21,21 @@ LATTICESIZE=10x10
 TIMESTEPS=50
 
 
-# The directory should contain some expected "zero output" files and the 
-# coresponding "testXxxx" transsys program files.
+# The directory should contain some "xxxOut.expect" expected files and the 
+# coresponding "xxxxTest.tra" transsys program files.
 
-#if test ! -f zerotest.tra ;
-#then
-#  echo "Can't find the testZero.tra file, try to find or create one."
-#  exit $?
-#elif test ! -f zero.out.expect ;
-#then
-#  echo "Can't find the zero.out.expect file, it's needed to conduct the zero testing."
-#  exit $?
-#elif test ! -f decaytest.tra ;
-#then
-#  echo "Can't find the testDecay.tra file, try to find or create one."
-#  exit $?
-#elif test ! -f decay.out.expect ;
-#then
-#  echo "Can't find the decay.out.expect file, it's needed to conduct the decay testing."
-#  exit $?
-#elif test ! -f intertest.tra ;
-#then
-#  echo "Can't find the intertest.tra file, try to find or create one."
-#  exit $?
-#elif test ! -f inter.out.expect ;
-#then
-#  echo "Can't find the inter.out.expect file, it's needed to conduct the nteraction testing."
-#  exit $?
-#elif test ! -f sizetest.tra ;
-#then
-#  echo "Can't find the sizetest.tra file, try to find or create one."
-#  exit $?
-#elif test ! -f size.out.expect ;
-#then
-#  echo "Can't find the size.out.expect file, it's needed to conduct the lattice size and shannon entropy testing."
-#  exit $?
-#elif test ! -f factorstest.tra ;
-#then
-#  echo "Can't find the factorstest.tra file, try to find or create one."
-#  exit $?
-#elif test ! -f factors.out.expect ;
-#then
-#  echo "Can't find the factors.out.expect file, it's needed to conduct the factors, signal testing."
-#  exit $?
-#elif test ! -f timesteptest.tra ;
-#then
-#  echo "Can't find the timesteptest.tra file, try to find or create one."
-#  exit $?
-#elif test ! -f timestep.out.expect ;
-#then
-#  echo "Can't find the timestep.out.expect file, it's needed to conduct the timestep testing."
-#  exit $?
-#fi
+if test ! -f naiveTest.tra || test ! -f naiveOut.expect ;
+then
+  echo "Can't find the prerequisite naive testing files."
+  exit $?
+elif test ! -f zeroTest.tra || test ! -f zeroOut.expect ;
+then
+  echo "Can't find the prerequisite zero testing files."
+  exit $?
+fi
 
-####### Don't used anymore, the script exit with an exit code upon any failure.
+
+####### Not used anymore, the script exit with an exit code upon any failure.
 ## Initialise some counters.
 #failure=0
 #success=0
@@ -82,9 +43,9 @@ TIMESTEPS=50
 
 
 # Test No 0: The naive base test for the latticeSimulator program.
-# Runs on a geneless transsys program with all the values set to zero and in
+# Run on a geneless transsys program with all the values set to zero and in
 # zero timesteps and lattice size of 1.
-if ! latticeSimulator -n 1x1 -t 0 naivetest.tra naivetestTMP.out
+if ! latticeSimulator -n 1x1 -t 0 naiveTest.tra naivetestTMP.out
 then
   exit $?
 else
@@ -104,8 +65,8 @@ fi
 
 
 # Test No 1: Zero test for the latticeSimulator program.
-# Runs on a geneless transsys program with all the values set to zero.
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS zerotest.tra zerotestTMP.out
+# Run on a geneless transsys program, with diffusibility and decay set to zero.
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS zeroTest.tra zerotestTMP.out
 then
   exit $?
 else
@@ -125,17 +86,18 @@ fi
 
 
 # Test no 2: Decay test for the latticeSimulator program.
-# The test is running with the simulator's -x parameter (concentration:timestep)
-# The test runs on a geneless transsys program with decay rate = 0.5.
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -x 10:0 decaytest.tra decaytestTMP.out
+# Testing the simulator -x option (concentration:timestep) & the exponential
+# decay rate.
+# Run on a geneless transsys program with zero diffusibility and decay rate=0.5
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -x 10:0 decayTest.tra decaytestTMP.out
 then
   exit $?
 else
   let notests++
-  if ! diff decay.out.expect decaytestTMP.out ;
+  if ! diff decayOut.expect decaytestTMP.out ;
   then
     echo 'decay test: failed...'
-    echo 'files decay.out.expect decaytestTMP.out differ!!!'
+    echo 'files decayOut.expect decaytestTMP.out differ!'
     rm *TMP.out
     exit $?
   #  let failure++
