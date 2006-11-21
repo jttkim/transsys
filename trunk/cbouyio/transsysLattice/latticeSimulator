@@ -34,39 +34,39 @@ def usage() :
 Usage:
 ./latticeSimulator [options] arguments
   Options:
-           -a: switch        Animation switch.
-                             (Can be set only if -g has been specified.)
-           -c: String        Specify the imaging factor.
-                             (Mandatory if the -g has been specified.)
--f, --factors: switch        Print the factors' names and exit.
-           -g: String        The .pgm framework switcher.
-                             If it is set the .pgm production procedure will be
-                             called and a specified directory will be produced
-                             containing all the image files.
-   -h, --help:               Prints this screen and exit.
-           -m: Float         A maximum value of factor concentration that will
-                             be represented at the .pgm image file.
-                             (Mandatory if -g has been specified.)
-                             The image color range is 0-256 gradients of grey.
-           -n: NumberxNumber The size of the nxm lattice.
-                             (Mandatory)
-           -p: String        Print in the specified file the summary statistics
-                             of the simulation.
-                             (Default: Print the factor table in the outfile)
-           -q: String        Print in the specified file the pickle output of
-                             the simulation (The Lattice Timeseries Object).
-           -r: Integer       The random number generator seed.
-                             (Default: 1)
-           -s: String:Number Signal switch, (FactorName:FactorConcentration)
-                             Factor gets the defined concentration (signal) in
-                             the beginning of the simulation.
-           -t: Integer       The number of timesteps.
-                             (Mandatory)
-           -u: Number:Number The range (a, b) of the borders of a uniform
-                             distribution.
-           -x: Number:Number Signal switch, (FactorConcentration:Timestep)
-                             All factors will get the defined concentration at
-                             the defined timestep.
+           -a: switch          Animation switch.
+                               (Can be set only if -g has been specified.)
+           -c: String          Specify the imaging factor.
+                               (Mandatory if the -g has been specified.)
+-f, --factors: switch          Print the factors' names and exit.
+           -g: String          The .pgm framework switcher.
+                               If it is set the .pgm production procedure will
+                               be called and a specified directory will be
+                               produced, containing all the image files.
+   -h, --help:                 Prints this screen and exit.
+           -m: Float           A maximum value of factor concentration that
+                               will be represented at the .pgm image file.
+                               (Mandatory if -g has been specified.)
+                               The image color range is 0-256 gradients of grey.
+           -n: IntegerxInteger The size of the nxm lattice.
+                               (Mandatory)
+           -p: String          Print in the specified file the summary
+                               statistics of the simulation.
+                               (Default: Print the factor table in the outfile)
+           -q: String          Print in the specified file the pickle output of
+                               the simulation (The Lattice Timeseries Object).
+           -r: Integer         The random number generator seed.
+                               (Default: 1)
+           -s: String:Number   Signal switch, (FactorName:FactorConcentration)
+                               Factor gets the defined concentration (signal) in
+                               the beginning of the simulation (string:float).
+           -t: Integer         The number of timesteps.
+                               (Mandatory)
+           -u: Number:Number   The range (a, b) of the borders of a uniform
+                               distribution (floats).
+           -x: Number:Integer  Signal switch, (FactorConcentration:Timestep)
+                               All factors will get the defined concentration at
+                               the defined timestep (float:integer).
   Arguments:
    <infile>: A valid transsys program (.tra) file. (<STDIN> if not specified)
   <outfile>: An output file. (<STDOUT> if not specified)"""
@@ -124,16 +124,14 @@ latticeSize      = None  # The dimensions of the lattice.(-n)
 noTimesteps      = None  # The running timesteps of the simulation.(-t)
 randomSeed       = 1     # The seed for the random number generators.(-r)
 maxConcentration = None  # The maximum concentration that can be drawn.(-m)
-signalTimestep   = False # The "signal" for an introduction to a timestep.(-x)
-signalFactor     = False # The "signal" for a factor introduction, switch.(-s)
+signalTimestep   = None  # The "signal" for an introduction to a timestep.(-x)
+signalFactor     = None  # The "signal" for a factor introduction.(-s)
 animation        = False # The animation switch.(-a)
-border_range     = False # The border range of the uniform distribution.(-u)
+borderRange      = None  # The border range of the uniform distribution.(-u)
 summaryFile      = None  # The filename of the summary statistics file.(-p)
-pgmDir           = None  # The .pgm production framework.(-g)
+pgmDir           = None  # The .pgm production framework directory.(-g)
 pgmFactor        = None  # The factor that will be used for the imaging.(-c)
 transsysFactors  = False # The factor names switch.(-f, --factors) 
-alpha            = None  # Lower border of uniform disttribution.
-beta             = None  # Upper border of uniform disttribution.
 pickleFile       = None  # The picle file switch
 
 
@@ -151,6 +149,7 @@ for opt, par in optlist :
       latticeSize = map(lambda x:int(x), latticeSize)
     else :
       raise StandardError, 'Error in the format of -n input options, please check the help (-h, --help) for more information'
+    latticeSize = tuple(latticeSize)
   if opt in ('-t') :
     noTimesteps = int(par)
   if opt in ('-r') :
@@ -162,17 +161,13 @@ for opt, par in optlist :
     if len(var) != 2 :
       raise StandardError, 'Error in the format of -x input options, please check the help (-h, --help) for more information.'
     if float(var[0]) :
-      signalTimestep = True
-      tConcentration = float(var[0])
-      tTimestep = int(var[1])
+      signalTimestep = (float(var[0]), int(var[1]))
   if opt in ('-s') :
     var = par.split(':')
     if len(var) != 2 :
       raise StandardError, 'Error in the format of -s input options, please check the help (-h, --help) for more information.'
     if float(var[1]) :
-      signalFactor = True
-      sFactorName = var[0]
-      sFactorConcentration = float(var[1])
+      signalFactor = (var[0], float(var[1]))
   if opt in ('-a') :
     animation = True
   if opt in ('-p') :
@@ -183,9 +178,7 @@ for opt, par in optlist :
       raise StandardError, 'Error in the format of -u input options, please check the help (-h, --help) for more information.'
     if float(var[0]) < 0 or float(var[1]) <= 0 :
       raise StandardError, 'Factor concentrations can take only positive values, please specify a positive range.'
-    border_range = True
-    alpha = float(var[0])
-    beta = float(var[1])
+    borderRange = (float(var[0]), float(var[1]))
   if opt in ('-g') :
     pgmDir = par
   if opt in ('-f', '--factors'):
@@ -250,24 +243,25 @@ if transsysFactors :
     outfile.write('%s\n' % factorName)
   sys.exit()
 
-# Instantiate the lattice of transsys programs.
-transInstanceLattice = translattice.TranssysInstanceLattice(transsysProgram, latticeSize)
 
 
 ############################
 # Main part of the simulator
 ############################
 
+# Instantiate the lattice of transsys programs.
+transInstanceLattice = translattice.TranssysInstanceLattice(transsysProgram, latticeSize)
+
 # Initialise (or not) the factor concentrations on the lattice.
-if border_range :
-  transInstanceLattice.initialise_lattice_concentrations(alpha, beta, randomSeed)
+if borderRange :
+  transInstanceLattice.initialise_lattice_concentrations(borderRange[0], borderRange[1], randomSeed)
 
 # Introduce a signal by specifing a factor and the desired concentration.
 if signalFactor :
-  transInstanceLattice.introduce_signal(sFactorConcentration, sFactorName)
+  transInstanceLattice.signal_factor_concentration(signalFactor[0], signalFactor[1])
 
 # Initialise the timeseries class.
-transsysLatticeTimeseries = translattice.TranssysLatticeTimeseries(transInstanceLattice, noTimesteps)
+transsysLatticeTimeseries = translattice.TranssysLatticeTimeseries(transInstanceLattice, noTimesteps, signalTimestep)
 
 # Print the factor table to the output file.
 # First write the comments and the header.
