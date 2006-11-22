@@ -42,50 +42,50 @@ fi
 #notests=0
 
 
-# Test No 0: The naive base test for the latticeSimulator program.
+# Test No 1: The naive base test for the latticeSimulator program.
 # Run on a geneless transsys program with all the values set to zero and in
 # zero timesteps and lattice size of 1.
 if ! latticeSimulator -n 1x1 -t 0 naiveTest.tra naivetestTMP.out
 then
   exit $?
 else
-  let notests++
   if ! diff naiveOut.expect naivetestTMP.out ;
   then
-    echo "naive test: failed..."
+    echo "naive test: failed...((("
     echo "files naiveOut.expect naivetestTMP.out differ!"
     rm *TMP.out
     exit $?
   #  let failure++
   else
-    echo 'naive test: successful!'
+    echo 'test No 1: naive test: successful!'
   #  let success++
+  let notests++
   fi
 fi
 
 
-# Test No 1: Zero test for the latticeSimulator program.
+# Test No 2: Zero test for the latticeSimulator program.
 # Run on a geneless transsys program, with diffusibility and decay set to zero.
 if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS zeroTest.tra zerotestTMP.out
 then
   exit $?
 else
-  let notests++
   if ! diff zeroOut.expect zerotestTMP.out ;
   then
-    echo "zero test: failed... "
+    echo "zero test: failed...((("
     echo "files zeroOut.expect zerotestTMP.out differ!"
     rm *TMP.out
     exit $?
   #  let failure++
   else
-    echo 'zero test: successful!'
+    echo 'test No 2: zero test: successful!'
   #  let success++
+  let notests++
   fi
 fi
 
 
-# Test no 2: Decay test for the latticeSimulator program.
+# Test no 3: Decay test for the latticeSimulator program.
 # Testing the simulator -x option (concentration:timestep) & the exponential
 # decay rate.
 # Run on a geneless transsys program with zero diffusibility and decay rate=0.5
@@ -93,122 +93,152 @@ if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -x 10:0 decayTest.tra decayt
 then
   exit $?
 else
-  let notests++
   if ! diff decayOut.expect decaytestTMP.out ;
   then
-    echo 'decay test: failed...'
+    echo 'decay test: failed...((('
     echo 'files decayOut.expect decaytestTMP.out differ!'
     rm *TMP.out
     exit $?
   #  let failure++
   else
-    echo 'decay test: successful!'
+    echo 'test No 3: decay test: successful!'
   #  let success++
+  let notests++
   fi
 fi
 # Conduct some further test with R, to check the exponential deacay rate.
 
 
-# Test No 3: Test the lattice size, the shannon Entropy measure depends ONLY
-# in the lattice size.
-# The test runs on an identical program with the decay test. the .tra file has
-# a different name to avoid the generation of the same directory.
-# The test involves two comparisons, first the outfile should be identical with
-# the expected and second the outfile should be different from the decay test
-# expected. The signa need not to be adapted because the signal introduction
-# occurs in 4 cells for even lattice sizes...!!!
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -x 10:0 -n 10 sizetest.tra sizetestTMP.out
-let notests++
-# Introduce a flag because there are two condition that might result to the failure of test.
-#flag=0
-if ! diff size.out.expect sizetestTMP.out ; then
-  echo "size test: failed...
-files size.out.expect sizetestTMP.out differ!!!"
-  rm *TMP.out
+# Test No 4: Test the signal timestep mechanism (-x).
+# Run on an identical transsys program as the decay test but check of the
+# correct placement of the signal.
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -x 10:10 sTimestepTest.tra sTimestepTMP.out
+then
   exit $?
-#  let flag++
-elif cmp -s decay.out.expect sizetestTMP.out ; then
-  echo 'size test: failed...
-files decay.out.expect sizetestTMP.out are the same!!!'
-  rm *TMP.out
-  exit $?
-#  let flag++
 else
-  echo 'size test: successful!'
-#  let success++
+  if ! diff sTimestepOut.expect sTimestepTMP.out ;
+  then
+    echo "signal timestep test: failed...((("
+    echo " files sTimestepOut.expect sTimestepTMP.out differ!"
+    rm *TMP.out
+    exit $?
+#    let failure++
+  else
+    echo 'test No 4: signal timestep test: successful!'
+#    let success++
+  let notests++
+  fi
 fi
 
-## Is not used anymore, intoduce an exit code instead.
-## Check the flag and then increment the failure parameter.
-#if [[ $flag != 0 ]]; then
-#  let failure++
-#fi
 
-
-# Test no 4: Diffusibility test between the cells on the lattice.
-# The test runs on a simple transsys program of two factors encoded by two
-# genes where each gene is expressed indepententlly and constitutively (0.5).
-# (Check the corresponding transsys program for more details)
-# Checks out the "per factor" diffusibility mechanism by using two factors with
-# the extreme possible values for diffusibility factor_A=1.0 and factor_B=0.0
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS intertest.tra intertestTMP.out
-let notests++
-if ! diff inter.out.expect intertestTMP.out ; then
-  echo 'interaction test: failed...
-files inter.out.expect intertestTMP.out differ!!!'
-  rm *TMP.out
-  exit $?
-#  let failure++
-else
-  echo 'interaction test: successful!'
-#  let success++
-fi
-# Conduct some further tests with R, to check the 100% diffusion of the factors
-# between the cells on the lattice.
-
-
-# Test No 5: Test the number/name of factors and the signal mechanism.
+# Test No 5: Test the signal factor mechanism (-s).
+# Tests the implementation of the signal factor concentration. This mechanisms
+# intoduce the signal on a defined factor on the first (1, 1) cell of the
+# lattice.
 # The test runs on a more complicated transsys program with two genes encoding
 # for two factors, one activator one repressor.
 # The test runs using the signal mechanism, -s switcher by denoting a factor
 # name and a factor concentration. (The rest of the parameters default)
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -s FACTOR_A:10 factorstest.tra factorstestTMP.out
-let notests++
-if ! diff factors.out.expect factorstestTMP.out ; then
-  echo 'factors-signal test: failed...
-files factors.out.expect factorstestTMP.out differ!!!'
-  rm *TMP.out
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -s FACTOR_A:10 sFactorTest.tra sFactorTestTMP.out
+then
   exit $?
-#  let failure++
 else
-  echo 'factors-size test: successful!'
-#  let success++
+  if ! diff sFactorOut.expect sFactorTestTMP.out ;
+  then
+    echo "signal factor test: failed...((("
+    echo "files sFactorOut.expect sFactorTestTMP.out!"
+    rm *TMP.out
+    exit $?
+#    let failure++
+  else
+    echo "test No 5: signal factor test: successful!"
+#    let success++
+  let notests++
+  fi
 fi
 
 
-# Test No 6: Test the timestep switch and mechanism.
-# The test runs on a simple transsys program with two genes two factors,
-# similar with the factorstest.tra program.
-# It test the operation of the timesteps switch (-t) as well as the timesteps
-# output. All the rest parameters are set to default.
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -t 99 timesteptest.tra timesteptestTMP.out
-let notests++
-if ! diff timestep.out.expect timesteptestTMP.out ; then
-  echo 'timesteps test failed...
-files timestep.out.expect timesteptestTMP.out differ!!!'
-  rm *TMP.out
+# Test no 6: Diffusion test between the cells on the lattice.
+# Run on a geneless transsys program of one factor with zero decay and
+# diffusibility set to one (1.0).
+# Checks if the diffusion procedure take place according to the expected.
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -s DIFFUSIONTEST_factor:20 diffusionTest.tra diffusionTestTMP.out
+then
   exit $?
-#  let failure++
 else
-  echo 'timesteps test: successful!'
-#  let success++
+  if ! diff diffusionOut.expect diffusionTestTMP.out ;
+  then
+    echo "check diffusion test: failed...((("
+    echo "files diffusionOut.expect diffusionTestTMP.out differ!"
+    rm *TMP.out
+    exit $?
+#    let failure++
+  else
+    echo 'test No 6: check diffusion test: successful!'
+#    let success++
+  let notests++
+  fi
+fi
+# Conduct some further tests with R, to check the 100% diffusion of the factor
+# between the cells on the lattice.
+
+
+# Test no 7: Diffusibility expressions test.
+# Run on a two genes two factors transsys program, both have the same decay rate
+# (0.50) and expressed constitutivelly, but both have different diffussion
+# rates. Diffusibility rates have been set to the extreme accepted values zero
+# (0.0) and one (1.0).
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS diffusibilityTest.tra diffusibilityTestTMP.out
+then
+  exit $?
+else
+  if ! diff diffusibilityOut.expect diffusibilityTestTMP.out ;
+  then
+    echo "diffusibility expression test: failed...((("
+    echo "files diffusibilityOut.expect diffusibilityTestTMP.out differ!"
+    rm *TMP.out
+    exit $?
+#    let failure++
+  else
+    echo 'test No 7: diffusibility expression test: successful!'
+#    let success++
+  let notests++
+  fi
+fi
+
+
+# Test no 8: The random number generator test.
+# In a more complex transsys program (two genes two factors fully conected)
+# check whether or not the random seed produces different numbers.
+# Run with the default random seed (1) then with a different one (2) and then
+# without random seed (get the date), in all cases the outfiles should be
+# different.
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u 0:1 randomSeedTest.tra randomSeed_1_TMP.out || ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u 0:1 -r 0 randomSeedTest.tra randomSeed_0_TMP.out
+then
+  exit $?
+#elif ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u 0:1 -r 0 randomSeedTest.tra randomSeed_0_TMP.out
+#then
+#  exit $?
+else
+  if cmp -s randomSeed_0_TMP.out randomSeed_1_TMP.out ;
+  then
+    echo "random number genetrator test: failed...((("
+    echo "files randomSeed_0_TMP.out randomSeed_1_TMP.out are the same!"
+    rm *TMP.out
+    exit $?
+#    let failure++
+  else
+    echo "test No 8: random number generator test: successful!"
+#    let success++
+  let notests++
+  fi
 fi
 
 
 # Print the final message.
 echo
 rm *TMP.out
-echo "all $notests tests run succefully!!!"
+echo "All $notests tests run succefully... !!!"
 #if [[ $failure = 0 ]] ; then
 #  echo "all $success out of $notests tests run successfully!!!"
 #else
