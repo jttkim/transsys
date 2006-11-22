@@ -1,0 +1,12 @@
+transsys sTimestepTest
+
+# A simple transsys program for testing the modules signal timestep mechanism.
+
+{
+  factor STIMESTEP_factor
+  {
+    decay: 0.5;
+    diffusibility: 0.0;
+  }
+}
+

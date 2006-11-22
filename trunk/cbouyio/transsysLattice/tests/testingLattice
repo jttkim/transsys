@@ -32,6 +32,30 @@ elif test ! -f zeroTest.tra || test ! -f zeroOut.expect ;
 then
   echo "Can't find the prerequisite zero testing files."
   exit $?
+elif test ! -f decayTest.tra || test ! -f decayOut.expect ;
+then
+  echo "Can't find the prerequisite decay testing files."
+  exit $?
+elif test ! -f sTimestepTest.tra || test ! -f sTimestepOut.expect ;
+then
+  echo "Can't find the prerequisite signal timestep testing files."
+  exit $?
+elif test ! -f sFactorTest.tra || test ! -f sFactorOut.expect ;
+then
+  echo "Can't find the prerequisite signal factor testing files."
+  exit $?
+elif test ! -f diffusionTest.tra || test ! -f diffusionOut.expect ;
+then
+  echo "Can't find the prerequisite diffusion testing files."
+  exit $?
+elif test ! -f diffusibilityTest.tra || test ! -f diffusibilityOut.expect ;
+then
+  echo "Can't find the prerequisite diffusibility testing files."
+  exit $?
+elif test ! -f  randomSeedTest.tra  ;
+then
+  echo "Can't find the prerequisite random seed testing files."
+  exit $?
 fi
 
 

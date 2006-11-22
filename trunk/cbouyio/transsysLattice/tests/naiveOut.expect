@@ -1,0 +1,4 @@
+# Table of coordinated (x, y) factor concentrations (Header file)
+# random seed: 1 
+timestep x y NAIVETEST_factor
+0 1 1 0.00000000000000000e+00

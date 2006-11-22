@@ -1,0 +1,42 @@
+transsys diffusibilityTest
+
+# A transsys program for testing factors diffusibility expressions.
+
+{
+  factor INTERTEST_A
+  {
+    decay: 0.5;
+    diffusibility: 1.0;
+  }
+
+  factor INTERTEST_B
+  {
+    decay: 0.5;
+    diffusibility: 0.0;
+  }
+
+
+  gene intertest_A
+  {
+    promoter
+    {
+      constitutive: 0.5;
+    }
+    product
+    {
+      default: INTERTEST_A;
+    }
+  }
+  
+  gene intertest_B
+  {
+    promoter
+    {
+      constitutive: 0.5;
+    }
+    product
+    {
+      default: INTERTEST_B;
+    }
+  }
+}
