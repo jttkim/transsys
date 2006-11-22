@@ -1,0 +1,12 @@
+transsys diffusionTest
+
+# A geneless transsys program for testing diffusion rate.
+
+{
+  factor DIFFUSIONTEST_factor
+  {
+    decay: 0.0;
+    diffusibility: 1.0;
+  }
+}
+

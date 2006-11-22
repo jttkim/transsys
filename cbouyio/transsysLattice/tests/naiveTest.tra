@@ -1,0 +1,12 @@
+transsys naiveTest
+
+# A geneless transsys program for testing the naive hypothesis.
+
+{
+  factor NAIVETEST_factor
+  {
+    decay: 0.0;
+    diffusibility: 0.0;
+  }
+}
+

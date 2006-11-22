@@ -1,0 +1,45 @@
+transsys randomSeedTest
+
+# A transsys program for testing the module random number generator.
+# This transsys program implements a few more transsys attributes
+# (diffusibiulity, constitutive).
+
+{
+  factor FACTOR_A
+  {
+    decay: 1;
+    diffusibility: 1;
+  }
+  
+  factor FACTOR_B
+  {
+    decay: 1;
+    diffusibility: 1;
+  }
+  
+  gene Gene_A
+  {
+    promoter
+    {
+      constitutive: 1;
+      FACTOR_B: repress(1, 1);
+    }
+    product
+    {
+      default: FACTOR_A;
+    }
+  }
+
+  gene Gene_B
+  {
+    promoter
+    {
+      constitutive: 1;
+      FACTOR_A: activate(1, 1);
+    }
+    product
+    {
+      default: FACTOR_B;
+    }
+  }
+}
