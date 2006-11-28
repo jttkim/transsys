@@ -4,8 +4,8 @@
 # $Author::            $:  Author of last commit
 # $Date$:  Date of last commit
 
-
 # $Id: transsys_simulator,v 1.5 2005/12/22 15:34:33 konsb Exp $ 
+
 
 # $Log: transsys_simulator,v $
 # Revision 1.5  2005/12/22 15:34:33  konsb
@@ -60,6 +60,8 @@
 # Implements a function for randomize the factor concentration list. (r_00)
 # CBouyio & JTK, UEA, 28 Oct 2005.
 
+# Indicate the program version
+__version__ = "$Id$"
 
 import copy
 import random

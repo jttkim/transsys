@@ -4,9 +4,22 @@
 # $Author::            $:  Author of last commit
 # $Date$:  Date of last commit
 
+
 """
 latticeSimulator: Implement the simulation procedures on a lattice.
+
+@author: Costas Bouyioukos
+@email: konsb@cmp.uea.ac.uk
+@organisation: University of East Anglia
+@since: April 2006
+@license: GNU General Public Lisence 2 or newer.
+@contact: U{Costas Bouyioukos<mailto:konsb@cmp.uea.ac.uk>}
+@version: $Id$
 """
+
+# Version Information.
+__version__ = "£$Id$
+
 
 # latticeSimulator: A program that simulates a lattice of trannsys instances
 # on a nxn lattice, each cell of the lattice cantains one transsys program.
@@ -30,7 +43,7 @@ import transsys
 
 
 def usage() :
-  print """
+-  print """
 Usage:
 ./latticeSimulator [options] arguments
   Options:
