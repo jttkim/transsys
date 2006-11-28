@@ -1,8 +1,8 @@
 #!/bin/bash
 
-+# $Rev::               $:  Revision of last commit
-+# $Author::            $:  Author of last commit
-+# $Date$:  Date of last commit
+# $Rev::               $:  Revision of last commit
+# $Author::            $:  Author of last commit
+# $Date$:  Date of last commit
 
 
 # Changes on 07-11-2005 (r_01)

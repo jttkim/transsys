@@ -13,6 +13,9 @@ A program to adjusting transsys programs parameters.
 @version: $Id$
 """
 
+# Indicate the program version
+__version__ = "$Id$"
+
 import getopt
 import sys
 #import os.path

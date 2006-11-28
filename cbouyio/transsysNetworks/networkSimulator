@@ -8,6 +8,8 @@
 # transsys framework.
 # CBouyio, UEA, 18-23 Jan 2006.
 
+# Indicate the program version
+__version__ = "$Id$"
 
 import re
 import sys

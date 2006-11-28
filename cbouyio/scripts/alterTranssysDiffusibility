@@ -13,6 +13,9 @@ Altering all the diffusibility expressions on a transsys program.
 @version: $Id$
 """
 
+# Indicate the program version
+__version__ = "$Id$"
+
 import getopt
 import sys
 

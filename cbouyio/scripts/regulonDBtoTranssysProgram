@@ -8,6 +8,9 @@
 # Contributed by CBouyio, at UEA on 27/03/2006
 # Uploaded to the repository on 1/04/2006, version 1.
 
+# Indicate the program version
+__version__ = "$Id$"
+
 import re
 import getopt
 import sys
