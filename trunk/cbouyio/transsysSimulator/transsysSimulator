@@ -128,7 +128,7 @@ def usage():
 
 
 class GaussianRNG(object):
-  """Constructs a random object out of a Normal distribution.
+  """Constructs a random object out of a Gaussian distribution.
 
   By calling the random_gauss method produce a "random" number out of a Gauss
   distribution
@@ -144,6 +144,9 @@ class GaussianRNG(object):
     return "Gaussian"
 
   def random_value(self):
+    """Common method among all xxxxRNG classes.
+
+    Use the rndom.gauss python builtin function."""
     return self.rng.gauss(self.mu, self.sigma)
 
 
@@ -187,6 +190,7 @@ class UniformRNG(object):
 
 
 class ConstantRNG(object):
+  """Return a constant "random" number."""
   # Dont take it serious just for fun a random "1" will be produced...)))
   def __init__(self, constValue):
     self.constValue = constValue
@@ -195,6 +199,7 @@ class ConstantRNG(object):
     return "Constant"
 
   def random_value(self):
+    """Common method among all xxxxRNG classes."""
     return self.constValue
 
 
@@ -215,6 +220,7 @@ class TranssysInstanceAdvanced(transsys.TranssysInstance):
     """
   def __init__(self, tp, timestep=None):
     transsys.TranssysInstance.__init__(self, tp, timestep)
+    self.perturbationNumber = 0
 
 
   def time_series(self, num_timesteps, sampling_period = 1, lsys_lines = None, lsys_symbol = None):
@@ -291,11 +297,11 @@ class TranssysInstanceAdvanced(transsys.TranssysInstance):
 
 
 
-  def initialisation(self, initRNG):
-    """initialize the factors concentration according to the initRNG."""
-    if initRNG:
+  def initialisation(self, initialRNG):
+    """initialise the factors concentration according to the initialisation RNG."""
+    if initialRNG:
       for i in xrange(len(self.factor_concentration)):
-        self.factor_concentration[i] = initRNG.random_value()
+        self.factor_concentration[i] = initialRNG.random_value()
     else:
       pass
 
@@ -307,20 +313,20 @@ class TranssysInstanceAdvanced(transsys.TranssysInstance):
     # timesteps... Should introduce a more reasonable equilibration
     # criterion...
 #    if e:
-    self = self.time_series(51).pop()
+    self = self.time_series(101).pop()
 #    else:
 #      pass
 
 
-def euclidean_distances_list(tiList):
+def euclidean_distances_list(tilist):
   """Return the matrix of Euclidean distances of an instance collection.
 
   @rtype: C{list} of C{float}
   """
   edList = []
-  for i in xrange(len(tiList)):
-    for j in xrange(i + 1, len(tiList)):
-      edList.append(tiList[i].euclidean_distance_instances(tiList[j]))
+  for i in xrange(len(tilist)):
+    for j in xrange(i + 1, len(tilist)):
+      edList.append(tilist[i].euclidean_distance_instances(tilist[j]))
   return edList
 
 
@@ -339,13 +345,13 @@ def euclidean_distance(fcl1, fcl2):
 
 def mean(a_list):
   """Return the mean of a numeric list."""
-  mean = sum(a_list) / len(a_list)
-  return mean
+  meanValue = sum(a_list) / len(a_list)
+  return meanValue
 
 
 def print_comments(fileObj):
   """Print the header of the output file."""
-  fileObj.write("# Script       : %s\n# Time         : %s\n# Input File   : %s\n# Outpout File : %s\n# Simulator's Control Parameters:\n# Number of Timesteps     (-t):%i\n# Sampling Intervals      (-d):%i\n# Equilibration           (-e):%s\n# Initial Concentrations  (-i):%s\n# Number of Perturbations (-m):%i\n# Random Seed             (-r):%i\n# Perturbation Function   (-n):%s\n" % (__version__, time.asctime(), infile.name, outfile.name, noTimesteps, samplingIntervals, equilibrium, initRNG.__str__(), noPerturbedSamples, rndseed, perturbRNG, ))
+  fileObj.write("# Script       : %s\n# Time         : %s\n# Input File   : %s\n# Outpout File : %s\n# Simulator's Control Parameters:\n# Number of Timesteps     (-t):%i\n# Sampling Intervals      (-d):%i\n# Equilibration           (-e):%s\n# Initial Concentrations  (-i):%s\n# Number of Perturbations (-m):%i\n# Random Seed             (-r):%i\n# Perturbation Function   (-n):%s\n" % (__version__, time.asctime(), infile.name, outfile.name, noTimesteps, samplingIntervals, equilibrium, initRNG.__str__(), noPerturbedSamples, rndSeed, perturbRNG, ))
 
 
 def print_factor_table(fileObj, multiTS):
@@ -372,7 +378,7 @@ samplingIntervals  = 1     # Default number of sampling intervals. (-d)
 equilibrium        = None  # Equlibration switch. (-e)
 initRNG            = None  # Initialize the factor concentrations. (-i)
 noPerturbedSamples = 0     # Number of perturbed instances. (-m)
-rndseed            = 1     # Random number generator seed. (-r)
+rndSeed            = 1     # Random number generator seed. (-r)
 perturbRNG         = None  # Control the intoduction of noise to the system.
                            # Can choose between two different types of noise
                            # U:<value> (the noise come from a uniform
@@ -405,26 +411,26 @@ for option, par in optlist :
     noPerturbedSamples = int(par)
   if option == "-e" :
     equilibrium = True
+  if option == "-r":
+    rndSeed = int(par)
   if option == "-i" :
     if len(par.split(':')) == 2 :
-      initRNG = GaussianRNG(rndseed, float(par.split(':')[0]), float(par.split(':')[1]))
+      initRNG = GaussianRNG(rndSeed, float(par.split(':')[0]), float(par.split(':')[1]))
     elif len(par.split('-')) == 2 :
-      initRNG = UniformRNG(rndseed, float(par.split('-')[0]), float(par.split('-')[1]))
+      initRNG = UniformRNG(rndSeed, float(par.split('-')[0]), float(par.split('-')[1]))
     elif float(par):
       initRNG = ConstantRNG(float(par))
     else :
       raise StandardError, "Error in initialisation parameter parsing. Check the format of the -i parameter"
-  if option == "-r":
-    rndseed = int(par)
   if option in ("-n", "--noise"):
     if len(par.split(":")) == 2 :
       if par.split(":")[0] == "U" :
-        perturbRNG = UniformRNG(rndseed)
+        perturbRNG = UniformRNG(rndSeed)
         uniformRange = float(par.split(":")[1])
         if (uniformRange <= 0) or (uniformRange > 1):
           raise StandardError, "The uniform distribution range should be within the (0, 1] interval."
       elif par.split(":")[0] == "G" :
-        perturbRNG = GaussianRNG(rndseed, 0, float(par.split(":")[1]))
+        perturbRNG = GaussianRNG(rndSeed, 0, float(par.split(":")[1]))
       else :
         raise StandardError, "Error in noise parameter parsing. Check the syntax of the -n option."
     else :
@@ -454,8 +460,10 @@ if noPerturbedSamples :
   if perturbRNG is None :
     raise StandardError, "Specify a noise function for the perturbation."
 if edPrintOut :
-  if not secondTPname or not noPerturbedSamples :
+  if not secondTPname and not noPerturbedSamples :
     raise StandardError, "A second transsys program or a number of perturbed samples is needed for print out the Euclidean distance list."
+  if secondTPname and noPerturbedSamples :
+    raise StandardError, "The program can work with either the -c or the -m option not with both."
 
 
 ###############
@@ -487,10 +495,10 @@ if equilibrium :
 
 
 # Calculate the timeseries.
-timeseries = transsysInstance.time_series(noTimesteps, samplingIntervals)
+ts = transsysInstance.time_series(noTimesteps, samplingIntervals)
 
 # Initialize the list of multiple timeseries
-multiTimeseries = [timeseries]
+multiTimeseries = [ts]
 
 # If the program defines perturbations or second transsys program.
 if noPerturbedSamples or secondTPname :
@@ -500,11 +508,15 @@ if noPerturbedSamples or secondTPname :
 
   # Run the simulator for (m = noPerturbedSamples) times.
   if noPerturbedSamples :
-    for time_sample in xrange(noPerturbedSamples):
+    for perturbedSample in xrange(noPerturbedSamples):
       # Create a perturbed instance:
       # First make a copy.
-      perturbedInstance = copy.copy(transsysInstance)
+      perturbedInstance = copy.deepcopy(transsysInstance)
 
+      # Give it a number.
+      perturbedInstance.perturbationNumber = perturbedSample + 1
+
+      print perturbedInstance.perturbationNumber
       # Then perturbe it (check perturbation method).
       perturbedInstance.factor_concentration = perturbedInstance.perturbation(perturbRNG, uniformRange)
 
@@ -556,6 +568,11 @@ for i in xrange(noTimesteps):
 
   # Case of two different transsys programs.
   if secondTPname and len(multiTimeseries) == 2 :
+  # Then check for the same number of factors (otherwise euclidean Distance has
+  # no meaning)
+    if len(multiTimeseries[0][0].factor_concentration) != len(multiTimeseries[1][0].factor_concentration):
+      raise StandardError, "Transsys programs have different number of factors. Euclidean Distance Calculation is imposible."
+    # then start the calculations.
     tiList = []
     for j in xrange(len(multiTimeseries)):
       # Carefull with the index exchange (multiTimeseries comes in a
@@ -588,6 +605,12 @@ print_comments(outfile)
 
 # Print the table.
 print_factor_table(outfile, multiTimeseries)
+
+if edPrintOut :
+  edOutFile = open(edPrintOut, 'w')
+  edOutFile.write('eu_dist\n')
+  for euclideanDist in euDistList :
+    edOutFile.write('%f\n' % euclideanDist)
 
 
 # Close the files.
