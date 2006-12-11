@@ -20,7 +20,7 @@ fi
 # Variable assignment.
 LATTICESIZE=$1
 TIMESTEPS=$2
-UNI_RANGE=0.0:1.0
+UNI_RANGE=0.0:0.1
 TPNAME=$3
 
 # Check for the existance of the transsys program file.
@@ -49,7 +49,7 @@ then
 fi
 
 # Generate the .R source file.
-echo "source("\""~/devel/transsys/trunk/cbouyio/tarnssysLattice/translattice.r"\"")" | cat > ${BASENAME}_Rsource.r
+echo "source("\""~/devel/transsys/trunk/cbouyio/transsysLattice/translattice.r"\"")" | cat > ${BASENAME}_Rsource.r
 echo "lframe <- readTransLattice("\""${BASENAME}_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.r
 
 
@@ -70,34 +70,35 @@ fi
 echo "lframeZeroControl <- readTransLattice("\""${BASENAME}_zeroControl_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.r
 
 
-
-# Generate the max control tp.
-if ! alterTranssysDiffusibility -d 1.0 $TPNAME ${BASENAME}_maxControl.tra ;
-then
-  exit $?
-fi
-
-# Run the max control experiment.
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE ${BASENAME}_maxControl.tra ${BASENAME}_maxControl_ftable.dat ;
-then
-  exit $?
-fi
-
-# Append to the .R source file.
-echo "lframeMaxControl <- readTransLattice("\""${BASENAME}_maxControl_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.r
-
-
-
-# Run the homogenized control experiment.
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS $TPNAME ${BASENAME}_homogenControl_ftable.dat ;
-then
-  exit $?
-fi
-
-# Append to the .R source file.
-echo "lframeHomogenControl <- readTransLattice("\""${BASENAME}_homogenControl_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.r
+#
+## Generate the max control tp.
+#if ! alterTranssysDiffusibility -d 1.0 $TPNAME ${BASENAME}_maxControl.tra ;
+#then
+#  exit $?
+#fi
+#
+## Run the max control experiment.
+#if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE ${BASENAME}_maxControl.tra ${BASENAME}_maxControl_ftable.dat ;
+#then
+#  exit $?
+#fi
+#
+## Append to the .R source file.
+#echo "lframeMaxControl <- readTransLattice("\""${BASENAME}_maxControl_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.r
+#
+#
+#
+## Run the homogenized control experiment.
+#if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS $TPNAME ${BASENAME}_homogenControl_ftable.dat ;
+#then
+#  exit $?
+#fi
+#
+## Append to the .R source file.
+#echo "lframeHomogenControl <- readTransLattice("\""${BASENAME}_homogenControl_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.r
+#
 
 
 # Remove generated transsys programs.
-rm -rf ${BASENAME}_zeroControl.tra ${BASENAME}_maxControl.tra
+rm -rf ${BASENAME}_zeroControl.tra # ${BASENAME}_maxControl.tra
 

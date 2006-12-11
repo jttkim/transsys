@@ -10,7 +10,7 @@
 readTransLattice <- function(filename)
 # Reads the file with the headers.
 {
-  x <- read.table(filename, header = TRUE);
+  x <- read.table(filename, header = TRUE, comment.char = "#");
   return(x);
 }
 
@@ -237,6 +237,57 @@ boxplotSP <- function(spatialDist, ...)
 # Plots the box plot of the spatial correlation distribution.
 {
   boxplot(spatialDist, main="Spatial Correlation Distribution Boxplot", xlab="Manhattan Distance", ylab="Differences in FC", ...);
+}
+
+
+# SVD/PCA analyisis.
+
+getMatrix <- function(latticeFrame, timestep=getMaxTimestep(latticeFrame))
+# Returns the factor concentration matrix of all the lattice on the specified
+# timestep.
+{
+  timeSlice <- getTimeSlice(latticeFrame, timestep);
+  dataMatrix <- cbind(timeSlice[[4]]);
+  for (i in 5:length(latticeFrame))
+  {
+    dataMatrix <- cbind(dataMatrix, timeSlice[[i]]);
+  }
+  return(t(dataMatrix));
+}
+
+
+centeringMatrix <- function(fcMatrix)
+# Centers the values of each expression profile to have mean 0 and SD 1.
+{
+  for (i in 1:nrow(fcMatrix))
+  {
+    mu <- mean(fcMatrix[i,]);
+    sd <- sd(fcMatrix[i,]);
+    for (j in 1:ncol(fcMatrix))
+    {
+      fcMatrix[i, j] <- (fcMatrix[i, j] - mu) / sd ;
+    }
+  }
+  return(fcMatrix);
+}
+
+
+scatterplotSVD <- function(frame1, frame2, timestep=getMaxTimestep(latticeFrame))
+# Draw the scatterplot of the projection of the two first eigengenes.
+{
+  matrix1 <- centeringMatrix(getMatrix(frame1));
+  matrix2 <- centeringMatrix(getMatrix(frame2));
+  svd1 <- svd(matrix1);
+  svd2 <- svd(matrix2);
+  # Calulate the projection of the eigengenes ######### NEEDS FURTHER
+  # EXPLANATION....
+  xv1 <- svd1$u %*% diag(svd1$d);
+  xv2 <- svd2$u %*% diag(svd2$d);
+
+  # Plot the projection of the first two eigengenes.
+  plot (xv1[,1], xv1[,2], pch=0)
+  points(xv2[,1], xv2[,2], pch=16)
+ 
 }
 
 
