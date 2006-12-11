@@ -18,7 +18,7 @@ latticeSimulator: Implement the simulation procedures on a lattice.
 """
 
 # Version Information.
-__version__ = "£$Id$
+__version__ = "$Id$"
 
 
 # latticeSimulator: A program that simulates a lattice of trannsys instances
@@ -43,7 +43,7 @@ import transsys
 
 
 def usage() :
--  print """
+  print """
 Usage:
 ./latticeSimulator [options] arguments
   Options:
