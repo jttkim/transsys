@@ -200,7 +200,7 @@ class TranssysInstanceCoordinated(transsys.TranssysInstance):
     self.coordinates = coords
 
   def time_series(self, num_timesteps, sampling_period=1, lsys_lines=None, lsys_symbol=None):
-    """Overrides the time_series method with a timeseries containing
+    """Override the time_series method with a timeseries containing
     TranssysInstanceCoordinated instances instead.
 
     @param num_timesteps: The number of steps (runs) of the timeseries.
@@ -230,10 +230,9 @@ class TranssysInstanceCoordinated(transsys.TranssysInstance):
 class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
   """The main class of the simulator, contains a lattice of transsys programs.
 
-  Most of the methods for the simulation are contained here. Is a subclass of
-  the TranssysInstanceCollection super class of the transsys module.
-
-  The lattice is formated in a two dimensional toroidal form.
+  All the methods for the representation and simulation of a two dimensional
+  toroidal lattice are implemented in this class.
+  The methods of the TranssysInstanceCollection are also inherrited.
 
   @ivar name: The lattice name. Contains information of the type and the size
   of the structure.
@@ -277,8 +276,9 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
 
 
   def lattice_generator(self):
-    """Method to generate the lattice of transsys instances.
-    Populates the lattice with one transsys program instance to each cell.
+    """Populate the lattice with one transsys program instance at each cell.
+
+    Works with 2D lattices untill now....
 
     @return: A lattice populated with transsys program instances.
     @rtype: C{list} of C{list} of C{transsys.TranssysProgram} objects
@@ -297,11 +297,14 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
 
 
   def randomise_factor(self, fc, rng, lower, upper):
-    """Returns a factor concentration out of a uniform distribution.
+    """Return a factor concentration out of a uniform distribution.
 
     Checks for zero factor concentration and adapting the output.
 
     Also returns a constant value in case of the homogenisation switch is set.
+
+    The beheviour of this method relies on the type of the rng (random number
+    generator) that it will be called.
 
     @param fc: The current factor concentration.
     @type fc: C{float}
@@ -325,10 +328,10 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
 
 
   def randomise_lattice(self, rng, lower, upper):
-    """Method to randomise the factor concentrations of the lattice.
+    """Randomise all the factor concentrations on the lattice.
 
-    Wraper of the previous method L{randomise_factor} for all the factors in a
-    lattice.
+    Wraper of the previous method L{randomise_factor} for all the factors on
+    the lattice.
 
     @param rng: The random number generator.
     @type rng: C{class 'xxxxxRNG'}
@@ -345,9 +348,9 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
 
 
   def initialise_lattice_concentrations(self, lower, upper, rndSeed):
-    """Method to assign the initial factor concentrations on the lattice.
+    """Assign an initial factor concentrations on the lattice.
 
-    Initialising the random seed and call the L{randomise_lattice}.
+    Initialising the uniform random object and call the L{randomise_lattice}.
 
     @param lower: The lower limit for the Uniform distribution border.
     @type lower: C{float}
@@ -434,8 +437,8 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
 
 
   def update_factor_concentrations(self, currentState, noiseSeed):
-    """The update function of the simulator, calculates the factor
-    concentrations of the next timestep.
+    """Update function of the simulator, calculates the factor concentrations
+    of the next timestep.
 
     Careful usage of factor concentrations diffusibilities and noise...!
 
@@ -462,7 +465,7 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
     latticeFactorConcentrations = []
     # Introduse some noise or not.
     if noiseSeed :
-      rng = GaussianRNG(rndseed, 0, 0.01)
+      rng = GaussianRNG(noiseSeed, 0, 0.01)
     else :
       rng = ConstantRNG(0)
     # Begin the calculations.
@@ -487,13 +490,13 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
 
 
   def update_function(self, timesteps, noiseSeed=None):
-    """Calculates the new transsys instance.
+    """Calculate the new transsys lattice instance.
 
     The method first updates the factor concentrations by calling the
     L{update_factor_concentrations} function, and then calculates the new
     instance of the lattice (next timestep) by calling the
-    L{TranssysInstanceCoordinated.time_series} for all the TranssysInstances
-    in each cell of the lattice (it's a wrapper).
+    L{TranssysInstanceCoordinated.time_series} for all the
+    TranssysInstanceCoordinated on the lattice (it's a wrapper).
 
     @param timesteps: The number of timestep that the simulator has reached.
     @type timesteps: C{int}
@@ -521,10 +524,10 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
   def timestep_factor_concentration(self, signalC):
     """Set all the factor concentrations on the lattice to signal.
 
-    This function sets the timestep signal, alter all the factor concentrations
-    to signal at the specified timestep.
+    Set, at the specified timestep, the concentrations of all factors to the
+    signalC value.
 
-    @param signalC: The factor concentration of the signal.
+    @param signalC: The concentration of the signal.
     @type signalC: C{float}
     @rtype: C{None}
     """
@@ -537,8 +540,9 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
     """Set the factor concentration of a specified factor to signal.
 
     Function changes the factor concentration of the defiened factor before the
-    begining of the simulator. Alters the factor concentration ONLY at the
-    "first" (cell of the simulator (coordinates (1, 1)) wich acts as a signal.
+    begining of the simulator.
+    Alters the factor concentration ONLY at the "first" (cell of the simulator
+    (coordinates (1, 1)) wich acts as a signal.
     Thats why function's name includes signal.
 
     @param sFactor: The signal factor name.
@@ -566,12 +570,13 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
 class TranssysLatticeTimeseries(object):
   """Keep the whole timeseries of the simulator.
 
-  Keep record of all the important things during the simulation process. The
-  position of the transys instance on the lattice the timestep and the
+  Keep record of all the important things during the simulation process.
+  The position of the transsys instances on the lattice the timestep and the
   factor(s) concentration(s).
 
   Also calulates the maximum value of factor concentration that is observed
   during the simulation proccess.
+
   @ivar transsysLatticeName: The transsys lattice name. Contains information
   of the type and the size of the structure.
   @type transsysLatticeName: C{str}
@@ -609,8 +614,8 @@ class TranssysLatticeTimeseries(object):
   def transsys_lattice_timeseries(self, transsysLattice, timestepSignal=None):
     """Keep all the L{TranssysInstanceLattice} instances in a list.
 
-    Returns a timeseries of C{TranssysInstanceLattice} objects for all the
-    simulation in the form of a list.
+    Returns a timeseries (list) of C{TranssysInstanceLattice} objects for all
+    the simulation procedure.
 
     @param transsysLattice: A transsys lattice.
     @type transsysLattice: C{class 'TranssysInstanceLattice'}
@@ -653,11 +658,12 @@ class TranssysLatticeTimeseries(object):
 
 
   def max_factor_concentration(self, factorName=None):
-    """The maximal observed factor concentration.
+    """The maximal observed factor concentration of a specified factor.
 
-    Returns the maximum value of a factor concentration that is observed during
-    the whole simulation proccess. If it is called without specifing a factor
-    name calculate the maximum concentration value of all factors.
+    Return the maximum value of a factor concentration that has been observed
+    during the whole simulation proccess.
+    If it is called without specifing a factor name calculates the maximum
+    concentration value of all factors.
 
     @param factorName: The name of the factor that we maximum is wanted.
     @type factorName: C{str}
@@ -704,8 +710,7 @@ def pickle(object):
 
 
 def unpickle(fileObj):
-  """Reconstructs and returns the original odject hierarchy from its pickled
-  file.
+  """Reconstruct and return the original odject hierarchy from its pickled file.
 
   @returns: The pickled object.
   @rtype: C{class 'object'}
@@ -720,6 +725,7 @@ def generate_pgm(fileObj, transsysLattice, pgmFactor, maxCon):
   Write the to a .pgm file and then close it.
 
   Suitable for view/animate/analyse with the Imagemagick graphics suite.
+  But this approach has been replaced by a more reliable .R script.
 
   @param fileObj: An open raedy for writting file object.
   @type fileObj: C{file}
@@ -759,10 +765,10 @@ def generate_pgm(fileObj, transsysLattice, pgmFactor, maxCon):
 
 
 def print_summary_statistics(tlt, fileObj):
-  """Function to calculate and print the collection statistics of the simulator.
+  """Calculate and print the collection statistics of the simulator.
 
-  The calculation of the statistics is implemented in the
-  L{transsys.CollectionStatistics} class.
+  The actual calculation of the statistics is implemented in the
+  L{transsys.CollectionStatistics} class (this is a wrapper).
 
   @param tlt: A transsys lattice timeseries.
   @type tlt: C{class 'TranssysLatticeTimeseries'}
