@@ -9,8 +9,8 @@
 """transsysSimulator: Conduct several simulation experiments and calculations
 on transsys programs and print out the results in various formats.
 
-One of the first scripts... Revised again on November 2006, Huge amount of
-comments follows...)))
+One of the first scripts... Major revision/refactoring on November 2006. Huge
+amount of comments follows...)))
 """
 
 # $Log: transsys_simulator,v $
