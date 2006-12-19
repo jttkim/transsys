@@ -96,8 +96,8 @@ getTimeseries <- function(latticeFrame, X, Y)
 
 
 getFactorConcentrationMatrix <- function(latticeFrame, factorName, timestep)
-# Low level function. Returns a matrix of factor concentrations (it keeps
-# the same coordiantes with the original structure)
+# Low level function. Returns a matrix of factor concentrations
+# (it keeps the coordinates from the original structure)
 {
   if (length(timestep) != 1)
   {
@@ -240,35 +240,43 @@ boxplotSP <- function(spatialDist, ...)
 }
 
 
-# SVD/PCA analyisis.
 
-getMatrix <- function(latticeFrame, timestep=getMaxTimestep(latticeFrame))
-# Returns the factor concentration matrix of all the lattice on the specified
+## SVD/PCA analyisis part.
+
+getFrameSlice <- function(latticeFrame, timestep=getMaxTimestep(latticeFrame))
+# Returns the factors concentration matrix of all the lattice on the specified
 # timestep.
 {
   timeSlice <- getTimeSlice(latticeFrame, timestep);
-  dataMatrix <- cbind(timeSlice[[4]]);
-  for (i in 5:length(latticeFrame))
-  {
-    dataMatrix <- cbind(dataMatrix, timeSlice[[i]]);
-  }
-  return(t(dataMatrix));
+  dataMatrix <- timeSlice[,4:length(latticeFrame)];
+  return(dataMatrix);
 }
 
 
-centeringMatrix <- function(fcMatrix)
+centering <- function(frameSlice)
 # Centers the values of each expression profile to have mean 0 and SD 1.
 {
-  for (i in 1:nrow(fcMatrix))
+  for (j in 1:ncol(frameSlice))
   {
-    mu <- mean(fcMatrix[i,]);
-    sd <- sd(fcMatrix[i,]);
-    for (j in 1:ncol(fcMatrix))
+    mu <- mean(frameSlice[[j]]);
+    sd <- sd(frameSlice[[j]]);
+    for (i in 1:nrow(frameSlice))
     {
-      fcMatrix[i, j] <- (fcMatrix[i, j] - mu) / sd ;
+      frameSlice[i, j] <- (frameSlice[i, j] - mu) / sd ;
     }
   }
-  return(fcMatrix);
+  centeredFrameSlice <- frameSlice;
+  return(centeredFrameSlice);
+}
+
+
+relativeVariance <- function(lframe, timestep=getMaxTimestep(latticeFrame))
+# Draw the relative variance plot of the singular values (i.e. the percentage of
+# the variance captured by each of the singular values.)
+{
+  m <-  centeringMatrix(getMatrix(lframe))
+  rv <- svd(m)$d**2 / sum(svd(m)$d**2)
+  barplot(rv, main='Relative Variance Plot.', xlab='Singular Values', ylab='Relative Variance %', ylim=c(0, 1.0))
 }
 
 
