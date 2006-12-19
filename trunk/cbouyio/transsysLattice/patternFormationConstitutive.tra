@@ -21,6 +21,26 @@ transsys patternFormationConstitutive
     diffusibility: 1;
   }
 
+  factor factor_3
+  {
+    decay: 1.0;
+    diffusibility: 0.1;
+  }
+
+  factor factor_4
+  {
+    decay: 1.0;
+    diffusibility: 0.1;
+  }
+
+
+  factor factor_5
+  {
+    decay: 1.0;
+    diffusibility: 0.1;
+  }
+
+
   gene gene_activator
   {
     promoter
@@ -46,4 +66,43 @@ transsys patternFormationConstitutive
       default: factor_inhibitor;
     }
   }
+
+  gene gene_3
+  {
+    promoter
+    {
+      constitutive: gauss(5,0.5);
+    }
+    product
+    {
+      default: factor_3;
+    }
+  }
+
+
+  gene gene_4
+  {
+    promoter
+    {
+      constitutive: gauss(5,0.5);
+    }
+    product
+    {
+      default: factor_4;
+    }
+  }
+
+
+  gene gene_5
+  {
+    promoter
+    {
+      constitutive: gauss(5,0.5);
+    }
+    product
+    {
+      default: factor_5;
+    }
+  }
+
 }
