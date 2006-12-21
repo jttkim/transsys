@@ -248,13 +248,13 @@ getFrameSlice <- function(latticeFrame, timestep=getMaxTimestep(latticeFrame))
 # timestep.
 {
   timeSlice <- getTimeSlice(latticeFrame, timestep);
-  dataMatrix <- timeSlice[,4:length(latticeFrame)];
-  return(dataMatrix);
+  frameSlice <- timeSlice[,4:length(latticeFrame)];
+  return(frameSlice);
 }
 
 
-centering <- function(frameSlice)
-# Centers the values of each expression profile to have mean 0 and SD 1.
+centeringData <-function(frameSlice)
+# Center the values of each expression profile to have mean 0 and SD 1.
 {
   for (j in 1:ncol(frameSlice))
   {
@@ -270,13 +270,22 @@ centering <- function(frameSlice)
 }
 
 
-relativeVariance <- function(lframe, timestep=getMaxTimestep(latticeFrame))
+
+relativeVariance <- function(frameSlice)
 # Draw the relative variance plot of the singular values (i.e. the percentage of
 # the variance captured by each of the singular values.)
 {
-  m <-  centeringMatrix(getMatrix(lframe))
-  rv <- svd(m)$d**2 / sum(svd(m)$d**2)
-  barplot(rv, main='Relative Variance Plot.', xlab='Singular Values', ylab='Relative Variance %', ylim=c(0, 1.0))
+  m <-  centeringData(frameSlice);
+  rv <- svd(m)$d**2 / sum(svd(m)$d**2);
+  barplot(rv, main='Relative Variance Plot', xlab='Singular Values', ylab='Relative Variance %', ylim=c(0, 1.0));
+}
+
+
+projectComponents <- function(frameSlice)
+# Plot the scores of the first two components.
+{
+  plot(princomp(frameSlice)$scores, main='Scores of the first two Principal Components');
+  # plot(predict(princomp(frameSLice, main='Predict of the first two Principal Components')));
 }
 
 
