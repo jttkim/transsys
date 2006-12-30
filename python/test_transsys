@@ -22,6 +22,7 @@ import unittest
 
 import transsys
 import transsys.optim
+import transsys.clib
 import transdecode
 
 
@@ -355,6 +356,23 @@ lsys bolting
 }
 """
 
+
+    self.tp_testrndseed = """transsys testrndseed
+{
+  factor r { decay: 1.0; diffusibility: 0.0; }
+  gene rgene
+  {
+    promoter
+    {
+      constitutive: random(0.1, 1.0);
+    }
+    product
+    {
+      default: r;
+    }
+  }
+}
+"""
     self.rtp = """RandomTranssysParameters-1.1
 topology: random_nk
 n: 8
@@ -410,6 +428,28 @@ maxValue: 4.20000000000000018e+00"""
     t = transsys.TranssysProgramParser(open('test.tra', 'r')).parse()
     os.unlink('test.tra')
     return t
+
+
+  def testSrandom(self) :
+
+    def factor_concentration_series(ti) :
+      ts = ti.time_series(30)
+      return map(lambda x: x.factor_concentration[0], ts)
+
+    f = open('test.tra', 'w')
+    f.write('%s\n' % self.tp_testrndseed)
+    f.close()
+    f = open('test.tra', 'r')
+    tp = transsys.TranssysProgramParser(f).parse()
+    os.unlink('test.tra')
+    ti = transsys.TranssysInstance(tp)
+    transsys.clib.srandom(1)
+    l1 = factor_concentration_series(ti)
+    l2 = factor_concentration_series(ti)
+    transsys.clib.srandom(1)
+    l3 = factor_concentration_series(ti)
+    self.assertNotEqual(l1, l2)
+    self.assertEqual(l1, l3)
 
 
   def testTransformationFunctions(self) :
