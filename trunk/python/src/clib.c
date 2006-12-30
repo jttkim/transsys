@@ -3625,6 +3625,20 @@ static PyObject *clib_setverbose(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *clib_srandom(PyObject *self, PyObject *args)
+{
+  unsigned long rndseed;
+  if (!PyArg_ParseTuple(args, "k", &rndseed))
+  {
+    return (NULL);
+  }
+  clib_message(CLIB_MSG_TRACE, "clib_srandom: setting random seed %lu\n", rndseed);
+  ulong_srandom(rndseed);
+  Py_INCREF(Py_None);
+  return (Py_None);
+}
+
+
 static PyObject *clib_dummy(PyObject *self, PyObject *args)
 {
   Py_INCREF(Py_None);
@@ -3635,6 +3649,7 @@ static PyObject *clib_dummy(PyObject *self, PyObject *args)
 static PyMethodDef clib_methods[] = {
   {"timeseries", clib_timeseries, METH_VARARGS, "compute time series from a transsys instance"},
   {"stringseries", clib_stringseries, METH_VARARGS, "compute derivation series from a lsys program"},
+  {"srandom", clib_srandom, METH_VARARGS, "set the random seed for clib transsys computations"},
   {"dummy", clib_dummy, METH_VARARGS, "dummy test function for clib development"},
   {"setverbose", clib_setverbose, METH_VARARGS, "set verbosity level for transsys.clib module"},
   {NULL, NULL, 0, NULL}
