@@ -103,8 +103,9 @@ getFactorConcentrationMatrix <- function(latticeFrame, factorName, timestep)
   {
     stop("multiple timesteps specified");
   }
-  # Populate a matrix of the disered dimensions with NAs.
+  # Get the slice of the specified timestep.
   timestepLattice <- getTimeSlice(latticeFrame, timestep);
+  # Populate a matrix of the disered dimensions with NAs.
   m <- matrix(NA, ncol=getYSize(timestepLattice), nrow=getXSize(timestepLattice));
   # Populate the matrix with the factor concentrations.
   for (i in 1:nrow(timestepLattice))
@@ -304,9 +305,35 @@ scatterplotSVD <- function(frame1, frame2, timestep=getMaxTimestep(latticeFrame)
   # Plot the projection of the first two eigengenes.
   plot (xv1[,1], xv1[,2], pch=0)
   points(xv2[,1], xv2[,2], pch=16)
- 
 }
 
+
+## Statistical Significant analysis part.
+
+countSpots <- function(lframe, factorName, threshold)
+# Returns the number of cells that have factor concentration above threshold.
+{
+  patterns <- 0;
+  for (i in 1:nrow(lframe))
+  {
+	if (lframe[[factorName]][i] >= threshold)
+	{
+	  patterns <- patterns + 1;
+	}
+  }
+  return(patterns);
+}
+
+aggregateSpots <- function(lframeNames, factorName, threshold)
+# Returns a vector with all the observed spots.
+{
+  spotsVector <- vector();
+  for (lframe in lframeNames)
+  {
+	spotsVector <- append(spotsVector, countSpots(lframe, factorNmae, threshold));
+  }
+  return(spotsVector);
+}
 
 # Some runs.
 #lframe <- readTransLattice("onegene.dat");

@@ -57,6 +57,7 @@ Usage:
                                be called and a specified directory will be
                                produced, containing all the image files.
    -h, --help:                 Prints this screen and exit.
+           -i: Integet         Sampling interval.
            -m: Float           A maximum value of factor concentration that
                                will be represented at the .pgm image file.
                                (Mandatory if -g has been specified.)
@@ -133,23 +134,24 @@ def animate(pgmDir, pgmFactor) :
 
 
 ####### Simulator's Parameter Initialization #################################
-latticeSize      = None  # The dimensions of the lattice.(-n)
-noTimesteps      = None  # The running timesteps of the simulation.(-t)
-randomSeed       = 1     # The seed for the random number generators.(-r)
-maxConcentration = None  # The maximum concentration that can be drawn.(-m)
-signalTimestep   = None  # The "signal" for an introduction to a timestep.(-x)
-signalFactor     = None  # The "signal" for a factor introduction.(-s)
-animation        = False # The animation switch.(-a)
-borderRange      = None  # The border range of the uniform distribution.(-u)
-summaryFile      = None  # The filename of the summary statistics file.(-p)
-pgmDir           = None  # The .pgm production framework directory.(-g)
-pgmFactor        = None  # The factor that will be used for the imaging.(-c)
-transsysFactors  = False # The factor names switch.(-f, --factors) 
-pickleFile       = None  # The picle file switch
+latticeSize      = None  # Dimension of the lattice.(-n ixj)
+noTimesteps      = None  # Number of simulation timesteps.(-t)
+randomSeed       = 1     # Random number generator seed.(-r)
+samplingInterval = 1     # The sampling interval. (-i)
+maxConcentration = None  # Maximum concentration allowed to be drawn.(-m)
+signalTimestep   = None  # "signal" introduction at timestep.(-x)
+signalFactor     = None  # Initiation "signal" of a factor.(-s)
+animation        = False # Animation switch.(-a)
+borderRange      = None  # Border range of the uniform distribution.(-u)
+summaryFile      = None  # Filename of the summary statistics file.(-p)
+pgmDir           = None  # pgm production framework directory.(-g)
+pgmFactor        = None  # Factor name that will be used for the imaging.(-c)
+transsysFactors  = False # Factor names switch.(-f, --factors) 
+pickleFile       = None  # Pickle file name (-q).
 
 
 ## Command line parsing.
-optlist, args = getopt.getopt(sys.argv[1:], 'ac:fg:hm:n:p:q:r:s:t:u:x:', ['help', 'factors'])
+optlist, args = getopt.getopt(sys.argv[1:], 'ac:fg:hi:m:n:p:q:r:s:t:u:x:', ['help', 'factors'])
 
 for opt, par in optlist :
   if opt in ('-h', '--help') :
@@ -200,6 +202,8 @@ for opt, par in optlist :
     pgmFactor = par
   if opt in ("-q") :
     pickleFile = par
+  if opt in ("-i") :
+	samplingInterval = int(par)
 
 
 #print optlist
@@ -273,8 +277,8 @@ if borderRange :
 if signalFactor :
   transInstanceLattice.signal_factor_concentration(signalFactor[0], signalFactor[1])
 
-# Initialise the timeseries class.
-transsysLatticeTimeseries = translattice.TranssysLatticeTimeseries(transInstanceLattice, noTimesteps, signalTimestep)
+# Produce the timeseries.
+transsysLatticeTimeseries = translattice.TranssysLatticeTimeseries(transInstanceLattice, noTimesteps, samplingInterval, signalTimestep)
 
 # Print the factor table to the output file.
 # First write the comments and the header.

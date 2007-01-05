@@ -199,6 +199,7 @@ class TranssysInstanceCoordinated(transsys.TranssysInstance):
     self.factor_concentration = [0.0] * self.transsys_program.num_factors()
     self.coordinates = coords
 
+
   def time_series(self, num_timesteps, sampling_period=1, lsys_lines=None, lsys_symbol=None):
     """Override the time_series method with a timeseries containing
     TranssysInstanceCoordinated instances instead.
@@ -489,8 +490,8 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
     return latticeFactorConcentrations
 
 
-  def update_function(self, timesteps, noiseSeed=None):
-    """Calculate the new transsys lattice instance.
+  def update_function(self, timesteps, samplingInterval=1, noiseSeed=None):
+    """Return th transsys lattice instance of the next timestep.
 
     The method first updates the factor concentrations by calling the
     L{update_factor_concentrations} function, and then calculates the new
@@ -516,7 +517,7 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
           self.lattice[i][j].factor_concentration = updateFactorConcentrations[i][j]
           # The timeseries doesn't work with timestep 1, returns zero.
           # Thats why a timestep = 2 is used.
-          self.lattice[i][j] = self.lattice[i][j].time_series(2)[1]
+          self.lattice[i][j] = self.lattice[i][j].time_series(2, samplingInterval)[1]
           # Then set the timestep.
           self.lattice[i][j].timestep = timesteps
 
@@ -580,8 +581,10 @@ class TranssysLatticeTimeseries(object):
   @ivar transsysLatticeName: The transsys lattice name. Contains information
   of the type and the size of the structure.
   @type transsysLatticeName: C{str}
-  @ivar timesteps: The number of timesteps of the simulator.
+  @ivar timesteps: The number of timesteps of the simulation.
   @type timesteps: C{int}
+  @ivar samplingInterval: The interval between sampling.
+  @type samplingInterval: C{int}
   @ivar latticeTimeseries: A list containing all the transsys lattice
   instances of each timestep of the simulator.
   @type latticeTimeseries: C{list} of C{TranssysInstanceLattice}
@@ -592,14 +595,16 @@ class TranssysLatticeTimeseries(object):
   """
 
 
-  def __init__(self, transsysLattice, timesteps, timestepSignal=None):
+  def __init__(self, transsysLattice, timesteps, samplingInterval=1, timestepSignal=None):
     """Constructor of the class.
 
     @param transsysLattice: A transsys instance lattice object.
     L{TranssysInstanceLattice}
     @type transsysLattice: C{class 'TranssysInstanceLattice'}
-    @param timesteps: The number of timesteps for the simulator.
+    @param timesteps: The number of timesteps of the simulation.
     @type timesteps: C{int}
+    @param samplingInterval: The interval between sampling.
+    @type samplingInterval: C{int}
     @param timestepSignal: The signal to alter factor concentrations on a
     specific timestep
     type timestepSignal: C{int}:C{float}
@@ -607,14 +612,15 @@ class TranssysLatticeTimeseries(object):
 #    self.factorTable = factor_table(fileObject)
     self.transsysLatticeName = transsysLattice.name
     self.timesteps = timesteps
-    self.latticeTimeseries = self.transsys_lattice_timeseries(transsysLattice, timestepSignal)
+    self.samplingInterval = samplingInterval
+    self.latticeTimeseries = self.transsys_lattice_timeseries(transsysLattice, timesteps, samplingInterval, timestepSignal)
     self.maxFactorConcentration = self.max_factor_concentration()
 
 
-  def transsys_lattice_timeseries(self, transsysLattice, timestepSignal=None):
+  def transsys_lattice_timeseries(self, transsysLattice, timesteps, samplingInterval, timestepSignal=None):
     """Keep all the L{TranssysInstanceLattice} instances in a list.
 
-    Returns a timeseries (list) of C{TranssysInstanceLattice} objects for all
+    Return a timeseries (list) of C{TranssysInstanceLattice} objects for all
     the simulation procedure.
 
     @param transsysLattice: A transsys lattice.
@@ -628,16 +634,16 @@ class TranssysLatticeTimeseries(object):
     @rtype: C{list} of C{TranssysInstanceLattice} objects
     """
     latticeTimeseries = []
-    # Iterate for timestep + 1 to include the zero timestep. 
-    for i in xrange(self.timesteps + 1):
+    # Iterate for timestep + 1 to include the initial (zero) timestep. 
+    for i in xrange(timesteps + 1):
       transsysLattice.timestep = i
       if timestepSignal :
         if i == timestepSignal[1] :
           transsysLattice.timestep_factor_concentration(timestepSignal[0])
-      # Append the deepcopy in each timestep.
-      latticeTimeseries.append(copy.deepcopy(transsysLattice))
+      # Append the deepcopy according to the sampling intervals.
+      if i % samplingInterval == 0 : 
+        latticeTimeseries.append(copy.deepcopy(transsysLattice))
       transsysLattice.update_function(i)
-#      transsysLattice.timestep = i
     return latticeTimeseries
 
 
