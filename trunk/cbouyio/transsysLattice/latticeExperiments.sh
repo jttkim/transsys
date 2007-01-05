@@ -33,7 +33,7 @@ fi
 # Extract the basename.
 BASENAME=`basename ${TPNAME} .tra`
 
-if test "$TPNAME" == "$BASENAME" ;
+if test "$TPNAME" = "$BASENAME" ;
 then
   echo "  Error in basename proccesing.
   Specify a transsys program (.tra) filename."
@@ -98,7 +98,6 @@ echo "lframeZeroControl <- readTransLattice("\""${BASENAME}_zeroControl_ftable.d
 #echo "lframeHomogenControl <- readTransLattice("\""${BASENAME}_homogenControl_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.r
 #
 
-
-# Remove generated transsys programs.
+# Remove the generated transsys programs.
 rm -rf ${BASENAME}_zeroControl.tra # ${BASENAME}_maxControl.tra
 
