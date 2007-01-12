@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-# $Rev::               $:  Revision of last commit
-# $Author::            $:  Author of last commit
-# $Date$:  Date of last commit
+# $Rev:: 245           $:  Revision of last commit
+# $Author:: cbouyio    $:  Author of last commit
+# $Date: 2007-01-05 20:39:38 +0000 (Fri, 05 Jan 2007) $:  Date of last commit
 
 
 """
@@ -37,7 +37,7 @@ import os.path
 import shutil
 import re
 
-
+import transsys.clib
 import translattice
 import transsys
 
@@ -203,7 +203,7 @@ for opt, par in optlist :
   if opt in ("-q") :
     pickleFile = par
   if opt in ("-i") :
-	samplingInterval = int(par)
+    samplingInterval = int(par)
 
 
 #print optlist
@@ -278,6 +278,8 @@ if signalFactor :
   transInstanceLattice.signal_factor_concentration(signalFactor[0], signalFactor[1])
 
 # Produce the timeseries.
+# Before each invocation set the clib random seed.
+transsys.clib.srandom(randomSeed)
 transsysLatticeTimeseries = translattice.TranssysLatticeTimeseries(transInstanceLattice, noTimesteps, samplingInterval, signalTimestep)
 
 # Print the factor table to the output file.
