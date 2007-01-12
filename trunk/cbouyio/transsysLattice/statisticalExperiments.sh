@@ -40,19 +40,28 @@ fi
 # Generate the .R source file.
 # Source the tarnslattice.r package.
 echo "source("\""~/devel/transsys/trunk/cbouyio/transsysLattice/translattice.r"\"");" | cat > ${BASENAME}_Rsource_Stats.R;
-# Initialise the frame name vector.
-echo "lframeNames <- list();" | cat >> ${BASENAME}_Rsource_Stats.R; 
 
+## Initialise the frame name vector.
+#echo "lframeNames <- vector();" | cat >> ${BASENAME}_Rsource_Stats.R;
+
+# Initialise the frame names variable.
+FRAMENAMES=""
 
 # Run the basic experiment for $RND_SEED_TIMES times.
-for (( rnd=0 ; rnd<=RND_SEED_TIMES ; rnd++))
+for (( RNDSEED=0 ; RNDSEED<=RND_SEED_TIMES ; RNDSEED++))
 do
-  if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE -i $TIMESTEPS -r $rnd $TPNAME ${BASENAME}_rs${rnd}_ftable.dat;
+  if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE -i $TIMESTEPS -r $RNDSEED $TPNAME ${BASENAME}_rs${RNDSEED}_ftable.dat;
     then
       exit $?;
   fi
 
-  # Generate the .R source file.
-  echo "lframe${rnd} <- readTransLattice("\""${BASENAME}_rs${rnd}_ftable.dat"\"");" | cat >> ${BASENAME}_Rsource_Stats.R;
-  echo "lframeNames <- append(lframeNames, lframe${rnd});" | cat >> ${BASENAME}_Rsource_Stats.R
+  # Write to the .R source file.
+  echo "lframe${RNDSEED} <- readTransLattice("\""${BASENAME}_rs${RNDSEED}_ftable.dat"\"");" | cat >> ${BASENAME}_Rsource_Stats.R;
+  FRAMENAMES=$FRAMENAMES"lframe${RNDSEED}, "
+
+#  echo "lframeNames <- append(lframeNames, lframe${RNDSEED});" | cat >> ${BASENAME}_Rsource_Stats.R
 done
+
+# Generate the list of lframes.
+echo "lframeNames <- list($FRAMENAMES);" | cat >> ${BASENAME}_Rsource_Stats.R;
+
