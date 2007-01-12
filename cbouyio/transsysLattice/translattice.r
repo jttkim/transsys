@@ -180,6 +180,8 @@ hitReturn <- function(timestep)
 }
 
 
+# Spatial Corellation functions.
+
 getManhattanDistance <- function(x1, y1, x2, y2, X, Y)
 # Calculate the Manhattan Distance between two cells on the toroidal lattice.
 {
@@ -330,10 +332,16 @@ aggregateSpots <- function(lframeNames, factorName, threshold)
   spotsVector <- vector();
   for (lframe in lframeNames)
   {
-	spotsVector <- append(spotsVector, countSpots(lframe, factorNmae, threshold));
+	spotsVector <- append(spotsVector, countSpots(lframe, factorName, threshold));
   }
   return(spotsVector);
 }
+
+
+significanceTest <- function()
+{
+}
+
 
 # Some runs.
 #lframe <- readTransLattice("onegene.dat");
