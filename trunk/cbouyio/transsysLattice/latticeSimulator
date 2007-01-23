@@ -27,8 +27,8 @@ __version__ = "$Id$"
 # to simulate the processes described in "Soile V. E. Keranen, 2004. Simulation
 # study on effects of signaling network structure on the developmental
 # increase in complexity."
-# Start developing by CBouyio on Aprill 2006 at UEA
-# Becomes an independent program at 11 September 2006
+# Start developing by CBouyio in Aprill 2006 at UEA
+# Developed as a python module on 11th September 2006
 
 import getopt
 import sys
@@ -58,26 +58,27 @@ Usage:
                                produced, containing all the image files.
    -h, --help:                 Prints this screen and exit.
            -i: Integet         Sampling interval.
+							   (default: 1)
            -m: Float           A maximum value of factor concentration that
                                will be represented at the .pgm image file.
                                (Mandatory if -g has been specified.)
                                The image color range is 0-256 gradients of grey.
            -n: IntegerxInteger The size of the nxm lattice.
-                               (Mandatory)
+                               (Mandatory parameter)
            -p: String          Print in the specified file the summary
                                statistics of the simulation.
                                (Default: Print the factor table in the outfile)
            -q: String          Print in the specified file the pickle output of
                                the simulation (The Lattice Timeseries Object).
            -r: Integer         The random number generator seed.
-                               (Default: 1)
+                               (Default: 0)
            -s: String:Number   Signal switch, (FactorName:FactorConcentration)
                                Factor gets the defined concentration (signal) in
                                the beginning of the simulation (string:float).
            -t: Integer         The number of timesteps.
-                               (Mandatory)
+                               (Mandatory parameter)
            -u: Number:Number   The range (a, b) of the borders of a uniform
-                               distribution (floats).
+                               distribution (numeric).
            -x: Number:Integer  Signal switch, (FactorConcentration:Timestep)
                                All factors will get the defined concentration at
                                the defined timestep (float:integer).
@@ -136,7 +137,7 @@ def animate(pgmDir, pgmFactor) :
 ####### Simulator's Parameter Initialization #################################
 latticeSize      = None  # Dimension of the lattice.(-n ixj)
 noTimesteps      = None  # Number of simulation timesteps.(-t)
-randomSeed       = 1     # Random number generator seed.(-r)
+randomSeed       = 0     # Random number generator seed.(-r)
 samplingInterval = 1     # The sampling interval. (-i)
 maxConcentration = None  # Maximum concentration allowed to be drawn.(-m)
 signalTimestep   = None  # "signal" introduction at timestep.(-x)

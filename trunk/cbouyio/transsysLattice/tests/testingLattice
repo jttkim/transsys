@@ -236,8 +236,8 @@ fi
 # check whether or not the random seed produces different numbers.
 # Run with the default random seed (1) then with a different one (2) and then
 # without random seed (get the date), in all cases the outfiles should be
-# different.
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u 0:1 randomSeedTest.tra randomSeed_1_TMP.out || ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u 0:1 -r 0 randomSeedTest.tra randomSeed_0_TMP.out
+# different (last test hasn't yet implemented 23/01/2007).
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u 0:1 randomSeedTest.tra randomSeed_0_TMP.out || ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u 0:1 -r 1 randomSeedTest.tra randomSeed_0_TMP.out
 then
   exit $?
 #elif ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u 0:1 -r 0 randomSeedTest.tra randomSeed_0_TMP.out
