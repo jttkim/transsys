@@ -237,17 +237,17 @@ fi
 # Run with the default random seed (1) then with a different one (2) and then
 # without random seed (get the date), in all cases the outfiles should be
 # different (last test hasn't yet implemented 23/01/2007).
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u 0:1 randomSeedTest.tra randomSeed_0_TMP.out || ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u 0:1 -r 1 randomSeedTest.tra randomSeed_0_TMP.out
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u 0:1 randomSeedTest.tra randomSeed_1_TMP.out || ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u 0:1 -r 2 randomSeedTest.tra randomSeed_2_TMP.out
 then
   exit $?
 #elif ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u 0:1 -r 0 randomSeedTest.tra randomSeed_0_TMP.out
 #then
 #  exit $?
 else
-  if cmp -s randomSeed_0_TMP.out randomSeed_1_TMP.out ;
+  if cmp -s randomSeed_1_TMP.out randomSeed_2_TMP.out ;
   then
     echo "random number genetrator test: failed...((("
-    echo "files randomSeed_0_TMP.out randomSeed_1_TMP.out are the same!"
+    echo "files randomSeed_1_TMP.out randomSeed_2_TMP.out are not different!"
     rm *TMP.out
     exit $?
 #    let failure++
