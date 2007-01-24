@@ -57,7 +57,7 @@ Usage:
                                be called and a specified directory will be
                                produced, containing all the image files.
    -h, --help:                 Prints this screen and exit.
-           -i: Integet         Sampling interval.
+           -i: Integer         Sampling interval.
 							   (default: 1)
            -m: Float           A maximum value of factor concentration that
                                will be represented at the .pgm image file.
@@ -71,7 +71,7 @@ Usage:
            -q: String          Print in the specified file the pickle output of
                                the simulation (The Lattice Timeseries Object).
            -r: Integer         The random number generator seed.
-                               (Default: 0)
+                               (Default: 1)
            -s: String:Number   Signal switch, (FactorName:FactorConcentration)
                                Factor gets the defined concentration (signal) in
                                the beginning of the simulation (string:float).
@@ -137,7 +137,7 @@ def animate(pgmDir, pgmFactor) :
 ####### Simulator's Parameter Initialization #################################
 latticeSize      = None  # Dimension of the lattice.(-n ixj)
 noTimesteps      = None  # Number of simulation timesteps.(-t)
-randomSeed       = 0     # Random number generator seed.(-r)
+randomSeed       = 1     # Random number generator seed.(-r)
 samplingInterval = 1     # The sampling interval. (-i)
 maxConcentration = None  # Maximum concentration allowed to be drawn.(-m)
 signalTimestep   = None  # "signal" introduction at timestep.(-x)
