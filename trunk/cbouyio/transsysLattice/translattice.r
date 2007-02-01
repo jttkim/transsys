@@ -1,11 +1,13 @@
-# The .R plotting package for the lattice factor table.
+# The .R analysis package lattice experiments.
 
 # $Rev::               $:  Revision of last commit
 # $Author::            $:  Author of last commit
 # $Date$:  Date of last commit
 
-# cbouyio, UEA, 28/09/2006
+# File created b cbouyio, at UEA, on 28/09/2006
 
+
+## Low level functions.
 
 readTransLattice <- function(filename)
 # Reads the file with the headers.
@@ -19,7 +21,7 @@ getTimeSlice <- function(latticeFrame, timesteps)
 # Returns a lattice data frame containing only the
 # rows of the time steps specified by the timesteps parameter.
 {
-  # Returns a time slice of the data frame.
+  # Returns a time slice of the dyata frame.
   timestepFrame <- subset(latticeFrame, timestep==timesteps);
   return(timestepFrame);
 }
@@ -123,6 +125,9 @@ getFactorConcentrationMatrix <- function(latticeFrame, factorName, timestep)
 }
 
 
+
+## Visualisation functions.
+
 plotConcentrationMatrix <- function(concentrationMatrix, xCoordinates, yCoordinates, concentrationRange, main="Image Title", ...)
 # Low level function to produce the image of the factor concentration.
 {
@@ -173,6 +178,7 @@ oneSecondDelay <- function(timestep)
   Sys.sleep(1);
 }
 
+
 hitReturn <- function(timestep)
 # timeFrameEndFunction
 {
@@ -180,7 +186,8 @@ hitReturn <- function(timestep)
 }
 
 
-# Spatial Corellation functions.
+
+## Spatial Corellation functions.
 
 getManhattanDistance <- function(x1, y1, x2, y2, X, Y)
 # Calculate the Manhattan Distance between two cells on the toroidal lattice.
@@ -244,7 +251,7 @@ boxplotSP <- function(spatialDist, ...)
 
 
 
-## SVD/PCA analyisis part.
+## SVD/PCA analysis functions.
 
 getFrameSlice <- function(latticeFrame, timestep=getMaxTimestep(latticeFrame))
 # Returns the factors concentration matrix of all the lattice on the specified
@@ -256,7 +263,7 @@ getFrameSlice <- function(latticeFrame, timestep=getMaxTimestep(latticeFrame))
 }
 
 
-centeringData <-function(frameSlice)
+centering <-function(frameSlice)
 # Center the values of each expression profile to have mean 0 and SD 1.
 {
   for (j in 1:ncol(frameSlice))
@@ -273,44 +280,63 @@ centeringData <-function(frameSlice)
 }
 
 
-
-relativeVariance <- function(frameSlice)
+relativeVariance <- function(frameSlice, centering=TRUE, ...)
 # Draw the relative variance plot of the singular values (i.e. the percentage of
 # the variance captured by each of the singular values.)
 {
-  m <-  centeringData(frameSlice);
+  if (centering==TRUE)
+  {
+    m <-  centeringData(frameSlice);
+  }
+  else
+  {
+    m <- frameSlice;
+  }
   rv <- svd(m)$d**2 / sum(svd(m)$d**2);
-  barplot(rv, main='Relative Variance Plot', xlab='Singular Values', ylab='Relative Variance %', ylim=c(0, 1.0));
+  barplot(rv, main='Relative Variance Plot', xlab='Singular Values', ylab='Relative Variance %', ...);
 }
 
 
-projectComponents <- function(frameSlice)
+projectComponents <- function(frameSlice, ...)
 # Plot the scores of the first two components.
 {
-  plot(princomp(frameSlice)$scores, main='Scores of the first two Principal Components');
+  plot(princomp(frameSlice)$scores, main='Scores of the first two Principal Components', ...);
   # plot(predict(princomp(frameSLice, main='Predict of the first two Principal Components')));
 }
 
 
-scatterplotSVD <- function(frame1, frame2, timestep=getMaxTimestep(latticeFrame))
-# Draw the scatterplot of the projection of the two first eigengenes.
+scatterplotSVD <- function(lFrame, timestep=getMaxTimestep(lFrame), ...)
+# Plot the projection of the first two eigengenes.
 {
-  matrix1 <- centeringMatrix(getMatrix(frame1));
-  matrix2 <- centeringMatrix(getMatrix(frame2));
-  svd1 <- svd(matrix1);
-  svd2 <- svd(matrix2);
-  # Calulate the projection of the eigengenes ######### NEEDS FURTHER
-  # EXPLANATION....
-  xv1 <- svd1$u %*% diag(svd1$d);
-  xv2 <- svd2$u %*% diag(svd2$d);
-
-  # Plot the projection of the first two eigengenes.
-  plot (xv1[,1], xv1[,2], pch=0)
-  points(xv2[,1], xv2[,2], pch=16)
+  matrixE <- centeringData(getFrameSlice(lFrame, timestep));
+  svdE <- svd(matrixE);
+  xv <- svdE$u %*% diag(svdE$d);
+  plot(xv[,1], xv[,2], main="Principal Components' Scatterplot", xlab="1st Pr. Component", ylab="2nd Pr. Component", ...);
 }
 
 
-## Statistical Significant analysis part.
+compareScatterplotSVD <- function(lFrame, lFrameControl, timestep=getMaxTimestep(lFrame), ...)
+# Draw the scatterplot of the projection of the two first eigengenes, for both
+# the experiment and the control.
+{
+  matrixE <- centeringData(getFrameSlice(lFrame, timestep));
+  matrixControl <- centeringData(getFrameSlice(lFrameControl, timestep));
+  svdE <- svd(matrixE);
+  svdControl <- svd(matrixControl);
+  # Calulate the projection of the eigengenes ######### NEEDS FURTHER
+  # EXPLANATION....
+  xvE <- svdE$u %*% diag(svdE$d);
+  xvControl <- svdControl$u %*% diag(svdControl$d);
+
+  # Plot the projection of the first two eigengenes.
+  plot(xvE[,1], xvE[,2], pch=16, col="blue", main="Principal Components' Scatterplot from the control and structured data", xlab="1st Pr. Component", ylab="2nd Pr. Component", ...);
+  # Do the same for the control.
+  points(xvControl[,1], xvControl[,2], pch=0, col="green", ...);
+}
+
+
+
+## Statistical Significant analysis functions.
 
 countSpots <- function(lframe, factorName, threshold)
 # Returns the number of cells that have factor concentration above threshold.
@@ -318,13 +344,14 @@ countSpots <- function(lframe, factorName, threshold)
   patterns <- 0;
   for (i in 1:nrow(lframe))
   {
-	if (lframe[[factorName]][i] >= threshold)
-	{
-	  patterns <- patterns + 1;
-	}
+    if (lframe[[factorName]][i] >= threshold)
+    {
+      patterns <- patterns + 1;
+    }
   }
   return(patterns);
 }
+
 
 aggregateSpots <- function(lframeNames, factorName, threshold)
 # Returns a vector with all the observed spots.
@@ -332,7 +359,7 @@ aggregateSpots <- function(lframeNames, factorName, threshold)
   spotsVector <- vector();
   for (lframe in lframeNames)
   {
-	spotsVector <- append(spotsVector, countSpots(lframe, factorName, threshold));
+    spotsVector <- append(spotsVector, countSpots(lframe, factorName, threshold));
   }
   return(spotsVector);
 }
@@ -343,7 +370,8 @@ significanceTest <- function()
 }
 
 
-# Some runs.
+
+# Test runs.
 #lframe <- readTransLattice("onegene.dat");
 #m1 <- getFactorConcentrationMatrix(lframe, "f", 1);
 #m2 <- getFactorConcentrationMatrix(lframe, "f", 2);

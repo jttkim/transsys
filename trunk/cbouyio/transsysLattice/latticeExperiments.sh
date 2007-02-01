@@ -20,6 +20,7 @@ fi
 # Variable assignment.
 LATTICESIZE=$1
 TIMESTEPS=$2
+SAMPLINGINTERVALS=20
 UNI_RANGE=0.0:0.1
 TPNAME=$3
 
@@ -43,14 +44,14 @@ fi
 
 
 # Run the basic experiment.
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE $TPNAME ${BASENAME}_ftable.dat ;
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE -i $SAMPLINGINTERVALS $TPNAME ${BASENAME}_ftable.dat ;
 then
   exit $?
 fi
 
 # Generate the .R source file.
-echo "source("\""~/devel/transsys/trunk/cbouyio/transsysLattice/translattice.r"\"")" | cat > ${BASENAME}_Rsource.r
-echo "lframe <- readTransLattice("\""${BASENAME}_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.r
+echo "source("\""~/devel/transsys/trunk/cbouyio/transsysLattice/translattice.r"\"")" | cat > ${BASENAME}_Rsource.R
+echo "lframe <- readTransLattice("\""${BASENAME}_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.R
 
 
 
@@ -61,13 +62,13 @@ then
 fi
 
 # Run the zero controlexperiment.
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE ${BASENAME}_zeroControl.tra ${BASENAME}_zeroControl_ftable.dat ;
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE -i $SAMPLINGINTERVALS ${BASENAME}_zeroControl.tra ${BASENAME}_zeroControl_ftable.dat ;
 then
   exit $?
 fi
 
 # Append to the .R source file.
-echo "lframeZeroControl <- readTransLattice("\""${BASENAME}_zeroControl_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.r
+echo "lframeZeroControl <- readTransLattice("\""${BASENAME}_zeroControl_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.R
 
 
 #
@@ -84,7 +85,7 @@ echo "lframeZeroControl <- readTransLattice("\""${BASENAME}_zeroControl_ftable.d
 #fi
 #
 ## Append to the .R source file.
-#echo "lframeMaxControl <- readTransLattice("\""${BASENAME}_maxControl_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.r
+#echo "lframeMaxControl <- readTransLattice("\""${BASENAME}_maxControl_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.R
 #
 #
 #
@@ -95,7 +96,7 @@ echo "lframeZeroControl <- readTransLattice("\""${BASENAME}_zeroControl_ftable.d
 #fi
 #
 ## Append to the .R source file.
-#echo "lframeHomogenControl <- readTransLattice("\""${BASENAME}_homogenControl_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.r
+#echo "lframeHomogenControl <- readTransLattice("\""${BASENAME}_homogenControl_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.R
 #
 
 # Remove the generated transsys programs.

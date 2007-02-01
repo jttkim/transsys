@@ -48,7 +48,7 @@ echo "source("\""~/devel/transsys/trunk/cbouyio/transsysLattice/translattice.r"\
 FRAMENAMES=""
 
 # Run the basic experiment for $RND_SEED_TIMES times.
-for (( RNDSEED=0 ; RNDSEED<=RND_SEED_TIMES ; RNDSEED++))
+for (( RNDSEED=1 ; RNDSEED<=RND_SEED_TIMES ; RNDSEED++))
 do
   if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE -i $TIMESTEPS -r $RNDSEED $TPNAME ${BASENAME}_rs${RNDSEED}_ftable.dat;
     then
