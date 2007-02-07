@@ -10,19 +10,25 @@
 # conduct all the control experiments and produce the R source file.
 
 # Check parameters.
-if test $# != 3 ;
+if test $# -lt 3 || test $# -gt 4 ;
 then
   echo "Usage:"
-  echo "  `basename $0` [Latice_Size] [Timesteps] [Transsys_Program]"
+  echo "  `basename $0` [Latice_Size] [Timesteps] [Transsys_Program] [Sampling_Interval (Optional)]"
   exit $?
 fi
 
 # Variable assignment.
 LATTICESIZE=$1
 TIMESTEPS=$2
-SAMPLINGINTERVALS=20
-UNI_RANGE=0.0:0.1
+SAMPLINGINTERVALS=1
+UNI_RANGE=0:1
 TPNAME=$3
+
+# Assign the sampling interval it it has been specified.
+if test $4 ;
+then
+  SAMPLINGINTERVALS=$4
+fi
 
 # Check for the existance of the transsys program file.
 if ! test -e "$TPNAME" ;
@@ -40,7 +46,6 @@ then
   Specify a transsys program (.tra) filename."
   exit $?
 fi
-
 
 
 # Run the basic experiment.
