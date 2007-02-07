@@ -138,7 +138,7 @@ plotConcentrationMatrix <- function(concentrationMatrix, xCoordinates, yCoordina
 }
 
 
-plotConcentrationSeries <- function(latticeFrame, factorName, concentrationRange=c(0, getMaximumConcentration(latticeFrame, factorName)), timeframeEndFunction=function(x){}, ...)
+plotConcentrationSeries <- function(latticeFrame, factorName, concentrationRange=c(0, getMaximumConcentration(latticeFrame, factorName)), endFunction=function(x){}, ...)
 # The main graphics function, plot the image of the factor concentration in
 # each timestep.
 {
@@ -146,7 +146,7 @@ plotConcentrationSeries <- function(latticeFrame, factorName, concentrationRange
   for (i in getTimeSteps(latticeFrame))
   {
     plotConcentrationMatrix(getFactorConcentrationMatrix(latticeFrame, factorName, i), getXCoordinates(latticeFrame), getYCoordinates(latticeFrame), concentrationRange, main=sprintf("Image of %s concentration on timestep %d", factorName, as.integer(i)), ...);
-    timeframeEndFunction(i);
+    endFunction(i);
   }
 }
 
@@ -264,51 +264,61 @@ getFrameSlice <- function(latticeFrame, timestep=getMaxTimestep(latticeFrame))
 
 
 centering <-function(frameSlice)
-# Center the values of each expression profile to have mean 0 and SD 1.
+# Center the variables to have mean 0.
 {
-  for (j in 1:ncol(frameSlice))
+  for (i in 1:ncol(frameSlice))
   {
-    mu <- mean(frameSlice[[j]]);
-    sd <- sd(frameSlice[[j]]);
-    for (i in 1:nrow(frameSlice))
-    {
-      frameSlice[i, j] <- (frameSlice[i, j] - mu) / sd ;
-    }
+    mu <- mean(frameSlice[,i]);
+    frameSlice[,i] <- frameSlice[,i] - mu;
   }
-  centeredFrameSlice <- frameSlice;
-  return(centeredFrameSlice);
+  return(frameSlice);
 }
 
 
-relativeVariance <- function(frameSlice, centering=TRUE, ...)
-# Draw the relative variance plot of the singular values (i.e. the percentage of
-# the variance captured by each of the singular values.)
+scaling <- function(frameSlice)
+# Scaling the variables to have unit variance.
 {
-  if (centering==TRUE)
+  for (i in 1:ncol(frameSlice))
   {
-    m <-  centeringData(frameSlice);
+    sd <- sd(frameSlice[,i]);
+    frameSlice[,i] <- frameSlice[,i] / sd;
   }
-  else
-  {
-    m <- frameSlice;
-  }
-  rv <- svd(m)$d**2 / sum(svd(m)$d**2);
-  barplot(rv, main='Relative Variance Plot', xlab='Singular Values', ylab='Relative Variance %', ...);
+  return(frameSlice);
+}
+
+
+relativeVariance <- function(frameSlice)
+# Calculate the relative variance of the singular values (i.e. the percentage 
+# of the variance captured by each of the singular values.)
+{
+  d <- svd(frameSlice)$d;
+  n <- length(d);
+  rv <- d**2 / sum(d**2);
+  return(rv);
+}
+
+
+plotRV <- function(frameSlice, ...)
+# Plots the relative variance.
+{
+  rv <- relativeVariance(frameSlice);
+  n <- length(rv);
+  barplot(rv, main='Relative Variance Plot', names.arg=c(1:n), xlab='Singular Values', ylab='Relative Variance %', ...);
 }
 
 
 projectComponents <- function(frameSlice, ...)
 # Plot the scores of the first two components.
 {
-  plot(princomp(frameSlice)$scores, main='Scores of the first two Principal Components', ...);
-  # plot(predict(princomp(frameSLice, main='Predict of the first two Principal Components')));
+  plot(prcomp(frameSlice, center=FALSE)$x, main='Scores of the first two Principal Components', ...);
+  #plot(predict(princomp(frameSLice, main='Predict of the first two Principal Components')));
 }
 
 
-scatterplotSVD <- function(lFrame, timestep=getMaxTimestep(lFrame), ...)
+scatterplotSVD <- function(frameSlice, ...)
 # Plot the projection of the first two eigengenes.
 {
-  matrixE <- centeringData(getFrameSlice(lFrame, timestep));
+  matrixE <- frameSlice
   svdE <- svd(matrixE);
   xv <- svdE$u %*% diag(svdE$d);
   plot(xv[,1], xv[,2], main="Principal Components' Scatterplot", xlab="1st Pr. Component", ylab="2nd Pr. Component", ...);
@@ -319,8 +329,8 @@ compareScatterplotSVD <- function(lFrame, lFrameControl, timestep=getMaxTimestep
 # Draw the scatterplot of the projection of the two first eigengenes, for both
 # the experiment and the control.
 {
-  matrixE <- centeringData(getFrameSlice(lFrame, timestep));
-  matrixControl <- centeringData(getFrameSlice(lFrameControl, timestep));
+  matrixE <- scaling(centering(getFrameSlice(lFrame, timestep)));
+  matrixControl <- scaling(centering(getFrameSlice(lFrameControl, timestep)));
   svdE <- svd(matrixE);
   svdControl <- svd(matrixControl);
   # Calulate the projection of the eigengenes ######### NEEDS FURTHER
