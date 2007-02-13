@@ -9,78 +9,65 @@ transsys patternFormationConstitutive
 # $Id$
 
 {
-  factor factor_activator
+  factor A
   {
     decay: 0.1;
     diffusibility: 0.01;
   }
 
-  factor factor_inhibitor
+  factor I
   {
     decay: 0.1;
     diffusibility: 1;
   }
 
-  factor factor_3
+  factor F0003
   {
     decay: 1.0;
-    diffusibility: 0.1;
+    diffusibility: 0;
   }
 
-  factor factor_4
+  factor F0004
   {
     decay: 1.0;
-    diffusibility: 0.1;
-  }
-
-
-  factor factor_5
-  {
-    decay: 1.0;
-    diffusibility: 0.1;
+    diffusibility: 0;
   }
 
 
-  gene gene_activator
+  factor F0005
+  {
+    decay: 1.0;
+    diffusibility: 0;
+  }
+
+
+  gene gene_a
   {
     promoter
     {
       constitutive: 0.2;
-      factor_activator: activate(0.5, 3.0);
-      factor_inhibitor: repress(0.5, 2.5);
+      A: activate(0.5, 3.0);
+      I: repress(0.5, 2.5);
     }
     product
     {
-      default: factor_activator;
+      default: A;
     }
   }
 
-  gene gene_inhibitor
+  gene gene_i
   {
     promoter
     {
-      factor_activator: activate(0.5, 3.0);
+      A: activate(0.5, 3.0);
     }
     product
     {
-      default: factor_inhibitor;
+      default: I;
     }
   }
 
-  gene gene_3
-  {
-    promoter
-    {
-      constitutive: gauss(5,0.5);
-    }
-    product
-    {
-      default: factor_3;
-    }
-  }
-
-
-  gene gene_4
+  gene gene_0003
   {
     promoter
     {
@@ -88,12 +75,12 @@ transsys patternFormationConstitutive
     }
     product
     {
-      default: factor_4;
+      default: F0003;
     }
   }
 
 
-  gene gene_5
+  gene gene_0004
   {
     promoter
     {
@@ -101,8 +88,20 @@ transsys patternFormationConstitutive
     }
     product
     {
-      default: factor_5;
+      default: F0004;
     }
   }
 
+
+  gene gene_0005
+  {
+    promoter
+    {
+      constitutive: gauss(5,0.5);
+    }
+    product
+    {
+      default: F0005;
+    }
+  }
 }
