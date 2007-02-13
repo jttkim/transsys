@@ -20,8 +20,8 @@ fi
 # Variable assignment.
 LATTICESIZE=$1
 TIMESTEPS=$2
-SAMPLINGINTERVALS=1
-UNI_RANGE=0:1
+SAMPLINGINTERVALS=10
+UNI_RANGE=0:0.1
 TPNAME=$3
 
 # Assign the sampling interval it it has been specified.
@@ -73,11 +73,11 @@ then
 fi
 
 # Append to the .R source file.
-echo "lframeZeroControl <- readTransLattice("\""${BASENAME}_zeroControl_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.R
+echo "lframeZero <- readTransLattice("\""${BASENAME}_zeroControl_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.R
 
 
-#
-## Generate the max control tp.
+# SOME OTHER CONTROLS TO BE TESTED LATER
+## Generate the maximum diffusibility control tp.
 #if ! alterTranssysDiffusibility -d 1.0 $TPNAME ${BASENAME}_maxControl.tra ;
 #then
 #  exit $?
@@ -93,8 +93,7 @@ echo "lframeZeroControl <- readTransLattice("\""${BASENAME}_zeroControl_ftable.d
 #echo "lframeMaxControl <- readTransLattice("\""${BASENAME}_maxControl_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.R
 #
 #
-#
-## Run the homogenized control experiment.
+## Run the homogenized control experiment (without initial randomisation).
 #if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS $TPNAME ${BASENAME}_homogenControl_ftable.dat ;
 #then
 #  exit $?
@@ -105,5 +104,5 @@ echo "lframeZeroControl <- readTransLattice("\""${BASENAME}_zeroControl_ftable.d
 #
 
 # Remove the generated transsys programs.
-rm -rf ${BASENAME}_zeroControl.tra # ${BASENAME}_maxControl.tra
+rm -rf ${BASENAME}_zeroControl.tra    # ${BASENAME}_maxControl.tra
 
