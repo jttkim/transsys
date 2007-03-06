@@ -1,4 +1,4 @@
-transsys patternFormation
+transsys patternFormation2Points
 
 # This is the statrting point of the pattern formation experiments.
 
@@ -24,8 +24,8 @@ transsys patternFormation
   {
     promoter
     {
-      constitutive: 1;
-      B: repress(0.5, 1);
+      constitutive: -0.3;
+      B: activate(0.5, 0.7);
     }
     product
     {
@@ -37,8 +37,8 @@ transsys patternFormation
   {
     promoter
     {
-      constitutive: 0.8;
-      A: repress(1.5, 1);
+      constitutive: -0.3;
+      A: activate(0.5, 0.7);
     }
     product
     {
