@@ -145,7 +145,10 @@ plotConcentrationSeries <- function(latticeFrame, factorName, concentrationRange
   # Some check about number of timesteps should precede.
   for (i in getTimeSteps(latticeFrame))
   {
-    plotConcentrationMatrix(getFactorConcentrationMatrix(latticeFrame, factorName, i), getXCoordinates(latticeFrame), getYCoordinates(latticeFrame), concentrationRange, main=sprintf("Image of %s concentration on timestep %d", factorName, as.integer(i)), ...);
+    plotConcentrationMatrix(getFactorConcentrationMatrix(latticeFrame,
+    factorName, i), getXCoordinates(latticeFrame),
+    getYCoordinates(latticeFrame), concentrationRange,
+    main=sprintf("Concentration of %s timestep %d", factorName, as.integer(i)), ...);
     endFunction(i);
   }
 }
