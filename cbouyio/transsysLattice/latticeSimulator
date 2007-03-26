@@ -28,7 +28,7 @@ __version__ = "$Id$"
 # study on effects of signaling network structure on the developmental
 # increase in complexity."
 # Start developing by CBouyio in Aprill 2006 at UEA
-# Developed as a python module on 11th September 2006
+# Implemented as a python module on 11th September 2006
 
 import getopt
 import sys
@@ -51,14 +51,14 @@ Usage:
                                (Can be set only if -g has been specified.)
            -c: String          Specify the imaging factor.
                                (Mandatory if the -g has been specified.)
+           -d: Integer         Sampling interval.
+                               (default: 1)
 -f, --factors: switch          Print the factors' names and exit.
            -g: String          The .pgm framework switcher.
                                If it is set the .pgm production procedure will
                                be called and a specified directory will be
                                produced, containing all the image files.
    -h, --help:                 Prints this screen and exit.
-           -i: Integer         Sampling interval.
-							   (default: 1)
            -m: Float           A maximum value of factor concentration that
                                will be represented at the .pgm image file.
                                (Mandatory if -g has been specified.)
@@ -138,7 +138,7 @@ def animate(pgmDir, pgmFactor) :
 latticeSize      = None  # Dimension of the lattice.(-n ixj)
 noTimesteps      = None  # Number of simulation timesteps.(-t)
 randomSeed       = 1     # Random number generator seed.(-r)
-samplingInterval = 1     # The sampling interval. (-i)
+samplingInterval = 1     # The sampling interval. (-d)
 maxConcentration = None  # Maximum concentration allowed to be drawn.(-m)
 signalTimestep   = None  # "signal" introduction at timestep.(-x)
 signalFactor     = None  # Initiation "signal" of a factor.(-s)
@@ -152,7 +152,7 @@ pickleFile       = None  # Pickle file name (-q).
 
 
 ## Command line parsing.
-optlist, args = getopt.getopt(sys.argv[1:], 'ac:fg:hi:m:n:p:q:r:s:t:u:x:', ['help', 'factors'])
+optlist, args = getopt.getopt(sys.argv[1:], 'ac:d:fg:hm:n:p:q:r:s:t:u:x:', ['help', 'factors'])
 
 for opt, par in optlist :
   if opt in ('-h', '--help') :
@@ -192,8 +192,8 @@ for opt, par in optlist :
     var = par.split(':')
     if len(var) != 2 :
       raise StandardError, 'Error in the format of -u input options, please check the help (-h, --help) for more information.'
-    if float(var[0]) < 0 or float(var[1]) <= 0 :
-      raise StandardError, 'Factor concentrations can take only positive values, please specify a positive range.'
+    if float(var[0]) < 0 or float(var[1]) < 0 :
+      raise StandardError, 'Factor concentrations can take only positive values, please specify a non-negative range.'
     borderRange = (float(var[0]), float(var[1]))
   if opt in ('-g') :
     pgmDir = par
@@ -203,7 +203,7 @@ for opt, par in optlist :
     pgmFactor = par
   if opt in ("-q") :
     pickleFile = par
-  if opt in ("-i") :
+  if opt in ("-d") :
     samplingInterval = int(par)
 
 

@@ -705,7 +705,6 @@ class TranssysLatticeTimeseries(object):
 
 
 
-
 def pickle(object):
   """Return the pickled representation of the object as a string.
 
@@ -774,7 +773,8 @@ def print_summary_statistics(tlt, fileObj):
   """Calculate and print the collection statistics of the simulator.
 
   The actual calculation of the statistics is implemented in the
-  L{transsys.CollectionStatistics} class (this is a wrapper).
+  L{transsys.CollectionStatistics} class.
+  (This function is a wrapper).
 
   @param tlt: A transsys lattice timeseries.
   @type tlt: C{class 'TranssysLatticeTimeseries'}
@@ -790,5 +790,5 @@ def print_summary_statistics(tlt, fileObj):
   for i, stat in enumerate(statList):
     for factor in stat.transsys_program.factor_list :
       fName = factor.name
-      fileObj.write('%i\t%s\t%f\t%e\t%e\n' % (i, fName, stat.average[stat.transsys_program.find_factor_index(fName)], stat.standard_deviation[stat.transsys_program.find_factor_index(fName)], stat.shannon_entropy[stat.transsys_program.find_factor_index(fName)]))
+      fileObj.write('%i\t%s\t%f\t%e\t%e\n' % (tlt[i].timestep, fName, stat.average[stat.transsys_program.find_factor_index(fName)], stat.standard_deviation[stat.transsys_program.find_factor_index(fName)], stat.shannon_entropy[stat.transsys_program.find_factor_index(fName)]))
 
