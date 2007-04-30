@@ -72,9 +72,10 @@ Usage:
                                the simulation (The Lattice Timeseries Object).
            -r: Integer         The random number generator seed.
                                (Default: 1)
-           -s: String:Number   Signal switch, (FactorName:FactorConcentration)
-                               Factor gets the defined concentration (signal) in
-                               the beginning of the simulation (string:float).
+           -s  String          Witespace separated list of initial factor
+                               concentrations. Elements of list are colon
+                               separated values of the form String:Number.
+                               ("FactorName:FactorConcentration").
            -t: Integer         The number of timesteps.
                                (Mandatory parameter)
            -u: Number:Number   The range (a, b) of the borders of a uniform
@@ -83,8 +84,8 @@ Usage:
                                All factors will get the defined concentration at
                                the defined timestep (float:integer).
   Arguments:
-   <infile>: A valid transsys program (.tra) file. (<STDIN> if not specified)
-  <outfile>: An output file. (<STDOUT> if not specified)"""
+     <infile>: A valid transsys program (.tra) file. (<STDIN> if not specified)
+    <outfile>: An output file. (<STDOUT> if not specified)"""
 
 
 def os_manipulation(dir_name) :
@@ -140,8 +141,9 @@ noTimesteps      = None  # Number of simulation timesteps.(-t)
 randomSeed       = 1     # Random number generator seed.(-r)
 samplingInterval = 1     # The sampling interval. (-d)
 maxConcentration = None  # Maximum concentration allowed to be drawn.(-m)
+initFactorDict   = None  # Factor concentration dictonary of the signal at the
+                         # initial timestep. (-s)
 signalTimestep   = None  # "signal" introduction at timestep.(-x)
-signalFactor     = None  # Initiation "signal" of a factor.(-s)
 animation        = False # Animation switch.(-a)
 borderRange      = None  # Border range of the uniform distribution.(-u)
 summaryFile      = None  # Filename of the summary statistics file.(-p)
@@ -178,12 +180,6 @@ for opt, par in optlist :
       raise StandardError, 'Error in the format of -x input options, please check the help (-h, --help) for more information.'
     if float(var[0]) :
       signalTimestep = (float(var[0]), int(var[1]))
-  if opt in ('-s') :
-    var = par.split(':')
-    if len(var) != 2 :
-      raise StandardError, 'Error in the format of -s input options, please check the help (-h, --help) for more information.'
-    if float(var[1]) :
-      signalFactor = (var[0], float(var[1]))
   if opt in ('-a') :
     animation = True
   if opt in ('-p') :
@@ -205,6 +201,18 @@ for opt, par in optlist :
     pickleFile = par
   if opt in ("-d") :
     samplingInterval = int(par)
+  if opt in ("-s") :
+    if par.split(' ') :
+      fList = par.split(' ')
+      initFactorDict = {}
+      for el in fList :
+        if el.split(':') :
+          initFactorDict[el.split(':')[0]] = el.split(':')[1]
+        else :
+          raise StandardError, "Error in initial factor concentrations parsing. Check the syntax of the -s option or give -h,--help for more info."
+    else :
+      raise StandardError, "Error in initial factor concentrations parsing. Check the syntax of the -s option or give -h,--help for more info."
+
 
 
 #print optlist
@@ -275,8 +283,8 @@ if borderRange :
   transInstanceLattice.initialise_lattice_concentrations(borderRange[0], borderRange[1], randomSeed)
 
 # Introduce a signal by specifing a factor and the desired concentration.
-if signalFactor :
-  transInstanceLattice.signal_factor_concentration(signalFactor[0], signalFactor[1])
+if initFactorDict :
+  transInstanceLattice.signal_factor_concentration(initFactorDict)
 
 # Produce the timeseries.
 # Before each invocation set the clib random seed.
@@ -286,6 +294,7 @@ transsysLatticeTimeseries = translattice.TranssysLatticeTimeseries(transInstance
 # Print the factor table to the output file.
 # First write the comments and the header.
 transInstanceLattice.write_table_header(outfile, randomSeed)
+
 # Then write the whole stuff.
 transsysLatticeTimeseries.write_factor_table(outfile)
 
@@ -299,7 +308,7 @@ if summaryFile :
 if pgmDir :
   pgm_framework(pgmDir, pgmFactor, maxConcentration, transsysLatticeTimeseries.latticeTimeseries)
 
-# Print the pickle file
+# Export the pickle file
 if pickleFile :
   pickleFileObj = open(pickleFile, "w")
   pickleFileObj.write(translattice.pickle(transInstanceLattice))

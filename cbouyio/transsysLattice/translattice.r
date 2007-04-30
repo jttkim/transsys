@@ -160,7 +160,8 @@ plotAllInstances <- function(dataFrame, factorName, concentrationRange=c(0, max(
   # First make the template plot using the first instance.
   instance1 <- subset(dataFrame, x==1 & y==1);
   factor1 <- instance1[[factorName]];
-  plot(getTimeSteps(dataFrame), factor1, type="l", ylim=ylim, xlab="Timesteps", ylab="Factor Concentration", main=sprintf("All cell trajectories of factor %s", factorName), ...);
+  plot(getTimeSteps(dataFrame), factor1, type="l", ylim=ylim, xlab="Timesteps",
+  ylab="Factor Concentration", main=sprintf("All cells' timeseries of factor %s", factorName), ...);
   # Then draw the lines.
   for (i in 1:getXSize(dataFrame))
   {
