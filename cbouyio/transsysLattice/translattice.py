@@ -627,6 +627,10 @@ class TranssysLatticeTimeseries(object):
 
     @param transsysLattice: A transsys lattice.
     @type transsysLattice: C{class 'TranssysInstanceLattice'}
+    @param timesteps; The number of timesteps of the simulator.
+    @type timesteps: C{int}
+    @param samplingInterval: The interbval between sampling.
+    @type samplingInterval: C{int}
     @param timestepSignal: The timestep signal parameter. Defines the factor
     concentration and the timestep that it will be introduced (to all factors
     untill now)
