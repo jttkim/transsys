@@ -490,8 +490,8 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
     return latticeFactorConcentrations
 
 
-  def update_function(self, timesteps, samplingInterval=1, noiseSeed=None):
-    """Return th transsys lattice instance of the next timestep.
+  def update_function(self, timesteps, noiseSeed=None):
+    """Updates the transsys lattice instance at the next timestep.
 
     The method first updates the factor concentrations by calling the
     L{update_factor_concentrations} function, and then calculates the new
@@ -517,7 +517,7 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
           self.lattice[i][j].factor_concentration = updateFactorConcentrations[i][j]
           # The timeseries doesn't work with timestep 1, returns zero.
           # Thats why a timestep = 2 is used.
-          self.lattice[i][j] = self.lattice[i][j].time_series(2, samplingInterval)[1]
+          self.lattice[i][j] = self.lattice[i][j].time_series(2)[1]
           # Then set the timestep.
           self.lattice[i][j].timestep = timesteps
 
@@ -537,34 +537,36 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
         self.lattice[i][j].factor_concentration = [signalC for fc in self.lattice[i][j].factor_concentration]
 
 
-  def signal_factor_concentration(self, sFactor, sConcentration, i=0, j=0):
-    """Set the factor concentration of a specified factor to signal.
+  def signal_factor_concentration(self, initDict, i=0, j=0):
+    """Set factors' concentration to user defined values.
 
-    Function changes the factor concentration of the defiened factor before the
-    begining of the simulator.
-    Alters the factor concentration ONLY at the "first" (cell of the simulator
-    (coordinates (1, 1)) wich acts as a signal.
-    Thats why function's name includes signal.
+    Function changes the factor concentration of the defiened factors before
+    the begining of the simulator.
+    Alters the factors concentrations ONLY at the "first" cell of the simulator
+    (coordinates (1, 1) which acts as a signal.
+    Factor concentration values contained in a dictionary and are defined by
+    the user
 
-    @param sFactor: The signal factor name.
-    @type sFactor: C{str}
-    @param sConcentration: The signal factor concentration.
-    @type sConcentration: C{float}
+    @param initDict: A dictionary contains the user defined factor
+    concentration values in the pair {FactorName:FactorConcentration}
+    @type initDict; C{dict}
     @param i: The abscissa of the coordinates.
     @type i: C{int}
     @param j: The ordinate of the coordinates.
     @type j: C{int}
     @rtype: C{None}
-    @precondition: sFactor should be a valid factor of the corresponding
-    transsys program, sConcentration should be a positive floating point
-    number.
+    @precondition: The keys of the dictionary should be valid factor names of
+    the corresponding transsys program, the values positive floating point
+    numbers.
     """
-    # Check for the existance of the signal factor.
-    if not sFactor in self.transsysProgram.factor_names():
-      raise StandardError, 'Factor %s is not belonging to the %s transsys program. Please specify a valid factor name.' % (sFactor, self.transsysProgram.name)
-    # Change the factor concentration.
-    k = self.transsysProgram.find_factor_index(sFactor)
-    self.lattice[i][j].factor_concentration[k] = sConcentration
+    # Check for the existance of the signal factors.
+    tp = self.transsysProgram
+    for factName in initDict.iterkeys():
+      if factName not in tp.factor_names():
+        raise StandardError, "Specified factor doean't exist in transsys program. Check the factor names of the (-s) option."
+    # Set the factor concentrations.
+    for factName, concentration in initDict.iteritems():
+      self.lattice[i][j].factor_concentration[tp.find_factor_index(factName)] = float(concentration)
 
 
 
@@ -641,7 +643,7 @@ class TranssysLatticeTimeseries(object):
         if i == timestepSignal[1] :
           transsysLattice.timestep_factor_concentration(timestepSignal[0])
       # Append the deepcopy according to the sampling intervals.
-      if i % samplingInterval == 0 : 
+      if i % samplingInterval == 0 :
         latticeTimeseries.append(copy.deepcopy(transsysLattice))
       transsysLattice.update_function(i)
     return latticeTimeseries
@@ -658,7 +660,7 @@ class TranssysLatticeTimeseries(object):
     @rtype: C{None}
     @precondition: An open, ready for writting file object.
     """
-    # Then write the whole table.
+    # Write the whole timeseries table.
     for til in self.latticeTimeseries :
       til.write_table(fileObj)
 
