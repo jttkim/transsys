@@ -1,6 +1,6 @@
 # This is an .R script to perform several attractor analytical studies.
 
-# Â$Id$
+#  $Id$
 
 solveQuad <- function(a, b, c)
 {
@@ -15,19 +15,9 @@ solveQuad <- function(a, b, c)
   return(c(y1, y2));
 }
 
-plotQuad <- function(a, b, c, ...)
-{
-  x <- seq(-100, 100, by=0.1);
-  y <- vector();
-  for (i in x)
-  {
-    y <- append(y, a*(i**2) + b*i + c)
-  }
-  plot(x, y, type="l", xlim=c(-5, 5), ylim=c(-5, 5), ...);
-#  lines(x**2 + x, x);
-}
 
 drawArea <- function(a=-20, b=20)
+# Not need anymore the ploting area is specified at the plotFactors function.
 {
   d <- length(c(a:b));
   plot(rep(0, d), c(a:b), xlim=c(a, b), ylim=c(a, b), type="l", xlab="Factor1", ylab="Factor2");
