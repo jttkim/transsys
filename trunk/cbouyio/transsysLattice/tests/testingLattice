@@ -18,7 +18,7 @@ fi
 
 # Define the compulsory program options.
 LATTICESIZE=10x10
-TIMESTEPS=50
+TIMESTEPS=100
 
 
 # The directory should contain some "xxxOut.expect" expected files and the 
@@ -163,7 +163,7 @@ fi
 # for two factors, one activator one repressor.
 # The test runs using the signal mechanism, -s switcher by denoting a factor
 # name and a factor concentration. (The rest of the parameters default)
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -s FACTOR_A:10 sFactorTest.tra sFactorTestTMP.out
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -s "FACTOR_A:1 FACTOR_B:0" sFactorTest.tra sFactorTestTMP.out
 then
   exit $?
 else
