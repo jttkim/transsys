@@ -43,8 +43,7 @@ import transsys
 
 
 def usage() :
-  print """
-Usage:
+  print """Usage:
 ./latticeSimulator [options] arguments
   Options:
            -a: switch          Animation switch.
@@ -85,7 +84,8 @@ Usage:
                                the defined timestep (float:integer).
   Arguments:
      <infile>: A valid transsys program (.tra) file. (<STDIN> if not specified)
-    <outfile>: An output file. (<STDOUT> if not specified)"""
+    <outfile>: An output file. (<STDOUT> if not specified)
+    """
 
 
 def os_manipulation(dir_name) :
@@ -159,6 +159,7 @@ optlist, args = getopt.getopt(sys.argv[1:], 'ac:d:fg:hm:n:p:q:r:s:t:u:x:', ['hel
 for opt, par in optlist :
   if opt in ('-h', '--help') :
     usage()
+    print __version__
     sys.exit()
   if opt in ('-n') :
     x = re.compile('x')
