@@ -437,7 +437,7 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
       f.write('\n')
 
 
-  def update_factor_concentrations(self, currentState, noiseSeed):
+  def update_factor_concentrations(self, currentState):
     """Update function of the simulator, calculates the factor concentrations
     of the next timestep.
 
@@ -449,9 +449,6 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
 
     @param currentState: A transsys program lattice.
     @type currentState: C{class 'TranssysInstanceLattice'}
-    @param noiseSeed: The random seed for the random number generator. (It is
-    used only in cases that we want to incorporate some noise in the)
-    @type noiseSeed: C{int}
     @return: A list of lists of lists of factor concentrations, after the
     diffusibility effects have been calculated.
     @rtype: C{list} of C{list}s of C{list}s
@@ -464,11 +461,6 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
     x = self.size[0]
     y = self.size[1]
     latticeFactorConcentrations = []
-    # Introduse some noise or not.
-    if noiseSeed :
-      rng = GaussianRNG(noiseSeed, 0, 0.01)
-    else :
-      rng = ConstantRNG(0)
     # Begin the calculations.
     for i in xrange(len(self.lattice)):
       latticeFactorConcentrations.append([])
@@ -484,13 +476,13 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
           # Introduce "per factor" diffusibility expression.
           diffRate = self.transsysProgram.factor_list[k].diffusibility_expression.value
           # Check the toroidal transformations by using the modulo division!
-          fc = (factorConcentrationsOld[k] + (rng.random_value() + (diffRate * self.lattice[(x + i - 1) % x][j].factor_concentration[k])) + (rng.random_value() + (diffRate * self.lattice[i][(y + j - 1) % y].factor_concentration[k])) + (rng.random_value() + (diffRate * self.lattice[i][(j + 1) % y].factor_concentration[k])) + (rng.random_value() + (diffRate * self.lattice[(i + 1) % x][j].factor_concentration[k]))) / (4 * diffRate + 1)
+          fc = (factorConcentrationsOld[k] + diffRate * self.lattice[(x + i - 1) % x][j].factor_concentration[k] + diffRate * self.lattice[i][(y + j - 1) % y].factor_concentration[k] + diffRate * self.lattice[i][(j + 1) % y].factor_concentration[k] + diffRate * self.lattice[(i + 1) % x][j].factor_concentration[k]) / (4 * diffRate + 1)
           factorConcentrationsUpdate[k] = fc
         latticeFactorConcentrations[i].append(factorConcentrationsUpdate)
     return latticeFactorConcentrations
 
 
-  def update_function(self, timesteps, noiseSeed=None):
+  def update_function(self, timesteps):
     """Updates the transsys lattice instance at the next timestep.
 
     The method first updates the factor concentrations by calling the
@@ -502,13 +494,13 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
     @param timesteps: The number of timestep that the simulator has reached.
     @type timesteps: C{int}
     @param noiseSeed: The random seed for the random number generator. (It is
-    used only in cases that we want to incorporate some noise in the)
+    used only in cases that we want to incorporate some noise in the simulator)
     @type noiseSeed: C{int}
     @rtype: C{None}
     """
     # Produce a copy of the current state of the simulator.
 #    currentState = self.lattice ## Possible Kkkkludge
-    updateFactorConcentrations = self.update_factor_concentrations(self.lattice, noiseSeed)
+    updateFactorConcentrations = self.update_factor_concentrations(self.lattice)
     for i in xrange(len(self.lattice)):
       for j in xrange(len(self.lattice[i])):
         if len(self.lattice[i][j].factor_concentration) != len(updateFactorConcentrations[i][j]):
