@@ -493,9 +493,6 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
 
     @param timesteps: The number of timestep that the simulator has reached.
     @type timesteps: C{int}
-    @param noiseSeed: The random seed for the random number generator. (It is
-    used only in cases that we want to incorporate some noise in the simulator)
-    @type noiseSeed: C{int}
     @rtype: C{None}
     """
     # Produce a copy of the current state of the simulator.

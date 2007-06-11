@@ -20,8 +20,8 @@ fi
 # Variable assignment.
 LATTICESIZE=$1
 TIMESTEPS=$2
-SAMPLINGINTERVALS=10
-UNI_RANGE=0:0.1
+SAMPLINGINTERVALS=100
+UNI_RANGE=0:13
 TPNAME=$3
 
 # Assign the sampling interval it it has been specified.
@@ -49,7 +49,7 @@ fi
 
 
 # Run the basic experiment.
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE -i $SAMPLINGINTERVALS $TPNAME ${BASENAME}_ftable.dat ;
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE -d $SAMPLINGINTERVALS $TPNAME ${BASENAME}_ftable.dat ;
 then
   exit $?
 fi
@@ -67,7 +67,7 @@ then
 fi
 
 # Run the zero controlexperiment.
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE -i $SAMPLINGINTERVALS ${BASENAME}_zeroControl.tra ${BASENAME}_zeroControl_ftable.dat ;
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE -d $SAMPLINGINTERVALS ${BASENAME}_zeroControl.tra ${BASENAME}_zeroControl_ftable.dat ;
 then
   exit $?
 fi

@@ -139,38 +139,14 @@ plotConcentrationMatrix <- function(concentrationMatrix, xCoordinates, yCoordina
 
 
 plotConcentrationSeries <- function(latticeFrame, factorName, concentrationRange=c(0, getMaximumConcentration(latticeFrame, factorName)), endFunction=function(x){}, ...)
-# The main graphics function, plot the image of the factor concentration in
+# The main graphics function, plot the image of the factor concentration for
 # each timestep.
 {
-  # Some check about number of timesteps should precede.
+  # FIXME: Some check about number of timesteps should precede.
   for (i in getTimeSteps(latticeFrame))
   {
-    plotConcentrationMatrix(getFactorConcentrationMatrix(latticeFrame,
-    factorName, i), getXCoordinates(latticeFrame),
-    getYCoordinates(latticeFrame), concentrationRange,
-    main=sprintf("Concentration of %s timestep %d", factorName, as.integer(i)), ...);
+    plotConcentrationMatrix(getFactorConcentrationMatrix(latticeFrame, factorName, i), getXCoordinates(latticeFrame), getYCoordinates(latticeFrame), concentrationRange, main=sprintf("Concentration of %s timestep %d", factorName, as.integer(i)), ...);
     endFunction(i);
-  }
-}
-
-
-plotAllInstances <- function(dataFrame, factorName, concentrationRange=c(0, max(dataFrame[[factorName]])), ylim=concentrationRange, ...)
-# Plots the timeseries of all the transsys instances on the structure.
-{
-  # First make the template plot using the first instance.
-  instance1 <- subset(dataFrame, x==1 & y==1);
-  factor1 <- instance1[[factorName]];
-  plot(getTimeSteps(dataFrame), factor1, type="l", ylim=ylim, xlab="Timesteps",
-  ylab="Factor Concentration", main=sprintf("All cells' timeseries of factor %s", factorName), ...);
-  # Then draw the lines.
-  for (i in 1:getXSize(dataFrame))
-  {
-    for (j in 1:getYSize(dataFrame))
-    {
-      instance <- subset(dataFrame, x==i & y==j);
-      factor <- instance[[factorName]];
-      lines(getTimeSteps(dataFrame), factor, ...);
-    }
   }
 }
 
@@ -187,6 +163,26 @@ hitReturn <- function(timestep)
 # timeFrameEndFunction
 {
   readline(sprintf("timestep %d -- hit return", as.integer(timestep)));
+}
+
+
+plotAllInstances <- function(dataFrame, factorName, concentrationRange=c(0, max(dataFrame[[factorName]])), ylim=concentrationRange, ...)
+# Plots the timeseries of all the transsys instances on the structure.
+{
+  # First make the template plot using the first instance.
+  instance1 <- subset(dataFrame, x==1 & y==1);
+  factor1 <- instance1[[factorName]];
+  plot(getTimeSteps(dataFrame), factor1, type="l", ylim=ylim, xlab="Timesteps", ylab="Factor Concentration", main=sprintf("All cells' timeseries of factor %s", factorName), ...);
+  # Then draw the lines.
+  for (i in 1:getXSize(dataFrame))
+  {
+    for (j in 1:getYSize(dataFrame))
+    {
+      instance <- subset(dataFrame, x==i & y==j);
+      factor <- instance[[factorName]];
+      lines(getTimeSteps(dataFrame), factor, ...);
+    }
+  }
 }
 
 
@@ -322,8 +318,7 @@ projectComponents <- function(frameSlice, ...)
 scatterplotSVD <- function(frameSlice, ...)
 # Plot the projection of the first two eigengenes.
 {
-  matrixE <- frameSlice
-  svdE <- svd(matrixE);
+  svdE <- svd(frameSlice);
   xv <- svdE$u %*% diag(svdE$d);
   plot(xv[,1], xv[,2], main="Principal Components' Scatterplot", xlab="1st Pr. Component", ylab="2nd Pr. Component", ...);
 }

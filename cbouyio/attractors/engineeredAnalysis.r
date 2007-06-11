@@ -61,15 +61,15 @@ generateTranssysProgram <- function(Da, Di, Pa, Pi, d, Ha, Hi, La, Li, Df1=0, Df
 
 drawPhaseSpace <- function(Da, Di, Pa, Pi, d, Ha, Hi, La, Li, ...)
 {
-   a <- max(Ha/Da, Hi/Di);
+   a <- max(Ha/Da, Hi/Di, Pa+d, Pi+d);
    x <- c(0, a + 0.1*a);
    y <- c(0, a + 0.1*a);
 #  symbols(Pa, Pi, circles=d, inches=FALSE, xlim=x, ylim=y, xlab="Factor activator", ylab="Factor inhibitor");
-  plot(La/Da, Li/Di, pch=20, col="blue", xlim=x, ylim=y, xlab="Factor activator", ylab="Factor inhibitor", ...);
+  plot(La/Da, Li/Di, pch=20, xlim=x, ylim=y, xlab="Factor A", ylab="Factor B", ...);
   abline(h=(y[1]:y[2]), v=(x[1]:x[2]), lty="dotted", col="lightgrey");
   points(Pa, Pi, pch=20, col="green");
-#  points(La/Da, Li/Di, pch=20, col="blue");
   points(Ha/Da, Hi/Di, pch=20, col="red");
+  points(La/Da, Li/Di, pch=20, col="blue");
   circle(Pa, Pi, d);
 }
 
