@@ -6,7 +6,7 @@ PYTHONMODULES	= translattice.py
 
 html : $(PYTHONMODULES)
 	rm -rf html/
-	epydoc --html $(PYTHONMODULES)
+	epydoc -v --html $(PYTHONMODULES)
 
 install : $(PYTHONMODULES)
 	python setup.py install --home=$(HOME)
