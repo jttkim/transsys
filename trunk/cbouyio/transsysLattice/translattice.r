@@ -291,7 +291,7 @@ relativeVariance <- function(frameSlice)
 # Calculate the relative variance of the singular values (i.e. the percentage 
 # of the variance captured by each of the singular values.)
 {
-  d <- svd(frameSlice)$d;
+  d <- svd(centering(frameSlice))$d;
   n <- length(d);
   rv <- d**2 / sum(d**2);
   return(rv);
@@ -301,7 +301,7 @@ relativeVariance <- function(frameSlice)
 plotRV <- function(frameSlice, ...)
 # Plots the relative variance.
 {
-  rv <- relativeVariance(frameSlice);
+  rv <- relativeVariance(centering(frameSlice));
   n <- length(rv);
   barplot(rv, main='Relative Variance Plot', names.arg=c(1:n), xlab='Singular Values', ylab='Relative Variance %', ...);
 }
@@ -310,7 +310,7 @@ plotRV <- function(frameSlice, ...)
 projectComponents <- function(frameSlice, ...)
 # Plot the scores of the first two components.
 {
-  plot(prcomp(frameSlice, center=FALSE)$x, main='Scores of the first two Principal Components', ...);
+  plot(prcomp(frameSlice)$x, main='Scores of the first two Principal Components', ...);
   #plot(predict(princomp(frameSLice, main='Predict of the first two Principal Components')));
 }
 
@@ -318,7 +318,7 @@ projectComponents <- function(frameSlice, ...)
 scatterplotSVD <- function(frameSlice, ...)
 # Plot the projection of the first two eigengenes.
 {
-  svdE <- svd(frameSlice);
+  svdE <- svd(centering(frameSlice));
   xv <- svdE$u %*% diag(svdE$d);
   plot(xv[,1], xv[,2], main="Principal Components' Scatterplot", xlab="1st Pr. Component", ylab="2nd Pr. Component", ...);
 }
@@ -328,8 +328,8 @@ compareScatterplotSVD <- function(lFrame, lFrameControl, timestep=getMaxTimestep
 # Draw the scatterplot of the projection of the two first eigengenes, for both
 # the experiment and the control.
 {
-  matrixE <- scaling(centering(getFrameSlice(lFrame, timestep)));
-  matrixControl <- scaling(centering(getFrameSlice(lFrameControl, timestep)));
+  matrixE <- centering(getFrameSlice(lFrame, timestep));
+  matrixControl <- centering(getFrameSlice(lFrameControl, timestep));
   svdE <- svd(matrixE);
   svdControl <- svd(matrixControl);
   # Calulate the projection of the eigengenes ######### NEEDS FURTHER
