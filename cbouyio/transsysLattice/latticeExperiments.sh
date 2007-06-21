@@ -20,8 +20,8 @@ fi
 # Variable assignment.
 LATTICESIZE=$1
 TIMESTEPS=$2
-SAMPLINGINTERVALS=100
-UNI_RANGE=0:13
+SAMPLINGINTERVALS=$TIMESTEPS
+UNI_RANGE=0:14
 TPNAME=$3
 
 # Assign the sampling interval it it has been specified.

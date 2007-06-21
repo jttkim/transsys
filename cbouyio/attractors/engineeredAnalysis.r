@@ -2,54 +2,50 @@
 
 # $Id$
 
-generateTranssysProgram <- function(Da, Di, Pa, Pi, d, Ha, Hi, La, Li, Df1=0, Df2=0, fileName, ...)
+generateTranssysProgram <- function(Da, Db, Pa, Pb, d, Ha, Hb, La, Lb, Dfa=0, Dfb=0, fileName, ...)
 # Export a transsys program to the specified file.
-# Da, Di, Decay rates of activator, inhibitor (a, i).
-# Pa, Pi, control point coordinates.
-# d, threshold
-# Ha, Hi, high expression rate of a, i.
-# La, Li, low expression rate of a, i.
+# Da, Db, Decay rates of FactorA, FactorB.
+# Pa, Pb, Control point coordinates.
+# d, Control circle threshold.
+# Ha, Hb, high expression rate of FactorA, FactorB.
+# La, Lb, low expression rate of FactorA, FactorB.
 
 {
-  
   tp <- paste("transsys engineered
-
-# A transsys program designed to have a Low and a High equilibrium points.
-
 {
-  factor activator
+  factor FactorA
   {
     decay: ", Da, ";
-    diffusibility: ", Df1, ";
+    diffusibility: ", Dfa, ";
   }
 
-  factor inhibitor
+  factor FactorB
   {
-    decay: ", Di, ";
-    diffusibility: ", Df2, ";
+    decay: ", Db, ";
+    diffusibility: ", Dfb, ";
   }
 
-  gene activatorgene
-  {
-    promoter
-    {
-      constitutive: ", La, " + (", Ha, "  - ", La, " ) * ((activator - ", Pa, ") * (activator - ", Pa, ") + (inhibitor - ", Pi, ") * (inhibitor - ", Pi, ") <= ", d, " * ", d, ");
-    }
-    product
-    {
-      default: activator;
-    }
-  }
-
-  gene inhibitorgene
+  gene geneA
   {
     promoter
     {
-      constitutive: ", Li, " + (", Hi, "  - ", Li, " ) * ((activator - ", Pa, ") * (activator - ", Pa, ") + (inhibitor - ", Pi, ") * (inhibitor - ", Pi, ") <= ", d, " * ", d, ");
+      constitutive: ", La, " + (", Ha, "  - ", La, ") * ((FactorA - ", Pa, ") * (FactorA - ", Pa, ") + (FactorB - ", Pb, ") * (FactorB - ", Pb, ") <= ", d, " * ", d, ");
     }
     product
     {
-      default: inhibitor;
+      default: FactorA;
+    }
+  }
+
+  gene geneB
+  {
+    promoter
+    {
+      constitutive: ", Lb, " + (", Hb, "  - ", Lb, ") * ((FactorA - ", Pa, ") * (FactorA - ", Pa, ") + (FactorB - ", Pb, ") * (FactorB - ", Pb, ") <= ", d, " * ", d, ");
+    }
+    product
+    {
+      default: FactorB;
     }
   }
 }
@@ -59,18 +55,17 @@ generateTranssysProgram <- function(Da, Di, Pa, Pi, d, Ha, Hi, La, Li, Df1=0, Df
 }
 
 
-drawPhaseSpace <- function(Da, Di, Pa, Pi, d, Ha, Hi, La, Li, ...)
+drawPhaseSpace <- function(Da, Db, Pa, Pb, d, Ha, Hb, La, Lb, ...)
 {
-   a <- max(Ha/Da, Hi/Di, Pa+d, Pi+d);
+   a <- max(Ha/Da, Hb/Db, Pa+d, Pb+d);
    x <- c(0, a + 0.1*a);
    y <- c(0, a + 0.1*a);
-#  symbols(Pa, Pi, circles=d, inches=FALSE, xlim=x, ylim=y, xlab="Factor activator", ylab="Factor inhibitor");
-  plot(La/Da, Li/Di, pch=20, xlim=x, ylim=y, xlab="Factor A", ylab="Factor B", ...);
+  plot(La/Da, Lb/Db, pch=20, xlim=x, ylim=y, xlab="FactorA", ylab="FactorB", ...);
   abline(h=(y[1]:y[2]), v=(x[1]:x[2]), lty="dotted", col="lightgrey");
-  points(Pa, Pi, pch=20, col="green");
-  points(Ha/Da, Hi/Di, pch=20, col="red");
-  points(La/Da, Li/Di, pch=20, col="blue");
-  circle(Pa, Pi, d);
+  points(Pa, Pb, pch=20, col="green");
+  points(Ha/Da, Hb/Db, pch=20, col="red");
+  points(La/Da, Lb/Db, pch=20, col="blue");
+  circle(Pa, Pb, d);
 }
 
 
