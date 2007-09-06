@@ -58,13 +58,13 @@ generateTranssysProgram <- function(Da, Db, Pa, Pb, d, Ha, Hb, La, Lb, Dfa=0, Df
 drawPhaseSpace <- function(Da, Db, Pa, Pb, d, Ha, Hb, La, Lb, ...)
 {
    a <- max(Ha/Da, Hb/Db, Pa+d, Pb+d);
-   x <- c(0, a + 0.1*a);
-   y <- c(0, a + 0.1*a);
+   x <- c(0, a + 0.05*a);
+   y <- c(0, a + 0.05*a);
   plot(La/Da, Lb/Db, pch=20, xlim=x, ylim=y, xlab="FactorA", ylab="FactorB", ...);
   abline(h=(y[1]:y[2]), v=(x[1]:x[2]), lty="dotted", col="lightgrey");
-  points(Pa, Pb, pch=20, col="green");
-  points(Ha/Da, Hb/Db, pch=20, col="red");
-  points(La/Da, Lb/Db, pch=20, col="blue");
+  points(Pa, Pb, pch=19, col="green");
+  points(Ha/Da, Hb/Db, pch=19, col="red");
+  points(La/Da, Lb/Db, pch=19, col="blue");
   circle(Pa, Pb, d);
 }
 

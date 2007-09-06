@@ -205,7 +205,7 @@ spatialCorrelation <- function(mat)
   # Calculate the maximum Manhattan Distance.
   maxManhDistance <- sum(dim(mat) %/% 2);
   # The data structure of the correlation distribution.
-  spatialDist <- vector("list", maxManhDistance);
+  spatialDistribution <- vector("list", maxManhDistance);
   # Begin the calculations.
   for (x1 in 1:dim(mat)[1])
   {
@@ -218,20 +218,23 @@ spatialCorrelation <- function(mat)
           d <- getManhattanDistance(x1, y1, x2, y2, dim(mat)[1], dim(mat)[2]);
           if (d != 0)
           {
-            spatialDist[[d]] <- append(spatialDist[[d]], abs(mat[x1, y1] - mat[x2, y2]));
+# Needs to be corrected (to take the L1 distance between instances (and not
+# between factors....) therefore the input shoyld be the whole data frame and
+# not only a matrix of a specific factor concentration.
+            spatialDistribution[[d]] <- append(spatialDistribution[[d]], abs(mat[x1, y1] - mat[x2, y2]));
           }
         }
       }
     }
   }
-  return(spatialDist);
+  return(spatialDistribution);
 }
 
 
 barplotSP <- function(spatialDist, ...)
 # Plots the barplot of the spatial correlation means.
 {
-  # First calculate the mean (normalize) .
+  # First calculate the mean.
   for (i in 1:length(spatialDist))
   {
     spatialDist[[i]] <- mean(spatialDist[[i]]);
