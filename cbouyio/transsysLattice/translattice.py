@@ -238,11 +238,11 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
   @ivar name: The lattice name. Contains information of the type and the size
   of the structure.
   @type name: C{str}
-  @ivar lattice: A lattice containg a transsys programs in each cell.
+  @ivar lattice: A lattice containg a transsys instance in each cell.
   @type lattice: C{list} of C{list} of C{transsys.TranssysProgram} objects
   @ivar transsysProgram: The transsys program.
   @type transsysProgram: C{class 'transsys.TranssysProgram'}
-  @ivar size: The size of the lattice.
+  @ivar size: The dimensions of the lattice.
   @type size: C{tuple}
   @Ivar timestep: The timestep.
   @type timestep: C{int}
