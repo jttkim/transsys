@@ -61,7 +61,7 @@ def bimodalityTotal(dataFrame):
   data set/frame.
 
   The total bimodality score is the sum of the bimodality scores for all the
-  dimensions of the data frame.
+  data vectors of the data frame.
   @param dataFrame: A mutli-dimenstional data frame.
   @type dataFrame: C{list} of C{list}s
   @return: The total bimodality score of a data set/frame. (C{float})
