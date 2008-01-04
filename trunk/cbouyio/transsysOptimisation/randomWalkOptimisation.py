@@ -3,7 +3,7 @@
 # Subversion keywords.
 # $Rev::               $:  Revision of last commit
 # $Author::            $:  Author of last commit
-# $Date$:  Date of last commit
+# $Date: 2007-12-20 20:55:15 +0000 (Thu, 20 Dec 2007) $:  Date of last commit
 
 """Python module containing all the functionalities to conduct the optimisation
 experiments.
@@ -16,10 +16,8 @@ experiments.
 @contact: U{Costas Bouyioukos<mailto:konsb@cmp.uea.ac.uk>}
 @version: $Id$"""
 
-
 # Version Information.
 __version__ = "$Id$"
-
 
 import copy
 
@@ -27,40 +25,20 @@ import transsyslattice
 import bimodalities
 
 
-# Random object already implemeted in the transsysLattice module.
+# Random objects already implemeted in the transsysLattice module.
 
 
-# The perturbed transsys program object.
+def randomStep(transsysProgram, rndSeed):
+  """A function wich perturbs a transsys program by one random step.
 
-class PerturbTranssysProgram(transsys.TranssysProgram):
-  """A class to implement the transsys program random walk
-
-  Contains all the necessay methods to perform the transsys program
-  randomisation.
+  @param tp: the transsys program.
+  @type tp: C{class 'transsys.TranssysProgram'}
+  @param rndSeed: the random seed.
+  @type rndSeed: C{int}
   """
 
-  def __init__(self, tp, cycle, rndSeed=1);
-    """The constructor
 
-    @param tp: the transsys program.
-    @type tp: C{class 'transsys.TranssysProgram'}
-    @param cycle: the optimisation cycle.
-    @type cycle: C{int}
-    @param rndSeed: the random seed.
-    @type rndSeed: C{int}
-    """
-
-  def randomStep(self, tp, rndSeed):
-    """A function wich perturbs a transsys program by one random step.
-
-    @param tp: the transsys program.
-    @type tp: C{class 'transsys.TranssysProgram'}
-    @param rndSeed: the random seed.
-    @type rndSeed: C{int}
-    """
-
-
-def runTranssysLatticeExperiment(transsysProgram, latticeSize, timesteps,
+def transsysLatticeOptimisation(transsysProgram, latticeSize, timesteps,
     experiment, samplingInterval=timesteps):
   """A function to run the transsyslattice simulator.
 
@@ -68,13 +46,10 @@ def runTranssysLatticeExperiment(transsysProgram, latticeSize, timesteps,
   returns a transsyslattice.TranssysLatticeTimeseries object
   @param transsysProgram: A valid transsys program.
   @type transsysProgram: C{class 'transsys.TranssysProgram'}
-  @param latticeSize: A list denoting the dimensions of the lattice.
-  @type latticeSize: c{list} of C{int}
+  @param latticeSize: A 2n-tuple containing the dimensions of the lattice.
+  @type latticeSize: c{tuple} of 2 c{int}s
   @param timesteps: The number of timesteps for the lattice experiment.
   @type timesteps: C{int}
-  @param experiment: The type of experiment that we need to conduct, lattice
-  (with difussion) or the control.
-  @type experiment: C{logical}
   @param samplingInterval: The interval between sampling. It is the same with
   the number of timesteps because we need to keep only the final state of the
   simulator.

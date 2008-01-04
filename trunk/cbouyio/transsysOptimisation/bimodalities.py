@@ -1,4 +1,4 @@
-g#!/usr/bin/env python
+#!/usr/bin/env python
 
 # Subversion keywords.
 # $Rev::               $:  Revision of last commit
@@ -27,7 +27,7 @@ sum of bimodalities for a data table/frame.
 __version__ = "$Id$"
 
 
-import statlib
+from statlib import stats
 
 
 def bimodality(data, threshold):
@@ -39,9 +39,26 @@ def bimodality(data, threshold):
   @type data: C{list}
   @param threshold: A scalar variable.
   @type threshold: C{float}
-  @precondition: threshold should be an element of the data set.
+  @precondition: threshold should be an element of the list containing the data.
   @return: The bimodality (C{float})
   """
+  data.sort()
+  n = len(data)
+  # Check the existance of a threshold in the data list.
+  if threshold not in data :
+    raise StandardError, 'Specified threshold "%s" does not belong to the data. Cannot calculate bimodality' % str(threshold)
+  # Safeguard for the minimum and the maximum value!
+  if threshold == data[0] or threshold == data[n - 1] or threshold == data[n - 2] :
+    raise StandardError, 'Specified threshold is not suiteble for bimodality calculations. It is either the smallest, the bigest or the second bigest element of the data list.'
+  index = data.index(threshold) + 1
+  subset1 = data[index:]
+  subset2 = data[:index]
+  mu1 = stats.mean(subset1)
+  mu2 = stats.mean(subset2)
+  sigma1 = stats.stdev(subset1)
+  sigma2 = stats.stdev(subset2)
+  bimodality = float(abs(mu1 - mu2))/float(sigma1 + sigma2)
+  return bimodality
 
 
 def bimodalityScore(data):
