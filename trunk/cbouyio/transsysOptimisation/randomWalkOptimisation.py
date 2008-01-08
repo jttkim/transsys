@@ -21,7 +21,7 @@ __version__ = "$Id$"
 
 import copy
 
-import transsyslattice
+import translattice
 import bimodalities
 
 
@@ -38,8 +38,7 @@ def randomStep(transsysProgram, rndSeed):
   """
 
 
-def transsysLatticeOptimisation(transsysProgram, latticeSize, timesteps,
-    experiment, samplingInterval=timesteps):
+def transsysLatticeOptimisation(transsysProgram, latticeSize, timesteps, optimisationCycles):
   """A function to run the transsyslattice simulator.
 
   The function deals with the running of the transsys lattice experiment and
@@ -50,20 +49,19 @@ def transsysLatticeOptimisation(transsysProgram, latticeSize, timesteps,
   @type latticeSize: c{tuple} of 2 c{int}s
   @param timesteps: The number of timesteps for the lattice experiment.
   @type timesteps: C{int}
-  @param samplingInterval: The interval between sampling. It is the same with
-  the number of timesteps because we need to keep only the final state of the
-  simulator.
-  @type samplingInterval: C{int}
+  @param optimisationCycles: The number of optimisation cycles.
+  @type optimisationCycles: C{Int}
   @return: C{class 'transsyslattice.TranssysLatticeTimeseries'}
   """
 
 
 def calculateBimodality(transsysLatticeTimeseries):
-  """A function which wraps all the bimodality module functionalities and
-  calculates the total bimodality of a collection of transsys instances.
+  """A function which wraps all the bimodalities module functions and
+  calculate the total bimodality of a collection of transsys instances.
 
   Returns a scalar.
-  @param transsysLatticeTimeseries: A transsys lattice timeseries contains the
-  transsys lattice mulator's output.
+  @param transsysLatticeDataTable: A  C{class
+  'transsyslattice.TranssysLatticeTimeseries'} object. Contains the lattice
+  simulator's output.
   @type transsysLatticeTimeseries: C{class 'transsyslattice.TranssysLatticeTimeseries'}
   """

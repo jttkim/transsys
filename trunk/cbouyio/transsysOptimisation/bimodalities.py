@@ -42,27 +42,39 @@ def bimodality(data, threshold):
   @precondition: threshold should be an element of the list containing the data.
   @return: The bimodality (C{float})
   """
-  data.sort()
-  n = len(data)
-  # Check the existance of a threshold in the data list.
-  if threshold not in data :
-    raise StandardError, 'Specified threshold "%s" does not belong to the data. Cannot calculate bimodality' % str(threshold)
-  # Safeguard for the minimum and the maximum value!
-  if threshold == data[0] or threshold == data[n - 1] or threshold == data[n - 2] :
-    raise StandardError, 'Specified threshold is not suiteble for bimodality calculations. It is either the smallest, the bigest or the second bigest element of the data list.'
-  index = data.index(threshold) + 1
-  subset1 = data[index:]
-  subset2 = data[:index]
-  mu1 = stats.mean(subset1)
-  mu2 = stats.mean(subset2)
-  sigma1 = stats.stdev(subset1)
-  sigma2 = stats.stdev(subset2)
-  bimodality = float(abs(mu1 - mu2))/float(sigma1 + sigma2)
+  subset1 = []
+  subset2 = []
+  # Partition the data.
+  for e in data :
+    if e <= threshold :
+      subset1.append(e)
+    else :
+      subset2.append(e)
+  # Check for empty subsets.
+  if subset1 == [] or subset2 == [] :
+    return 0
+  mu1 = stats.lmean(subset1)
+  mu2 = stats.lmean(subset2)
+  # Treat special caseI: One of the subsets has only one element, then the
+  # standard deviation of the particular subset is set to zero.
+  if len(subset1) == 1 :
+    sigma1 = 0
+  else :
+    sigma1 = stats.lstdev(subset1)
+  if len(subset2) == 1 :
+    sigma2 = 0
+  else :
+    sigma2 = stats.lstdev(subset2)
+  # Treat special caseII: If the sum of standard deviations is zero, bimodality
+  # score is infinite.
+  if sigma1 + sigma2 == 0 :
+    return float('Inf')
+  bimodality = float(abs(mu1 - mu2)) / float(sigma1 + sigma2)
   return bimodality
 
 
 def bimodalityScore(data):
-  """Function to calculate the bimodality score (maximum bimodality) of a one
+  """Function to calculate the bimodality score (maximum bimodality) of an one
   dimensional data set.
 
   Bimodality score is defined as the maximum bimodality that a partition of the
@@ -71,9 +83,18 @@ def bimodalityScore(data):
   @type data: C{list}
   @return: The bimodality (C{float})
   """
+  if len(data) < 2 :
+    raise StandardError, 'Bimodality calculation does not make sense for such a small data set.'
+  bmScore = 0
+  for thres in set(data) :
+    # Actual calculation of the bimodality score.
+    bm = bimodality(data, thres)
+    if bm > bmScore :
+      bmScore = bm
+  return bmScore
 
 
-def bimodalityTotal(dataFrame):
+def totalBimodality(dataFrame):
   """Function to calculate the total bimodality score of a multi dimensional
   data set/frame.
 
@@ -83,4 +104,9 @@ def bimodalityTotal(dataFrame):
   @type dataFrame: C{list} of C{list}s
   @return: The total bimodality score of a data set/frame. (C{float})
   """
+  totalBM = 0
+  for data in dataFrame :
+    bm = bimodalityScore(data)
+    totalBM = totalBM + bm
+  return totalBM
 
