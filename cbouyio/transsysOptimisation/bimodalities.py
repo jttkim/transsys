@@ -3,7 +3,7 @@
 # Subversion keywords.
 # $Rev::               $:  Revision of last commit
 # $Author::            $:  Author of last commit
-# $Date$:  Date of last commit
+# $Date: 2008-01-08 15:44:39 +0000 (Tue, 08 Jan 2008) $:  Date of last commit
 
 """bimodalities.py
 
@@ -26,7 +26,8 @@ sum of bimodalities for a data table/frame.
 # Version Information.
 __version__ = "$Id$"
 
-
+import sys
+import math
 from statlib import stats
 
 
@@ -50,30 +51,21 @@ def bimodality(data, threshold):
       subset1.append(e)
     else :
       subset2.append(e)
-  # Check for empty subsets.
-  if subset1 == [] or subset2 == [] :
+  # Check the length of the subsets.
+  if len(subset1) <= 1 or len(subset2) <= 1 :
     return 0
   mu1 = stats.lmean(subset1)
   mu2 = stats.lmean(subset2)
-  # Treat special caseI: One of the subsets has only one element, then the
-  # standard deviation of the particular subset is set to zero.
-  if len(subset1) == 1 :
-    sigma1 = 0
-  else :
-    sigma1 = stats.lstdev(subset1)
-  if len(subset2) == 1 :
-    sigma2 = 0
-  else :
-    sigma2 = stats.lstdev(subset2)
-  # Treat special caseII: If the sum of standard deviations is zero, bimodality
-  # score is infinite.
-  if sigma1 + sigma2 == 0 :
-    return float('Inf')
+  sigma1 = stats.lstdev(subset1)
+  sigma2 = stats.lstdev(subset2)
+#  # Treat the special case of the sum of stdevs to be zero.
+#  if sigma1 + sigma2 == 0 :
+#    return 1e3000
   bimodality = float(abs(mu1 - mu2)) / float(sigma1 + sigma2)
   return bimodality
 
 
-def bimodalityScore(data):
+def bimodality_score(data):
   """Function to calculate the bimodality score (maximum bimodality) of an one
   dimensional data set.
 
@@ -83,7 +75,7 @@ def bimodalityScore(data):
   @type data: C{list}
   @return: The bimodality (C{float})
   """
-  if len(data) < 2 :
+  if len(data) < 4 :
     raise StandardError, 'Bimodality calculation does not make sense for such a small data set.'
   bmScore = 0
   for thres in set(data) :
@@ -94,7 +86,7 @@ def bimodalityScore(data):
   return bmScore
 
 
-def totalBimodality(dataFrame):
+def total_bimodality(dataFrame):
   """Function to calculate the total bimodality score of a multi dimensional
   data set/frame.
 
@@ -106,7 +98,7 @@ def totalBimodality(dataFrame):
   """
   totalBM = 0
   for data in dataFrame :
-    bm = bimodalityScore(data)
+    bm = bimodality_score(data)
     totalBM = totalBM + bm
   return totalBM
 
