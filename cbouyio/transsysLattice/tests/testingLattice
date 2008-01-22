@@ -236,7 +236,8 @@ fi
 # check whether or not the random seed produces different numbers.
 # Run with the default random seed (1) then with a different one (2) and then
 # without random seed (get the date), in all cases the outfiles should be
-# different (last test hasn't yet implemented 23/01/2007).
+# different (last test (test without a random seed) hasn't yet implemented
+# at 23/01/2007).
 if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u 0:1 randomSeedTest.tra randomSeed_1_TMP.out || ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u 0:1 -r 2 randomSeedTest.tra randomSeed_2_TMP.out
 then
   exit $?
@@ -253,6 +254,52 @@ else
 #    let failure++
   else
     echo "test No 8: random number generator test: successful!"
+#    let success++
+  let notests++
+  fi
+fi
+
+
+# test no 9: The random uniform test.
+# A two genes two factors transsys program (the same for all the lattice
+# initialisation tests) runs with a user specified random uniform initial values
+# form the range of [0, 1).
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u 0:1 initialisationTest.tra initUniformTMP.out
+then
+  exit $?
+else
+  if ! diff initUniformOut.expect initUniformTMP.out ;
+  then
+    echo "uniform initalisation test: failed...((("
+    echo "files initUniformOut.expect initUniformTMP.out differ!"
+    rm *TMP.out
+    exit $?
+#    let failure++
+  else
+    echo 'test No 9: uniform lattice initialisation test: successful!'
+#    let success++
+  let notests++
+  fi
+fi
+
+
+# test no 10: The random uniform test.
+# A two genes two factors transsys program (the same for all the lattice
+# initialisation tests) runs with a user specified random uniform initial values
+# form the range of [0, 1).
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -b 10:1 initialisationTest.tra initGaussianTMP.out
+then
+  exit $?
+else
+  if ! diff initGaussianOut.expect initGaussianTMP.out ;
+  then
+    echo "gaussian initalisation test: failed...((("
+    echo "files initGaussianOut.expect initGaussianTMP.out differ!"
+    rm *TMP.out
+    exit $?
+#    let failure++
+  else
+    echo 'test No 10: uniform lattice initialisation test: successful!'
 #    let success++
   let notests++
   fi

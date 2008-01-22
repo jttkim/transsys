@@ -145,7 +145,12 @@ initFactorDict   = None  # Factor concentration dictonary of the signal at the
                          # initial timestep. (-s)
 signalTimestep   = None  # "signal" introduction at timestep.(-x)
 animation        = False # Animation switch.(-a)
-borderRange      = None  # Border range of the uniform distribution.(-u)
+unifRange        = None  # Border range (lower, upper) of the random uniform
+                         # initialisation of the lattice factor concentrations.
+                         # (-u)
+gaussVariables   = None  # Variables (mean, standard deviation) of the gaussian
+                         # random initialisation of the lattice factor
+                         # concentration values. (-b)
 summaryFile      = None  # Filename of the summary statistics file.(-p)
 pgmDir           = None  # pgm production framework directory.(-g)
 pgmFactor        = None  # Factor name that will be used for the imaging.(-c)
@@ -154,7 +159,7 @@ pickleFile       = None  # Pickle file name (-q).
 
 
 ## Command line parsing.
-optlist, args = getopt.getopt(sys.argv[1:], 'ac:d:fg:hm:n:p:q:r:s:t:u:x:', ['help', 'factors'])
+optlist, args = getopt.getopt(sys.argv[1:], 'ab:c:d:fg:hm:n:p:q:r:s:t:u:x:', ['help', 'factors'])
 
 for opt, par in optlist :
   if opt in ('-h', '--help') :
@@ -191,7 +196,14 @@ for opt, par in optlist :
       raise StandardError, 'Error in the format of -u input options, please check the help (-h, --help) for more information.'
     if float(var[0]) < 0 or float(var[1]) < 0 :
       raise StandardError, 'Factor concentrations can take only positive values, please specify a non-negative range.'
-    borderRange = (float(var[0]), float(var[1]))
+    unifRange = (float(var[0]), float(var[1]))
+  if opt in ('-b') :
+    var = par.split(':')
+    if len(var) != 2 :
+      raise StandardError, 'Error in the format of gaussian distribution parameter parsing (-b option), they should be separated by a colon (:) and the second parameter (stddev) should always be positive. Please check the help (-h, --help) for more information.'
+    if float(var[1]) < 0 :
+      raise StandardError, 'Standard deviation can only take positive values.'
+    gaussVariables = (float(var[0]), float(var[1]))
   if opt in ('-g') :
     pgmDir = par
   if opt in ('-f', '--factors'):
@@ -226,6 +238,8 @@ if not transsysFactors :
     raise StandardError, '-n option mandatory. Specify a size for the lattice or give -h, --help for more information.'
   if noTimesteps is None :
     raise StandardError, '-t option mandatory. Specify number of timesteps or give -h, --help for more information.'
+  if unifRange and gaussVariables :
+    raise StandardError, 'Initialisation of the lattice can only take values from either uniform of Gauss distribution but not from both.'
   if pgmDir :
     if maxConcentration is None :
       raise StandardError, '-m option mising, mandatory for the .pgm image file production. Specify maximum concentration or give -h, --help for more information.'
@@ -279,9 +293,13 @@ if transsysFactors :
 # Instantiate the lattice of transsys programs.
 transInstanceLattice = translattice.TranssysInstanceLattice(transsysProgram, latticeSize)
 
-# Initialise (or not) the factor concentrations on the lattice.
-if borderRange :
-  transInstanceLattice.initialise_lattice_concentrations(borderRange[0], borderRange[1], randomSeed)
+# Initialise the factor concentrations on the lattice.
+if unifRange :
+  rndObj = translattice.UniformRNG(randomSeed, unifRange[0], unifRange[1])
+  transInstanceLattice.initialise_lattice(rndObj)
+elif gaussVariables :
+  rndObj = translattice.GaussianRNG(randomSeed, gaussVariables[0], gaussVariables[1])
+  transInstanceLattice.initialise_lattice(rndObj)
 
 # Introduce a signal by specifing a factor and the desired concentration.
 if initFactorDict :
