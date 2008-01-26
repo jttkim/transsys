@@ -20,7 +20,6 @@ experiments.
 __version__ = "$Id: randomWalkOptimisation.py 275 2008-01-08 15:44:39Z cbouyio $"
 
 import copy
-#import cPickle
 
 import transsys
 import translattice
@@ -28,6 +27,12 @@ import bimodalities
 
 # Random objects already implemeted in the transsysLattice module.
 
+
+class TranssysProgramOprtimised(transsys.TranssysProgram):
+  """Sybclass of transsys program to curry out optimisation needs
+  """
+#  def __init__(self) :
+  pass
 
 
 def get_opt_list(transsysProgram):
@@ -47,18 +52,22 @@ def get_opt_list(transsysProgram):
 
 
 
-def random_step(transsysProgram, rndObj):
-  """Perturb "on the fly" a transsys program by a random step.
+def perturb_transsys(transsysProgram, perturbObj):
+  """Return a perturbed transsys program.
 
+  Perturbation refers to multiply by arandom generated value the constant
+  expresssion values of a transsys program.
   @param transsysProgram: A transsys program instance.
   @type transsysProgram: C{class 'transsys.TranssysProgram'}
-  @param rndObj: A random object.
-  @type rndObj: C{class 'random.Random'}
+  @param perturbObj: A random object.
+  @type perturbObj: C{class 'random.Random'}
   """
-  # Then strat the perturbations.
-  for geneValues in get_opt_list(transsysProgram) :
+  # First copy the transsys program.
+  perturbedTP = copy.deepcopy(transsysProgram)
+  for geneValues in get_opt_list(perturbedTP) :
     for exprValue in geneValues :
-      exprValue.value = exprValue.value*rndObj.random_value(0, 2.001)
+      exprValue.value = exprValue.value + exprValue.value*perturbObj.random_value()
+  return perturbedTP
 
 
 
@@ -81,6 +90,8 @@ def expression_table(transsysLattice):
   @return: A factor x instances factor concentration table.
   @rtype; C{list} of {list}s of {float}s
   """
+  if not isinstance(transsysLattice, translattice.TranssysInstanceLattice) :
+    raise StandardError, 'Error  in expression_table(), called object is not a transsys lattice.'
   exprTable = []
   for f in xrange(transsysLattice.transsysProgram.num_factors()):
     exprTable.append([])
@@ -100,8 +111,9 @@ def run_lattice(transsysProgram, latticeSize, timesteps, unifBorders, rndSeed):
   # Set the transsys program to a local variable tp) to protect it from
   # transforming the diffusion.
   transLat = translattice.TranssysInstanceLattice(transsysProgram, latticeSize, timesteps)
-  transLat.initialise_lattice_concentrations(unifBorders[0], unifBorders[1], rndSeed)
-  transsys.clib.srandom(rndSeed)
+  rndObj = translattice.UniformRNG(rndSeed, unifBorders[0], unifBorders[1])
+  transLat.initialise_lattice(rndObj)
+  transsys.clib.srandom(rndObj.rndSeed)
   transTS = translattice.TranssysLatticeTimeseries(transLat, timesteps, timesteps)
   lattice = transTS.latticeTimeseries.pop()
   expressionTable = expression_table(lattice)
@@ -124,8 +136,26 @@ def calculate_bimodality(expressionTable):
   return bimodalities.total_bimodality(expressionTable)
 
 
+def calculate_objective(tp, latticeSize, timesteps, unifBorders, rndSeed):
+  """A wrapper function which conducts the optimisation objective calculation.
 
-def transsys_lattice_optimisation(transsysProgram, latticeSize, timesteps, unifBorders, rndSeed, optimisationCycles):
+  @param
+  @type
+  """
+  # The lattice experiment.
+  exprTableLattice = run_lattice(tp, latticeSize, timesteps, unifBorders, rndSeed)
+  bmScoreLattice = calculate_bimodality(exprTableLattice)
+  # The control.
+  tpZero = copy.deepcopy(tp)
+  zero_transsys_diffusibility(tpZero)
+  exprTableControl = run_lattice(tpZero, latticeSize, timesteps, unifBorders, rndSeed)
+  bmScoreControl = calculate_bimodality(exprTableControl)
+  objective = bmScoreLattice - bmScoreControl
+  return objective
+
+
+
+def transsys_lattice_optimisation(transsysProgram, latticeSize, timesteps, unifBorders, rndSeed, perturbBorders, optimisationCycles):
   """Conduct the optimisation experiment.
 
   The function implements all the necessary steps to run a complete optimisation
@@ -141,50 +171,26 @@ def transsys_lattice_optimisation(transsysProgram, latticeSize, timesteps, unifB
   @type unifBorders: a 2n-C{'tuple'} of C{'float'}
   @param rndSeed: The random number generator seed.
   @type rndSeed: C{'int'}
+  @param perturbBorders:
+  @type perturbBorders:
   @param optimisationCycles: The number of optimisation cycles.
   @type optimisationCycles: C{'int'}
   @return: An "optimised" transsys program
   @rtype: C{class 'transsys.TranssysProgram'}
   """
-  outputList = []
-  # First set the random object.
-  rndObj = translattice.UniformRNG(rndSeed)
-  # Then calcullate the initial transsys program optimisation objective.
-  # Run the lattice experiment.
-  exprTableLattice = run_lattice(transsysProgram, latticeSize, timesteps, unifBorders, rndSeed)
-  bmScoreLattice = calculate_bimodality(exprTableLattice)
-  # Then the control.
-  tpControl = copy.deepcopy(transsysProgram)
-  zero_transsys_diffusibility(tpControl)
-  exprTableControl = run_lattice(tpControl, latticeSize, timesteps, unifBorders, rndSeed)
-  bmScoreControl = calculate_bimodality(exprTableControl)
-  optimisationObjective = bmScoreLattice - bmScoreControl
-  optimisationDict = {}
-  walk = True
+  # Set the perturbation object.
+  perturbObj = translattice.UniformRNG(rndSeed, perturbBorders[0], perturbBorders[1])
+  # Calcullate the initial transsys program optimisation objective.
+  optimisationObjective = calculate_objective(transsysProgram, latticeSize, timesteps, unifBorders, rndSeed)
+  bestTP = transsysProgram
+  outputList = [(0, optimisationObjective, optimisationObjective, bestTP, bestTP, [expr.value for expr in bestTP.getGeneValueNodes()], [expr.value for expr in bestTP.getGeneValueNodes()])]
   for cycle in xrange(optimisationCycles) :
-    # This condition implements the random local search instead of a pure random
-    # walk.
-    if walk :
-      random_step(transsysProgram, rndObj)
-      tpCopy = copy.deepcopy(transsysProgram)
-    else :
-      random_step(tpCopy, rndObj)
-    # The lattice experiment.
-    exprTableLattice = run_lattice(tpCopy, latticeSize, timesteps, unifBorders, rndSeed)
-    bmScoreLattice = calculate_bimodality(exprTableLattice)
-    # The control.
-    tpControl = copy.deepcopy(tpCopy)
-    zero_transsys_diffusibility(tpControl)
-    exprTableControl = run_lattice(tpControl, latticeSize, timesteps, unifBorders, rndSeed)
-    bmScoreControl = calculate_bimodality(exprTableControl)
-    oo = bmScoreLattice - bmScoreControl
-    # Actual optimisation procedure.
+    alternativeTP = perturb_transsys(bestTP, perturbObj)
+    oo = calculate_objective(alternativeTP, latticeSize, timesteps, unifBorders, rndSeed)
     if oo > optimisationObjective :
       optimisationObjective = oo
-      walk = False
-    else :
-      walk = True
-#    print cycle + 1, optimisationObjective, oo
-    outputList.append((optimisationObjective, oo, tpCopy))
+      bestTP = alternativeTP
+    outputList.append((cycle + 1, optimisationObjective, oo, bestTP, alternativeTP, [expr.value for expr in bestTP.getGeneValueNodes()], [expr.value for expr in alternativeTP.getGeneValueNodes()]))
+  print bestTP
   return outputList
 
