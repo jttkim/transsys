@@ -43,11 +43,13 @@ import transsys
 
 
 
+
 class RandomObject(object):
   """Empty superclass where all the random number generators will subclass
   from.
   """
   pass
+
 
 class GaussianRNG(RandomObject):
   """Class of random objects out of a Gaussian distribution.
@@ -85,6 +87,7 @@ class GaussianRNG(RandomObject):
     self.sigma = sigma
     self.rndSeed = rndseed
 
+
   def random_value(self):
     """Common method among all xxxxRNG classes.
 
@@ -111,7 +114,6 @@ class UniformRNG(RandomObject):
   @type upper: C{'float'}
   @ivar rndSeed: The random seed of the random number generator.
   @type rndSeed: C{'int'}
-
   """
   def __init__(self, rndseed, lowerB, upperB):
     """Constructor of the class.
