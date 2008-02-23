@@ -28,7 +28,7 @@ __version__ = "$Id$"
 
 import sys
 import math
-from statlib import stats
+import statlib.stats
 
 
 def bimodality(data, threshold):
@@ -54,10 +54,10 @@ def bimodality(data, threshold):
   # Check the length of the subsets.
   if len(subset1) <= 1 or len(subset2) <= 1 :
     return 0
-  mu1 = stats.lmean(subset1)
-  mu2 = stats.lmean(subset2)
-  sigma1 = stats.lstdev(subset1)
-  sigma2 = stats.lstdev(subset2)
+  mu1 = statlib.stats.lmean(subset1)
+  mu2 = statlib.stats.lmean(subset2)
+  sigma1 = statlib.stats.lstdev(subset1)
+  sigma2 = statlib.stats.lstdev(subset2)
 #  # Treat the special case of the sum of stdevs to be zero.
 #  if sigma1 + sigma2 == 0 :
 #    return 1e3000
