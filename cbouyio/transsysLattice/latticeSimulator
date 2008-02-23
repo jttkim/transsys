@@ -18,7 +18,7 @@ latticeSimulator: Implement the simulation procedures on a lattice.
 """
 
 # Version Information.
-__version__ = "$Id$"
+__version__ = '$Id$'
 
 
 # latticeSimulator: A program that simulates a lattice of trannsys instances
@@ -32,106 +32,53 @@ __version__ = "$Id$"
 
 import getopt
 import sys
-import os
-import os.path
-import shutil
 import re
 
 import transsys.clib
 import translattice
 import transsys
 
-
 def usage() :
   print """Usage:
 ./latticeSimulator [options] arguments
   Options:
-           -a: switch          Animation switch.
-                               (Can be set only if -g has been specified.)
-           -c: String          Specify the imaging factor.
-                               (Mandatory if the -g has been specified.)
-           -d: Integer         Sampling interval.
+           -g: Number:Number   The gaussian distribution variables (mean,
+                               stddev) for the initialisation of the factors.
+                               (should be of the form 'number:number')
+           -d: Integer         Sampling interval. (integer)
                                (default: 1)
 -f, --factors: switch          Print the factors' names and exit.
-           -g: String          The .pgm framework switcher.
-                               If it is set the .pgm production procedure will
-                               be called and a specified directory will be
-                               produced, containing all the image files.
    -h, --help:                 Prints this screen and exit.
-           -m: Float           A maximum value of factor concentration that
-                               will be represented at the .pgm image file.
-                               (Mandatory if -g has been specified.)
-                               The image color range is 0-256 gradients of grey.
-           -n: IntegerxInteger The size of the nxm lattice.
-                               (Mandatory parameter)
+           -n: IntegerxInteger The size (width, heght) of the lattice, is
+                               mandatory parameter. (should be of the form
+                               'integer x integer')
            -p: String          Print in the specified file the summary
-                               statistics of the simulation.
+                               statistics of the simulation. (string)
                                (Default: Print the factor table in the outfile)
            -q: String          Print in the specified file the pickle output of
-                               the simulation (The Lattice Timeseries Object).
-           -r: Integer         The random number generator seed.
+                               the simulation. (string)
+           -r: Integer         The random number generator seed. (integer)
                                (Default: 1)
-           -s  String          Witespace separated list of initial factor
-                               concentrations. Elements of list are colon
-                               separated values of the form String:Number.
-                               ("FactorName:FactorConcentration").
-           -t: Integer         The number of timesteps.
+           -s  String          Initalise factor concentrations parameter. The
+                               initial rfactor concentration value is specified
+                               from the user. (the format of the parameter
+                               should be a whitespace separated strings of
+                               elements in which each element specifies the
+                               factor and its initial concentration in a
+                               'name:concentration' format.)
+           -t: Integer         The number of timesteps. (integer)
                                (Mandatory parameter)
            -u: Number:Number   The range (a, b) of the borders of a uniform
-                               distribution (numeric).
-           -x: Number:Integer  Signal switch, (FactorConcentration:Timestep)
-                               All factors will get the defined concentration at
-                               the defined timestep (float:integer).
+                               distribution (should be in the format
+                               'number:number').
+           -x: Number:Integer  Timestep signal switch,
+                               (FactorConcentration:Timestep) All factors will
+                               get the defined concentration at the defined
+                               timestep (float:integer).
   Arguments:
-     <infile>: A valid transsys program (.tra) file. (<STDIN> if not specified)
-    <outfile>: An output file. (<STDOUT> if not specified)
+     <infile>: A file containing transsys program(s) (.tra) file or <STDIN> if not specified
+    <outfile>: An output file or <STDOUT> if not specified)
     """
-
-
-def os_manipulation(dir_name) :
-  """
-  Conduct directory checking and manipulation.
-  """
-  # First check for the existance of the directory.
-  if os.path.exists(dir_name) :
-    shutil.rmtree(dir_name)
-  # Make a directory named .s user define and change to it.
-  os.mkdir(dir_name)
-  os.chdir(dir_name)
-
-
-def pgm_framework(pgmDir, pgmFactor, maxConcentration, transLatticeTimeseries) :
-  """
-  Function to integrate the .pgm file production.
-  """
-  # Image file production and directory manipulation.
-  # Use the os module to make a directory where all the image files will be
-  # stored.
-  os_manipulation(pgmDir)
-  # Image file production.
-  for i in xrange(len(transLatticeTimeseries)) :
-  # Open the graphics file.
-    filename = 'factor_%s_timestep%04d' % (pgmFactor, i) + '.pgm'
-    figureFile = open(filename, 'w')
-    # Produce the raster graphics files.
-    translattice.generate_pgm(figureFile, transLatticeTimeseries[i], pgmFactor, maxConcentration)
-    figureFile.close()
-  # Return to the current directory.
-  os.chdir(os.pardir)
-
-
-def animate(pgmDir, pgmFactor) :
-  """
-  Produces the animated movie of the simulator.
-  """
-  # Change to the image directory.
-  os.chdir(pgmDir)
-  # Convert the images to a more readable size and produce the movie file.
-  os.system('convert -sample 480x480 -delay 35 *.pgm ' + 'factor_%s_movie.mng' % pgmFactor)
-  # Animate.
-  os.system('animate *.mng &')
-  # Return to the current directory.
-  os.chdir(os.pardir)
 
 
 
@@ -140,11 +87,9 @@ latticeSize      = None  # Dimension of the lattice.(-n ixj)
 noTimesteps      = None  # Number of simulation timesteps.(-t)
 randomSeed       = 1     # Random number generator seed.(-r)
 samplingInterval = 1     # The sampling interval. (-d)
-maxConcentration = None  # Maximum concentration allowed to be drawn.(-m)
-initFactorDict   = None  # Factor concentration dictonary of the signal at the
+initialFactorDict= None  # Factor concentration dictonary of the signal at the
                          # initial timestep. (-s)
 signalTimestep   = None  # "signal" introduction at timestep.(-x)
-animation        = False # Animation switch.(-a)
 unifRange        = None  # Border range (lower, upper) of the random uniform
                          # initialisation of the lattice factor concentrations.
                          # (-u)
@@ -152,14 +97,12 @@ gaussVariables   = None  # Variables (mean, standard deviation) of the gaussian
                          # random initialisation of the lattice factor
                          # concentration values. (-b)
 summaryFile      = None  # Filename of the summary statistics file.(-p)
-pgmDir           = None  # pgm production framework directory.(-g)
-pgmFactor        = None  # Factor name that will be used for the imaging.(-c)
 transsysFactors  = False # Factor names switch.(-f, --factors) 
 pickleFile       = None  # Pickle file name (-q).
 
 
 ## Command line parsing.
-optlist, args = getopt.getopt(sys.argv[1:], 'ab:c:d:fg:hm:n:p:q:r:s:t:u:x:', ['help', 'factors'])
+optlist, args = getopt.getopt(sys.argv[1:], 'd:fg:hn:p:q:r:s:t:u:x:', ['help', 'factors'])
 
 for opt, par in optlist :
   if opt in ('-h', '--help') :
@@ -167,65 +110,46 @@ for opt, par in optlist :
     print __version__
     sys.exit()
   if opt in ('-n') :
-    x = re.compile('x')
-    if x.search(par) :
-      latticeSize = x.split(par)
-      latticeSize = map(lambda x:int(x), latticeSize)
+    if len(par.split('x')) == 2 :
+      ls = par.split('x')
+      latticeSize = translattice.LatticeSize(int(ls[0]), int(ls[1]))
     else :
       raise StandardError, 'Error in the format of -n input options, please check the help (-h, --help) for more information'
-    latticeSize = tuple(latticeSize)
   if opt in ('-t') :
     noTimesteps = int(par)
   if opt in ('-r') :
     randomSeed = int(par)
-  if opt in ('-m') :
-    maxConcentration = float(par)
   if opt in ('-x') :
-    var = par.split(':')
-    if len(var) != 2 :
+    if len(par.split(':')) == 2 :
+      signalTimestep = translattice.SignalTimestep(float(par.split(':')[0]), int(par.split(':')[1]))
+    else :
       raise StandardError, 'Error in the format of -x input options, please check the help (-h, --help) for more information.'
-    if float(var[0]) :
-      signalTimestep = (float(var[0]), int(var[1]))
-  if opt in ('-a') :
-    animation = True
   if opt in ('-p') :
     summaryFile = par
   if opt in ('-u') :
-    var = par.split(':')
-    if len(var) != 2 :
+    if len(par.split(':')) == 2 :
+      unifRange = translattice.UniformParameters(float(par.split(':')[0]), float(par.split(':')[1]))
+    else :
       raise StandardError, 'Error in the format of -u input options, please check the help (-h, --help) for more information.'
-    if float(var[0]) < 0 or float(var[1]) < 0 :
-      raise StandardError, 'Factor concentrations can take only positive values, please specify a non-negative range.'
-    unifRange = (float(var[0]), float(var[1]))
-  if opt in ('-b') :
-    var = par.split(':')
-    if len(var) != 2 :
-      raise StandardError, 'Error in the format of gaussian distribution parameter parsing (-b option), they should be separated by a colon (:) and the second parameter (stddev) should always be positive. Please check the help (-h, --help) for more information.'
-    if float(var[1]) < 0 :
-      raise StandardError, 'Standard deviation can only take positive values.'
-    gaussVariables = (float(var[0]), float(var[1]))
   if opt in ('-g') :
-    pgmDir = par
+    if len(par.split(':')) == 2 :
+      gaussVariables = translattice.GaussianParameters(float(par.split(':')[0]), float(par.split(':')[1]))
+    else :
+      raise StandardError, 'Error in the format of gaussian distribution parameter parsing (-b option), they should be separated by a colon (:) and the second parameter (stddev) should always be positive. Please check the help (-h, --help) for more information.'
   if opt in ('-f', '--factors'):
     transsysFactors = True
-  if opt in ('-c') :
-    pgmFactor = par
   if opt in ("-q") :
     pickleFile = par
   if opt in ("-d") :
     samplingInterval = int(par)
   if opt in ("-s") :
-    if par.split(' ') :
-      fList = par.split(' ')
-      initFactorDict = {}
-      for el in fList :
-        if el.split(':') :
-          initFactorDict[el.split(':')[0]] = el.split(':')[1]
-        else :
-          raise StandardError, "Error in initial factor concentrations parsing. Check the syntax of the -s option or give -h,--help for more info."
-    else :
-      raise StandardError, "Error in initial factor concentrations parsing. Check the syntax of the -s option or give -h,--help for more info."
-
+    fList = par.split(' ')
+    initialFactorDict = {}
+    for el in fList :
+      if len(el.split(':')) == 2 :
+        initialFactorDict[el.split(':')[0]] = float(el.split(':')[1])
+      else :
+        raise StandardError, "Error in initial factor concentrations parsing. Check the syntax of the -s option or give -h,--help for more info."
 
 
 #print optlist
@@ -240,17 +164,10 @@ if not transsysFactors :
     raise StandardError, '-t option mandatory. Specify number of timesteps or give -h, --help for more information.'
   if unifRange and gaussVariables :
     raise StandardError, 'Initialisation of the lattice can only take values from either uniform of Gauss distribution but not from both.'
-  if pgmDir :
-    if maxConcentration is None :
-      raise StandardError, '-m option mising, mandatory for the .pgm image file production. Specify maximum concentration or give -h, --help for more information.'
-    if not pgmFactor :
-      raise StandardError, '-c option mising, mandatory for the .pgm image file production. Specify a factor for imaging or give -h, --help for more information.'
-  if animation :
-    if not pgmDir :
-      raise StandardError, '-g option mising, mandatory for the animation. Specify the .pgm files directory or give -h, --help for more information.'
 else :
   if len(optlist) > 1 :
     raise StandardError, '--factors option only for printing factors, cannot used for a proper program running.'
+
 
 
 ## I/O manipulation.
@@ -276,14 +193,10 @@ if infile is not sys.stdin :
   infile.close()
 
 # Print the transsys factors names (if asked).
-if pgmFactor :
-  if pgmFactor not in transsysProgram.factor_names() :
-    raise StandardError, 'Factor %s does not belong to transsys program please choose one from the list: %s' % (pgmFactor, transsysProgram.factor_names())
 if transsysFactors :
   for factorName in transsysProgram.factor_names() :
     outfile.write('%s\n' % factorName)
   sys.exit()
-
 
 
 ############################
@@ -295,15 +208,15 @@ transInstanceLattice = translattice.TranssysInstanceLattice(transsysProgram, lat
 
 # Initialise the factor concentrations on the lattice.
 if unifRange :
-  rndObj = translattice.UniformRNG(randomSeed, unifRange[0], unifRange[1])
-  transInstanceLattice.initialise_lattice(rndObj)
+  rndObj = translattice.UniformRNG(randomSeed, unifRange.lower, unifRange.upper)
+  transInstanceLattice.perturb_lattice(rndObj)
 elif gaussVariables :
-  rndObj = translattice.GaussianRNG(randomSeed, gaussVariables[0], gaussVariables[1])
-  transInstanceLattice.initialise_lattice(rndObj)
+  rndObj = translattice.GaussianRNG(randomSeed, gaussVariables.mean, gaussVariables.stddev)
+  transInstanceLattice.perturb_lattice(rndObj)
 
 # Introduce a signal by specifing a factor and the desired concentration.
-if initFactorDict :
-  transInstanceLattice.signal_factor_concentration(initFactorDict)
+if initialFactorDict :
+  transInstanceLattice.signal_factor_concentration(initialFactorDict)
 
 # Produce the timeseries.
 # Before each invocation set the clib random seed.
@@ -313,29 +226,20 @@ transsysLatticeTimeseries = translattice.TranssysLatticeTimeseries(transInstance
 # Print the factor table to the output file.
 # First write the comments and the header.
 transInstanceLattice.write_table_header(outfile, randomSeed)
-
 # Then write the whole stuff.
 transsysLatticeTimeseries.write_factor_table(outfile)
 
 # Print the summary statistics to a user specified file.
 if summaryFile :
-  fileObj = open(summaryFile, "w")
+  fileObj = open(summaryFile, 'w')
   translattice.print_summary_statistics(transsysLatticeTimeseries.latticeTimeseries, fileObj)
   fileObj.close()
 
-# The image files production framework.
-if pgmDir :
-  pgm_framework(pgmDir, pgmFactor, maxConcentration, transsysLatticeTimeseries.latticeTimeseries)
-
 # Export the pickle file
 if pickleFile :
-  pickleFileObj = open(pickleFile, "w")
+  pickleFileObj = open(pickleFile, 'w')
   pickleFileObj.write(translattice.pickle(transInstanceLattice))
   pickleFileObj.close()
-
-# Image file conversion and animation.
-if animation :
-  animate(pgmDir, pgmFactor)
 
 # Close output file and exit.
 if outfile is not sys.stdout :

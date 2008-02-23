@@ -44,14 +44,15 @@ import transsys
 
 
 
-class RandomObject(object):
-  """Empty superclass where all the random number generators will subclass
-  from.
+class RandomObject(object) :
+  """Empty superclass where all the random number generators' classes rae
+  subclassing from.
+
   """
   pass
 
 
-class GaussianRNG(RandomObject):
+class GaussianRNG(RandomObject) :
   """Class of random objects out of a Gaussian distribution.
 
   By calling the random.gauss method, produce a "random" number out of a
@@ -65,7 +66,7 @@ class GaussianRNG(RandomObject):
   @ivar sigma: The standard deviation of the Gaussian distribution.
   @type sigma: C{float} or C{int}
   @ivar rndSeed: The random seed of the random number generator.
-  @type rndSeed: C{'int'}
+  @type rndSeed: C{int}
   """
 
   def __init__(self, rndseed, mu, sigma):
@@ -109,11 +110,11 @@ class UniformRNG(RandomObject):
   random.Random() method of Python's random module.
   @type rng: C{class 'random.Random'}
   @ivar lower: the lower bound for the uniform distribution.
-  @type lower: C{'float'}
+  @type lower: C{int} or C{float}
   @ivar upper: The upper bound for the uniform distribution.
-  @type upper: C{'float'}
+  @type upper: C{int} or C{float}
   @ivar rndSeed: The random seed of the random number generator.
-  @type rndSeed: C{'int'}
+  @type rndSeed: C{int}
   """
   def __init__(self, rndseed, lowerB, upperB):
     """Constructor of the class.
@@ -160,8 +161,8 @@ class ConstantRNG(RandomObject):
 
     The only instance variable is the constant value.
 
-    @param constValue: A arbitarily chosen number.
-    @type constValue: C{float} or C{int}
+    @param constValue: An arbitarily chosen number.
+    @type constValue: Numeric
     """
     self.constValue = constValue
 
@@ -175,8 +176,223 @@ class ConstantRNG(RandomObject):
 
 
 
+class FactorValueParameter(object) :
+  """Class to represent a factor-value pair parameter.
+
+  Usually this parameter is implemented as a
+  <factor_name>:<factor_concentration> pair.
+  @ivar factorName: A transsys factor name.
+  @type factorName: C{string} as unresolved
+  @ivar concentration: The factor's concentration value.
+  @type concentration: Numeric
+  """
+
+  def __init__(self, factorName, concentration) :
+    """The constructor of the class
+
+    """
+    if not isinstance(factorName, str) :
+      raise StandardError, "Error in parameter settings. Factor name should always be a string."
+    self.factorName = factorName
+    self.concentration = concentration
+
+
+
+class TwoValueParameter(object) :
+  """Superclass to represent a two value parameter.
+
+  This kind of parameters are used to designate perturbation ranges of the
+  simulator. Untill now are used to specify the parameter of the random number
+  generation distributions. For Gaussian distributions the parameters are the
+  mean and the stddev and for uniform distributions are the low and upper
+  borders. Also objects of this class are representing the signal-timestep
+  switch.
+  @ivar a: The first parameter
+  @type a: C{int} of C{float}
+  @ivar b: The second parameter
+  @type b: C{int} of C{float}
+  """
+
+  def __str__(self) :
+    """A method try to print as best as possible the object.
+
+    """
+    string = ''
+    for k, v in self.__dict__.iteritems() :
+      string = string + '%s: %s ' % (str(k), str(v))
+    return string
+
+
+
+class LatticeSize(TwoValueParameter) :
+  """Class to represent the size of the lattice. Width and hight.
+
+  @ivar width: The width of the lattice
+  @type width: C{int}
+  @ivar hight: The height of the lattice.
+  @type hight: C{int}
+  """
+
+  def __init__(self, a, b) :
+    """The constructor
+
+    """
+    if not isinstance(a, int) and not isinstance(b, int) :
+      raise StandardError, "Only integers can be valid lattice size parameters."
+    self.width = a
+    self.height = b
+
+
+
+class UniformParameters(TwoValueParameter) :
+  """Class to represent the lower and upper bound required to define a uniform
+  distribution.
+
+  @ivar lower: The lower bound of a uniform distribution.
+  @type lower: C{int} or C{float}
+  @ivar upper: The upper bound of a uniform distribution.
+  @type upper: C{int} or C{float}
+  """
+
+  def __init__(self, a, b) :
+    """The constructor, also incorporates some tests.
+
+    """
+    if isinstance(a, (float, int,)) and isinstance(b, (float, int,)) :
+      if a <= b :
+        self.lower = a
+        self.upper = b
+      if a > b :
+        self.lower = b
+        self.upper = a
+    else :
+      raise TypeError, 'A float or an integer are valid numeric argumenets for the uniform distribution parameters.'
+
+
+
+class GaussianParameters(TwoValueParameter) :
+  """Class to represent the variables (mean, stddev) to define a Gaussian
+  distribution.
+
+  @ivar mean: The mean of a Gaussian distribution.
+  @type mean: C{int} or C{float}
+  @ivar stddev: The standard deviation of a Gaussian distribution.
+  @type stddev: C{int} or C{float}
+  """
+
+  def __init__(self, a, b) :
+    """The constructor and some tests (i.e check for positive stddev)
+
+    """
+    if b < 0 :
+      raise TypeError, 'Error in the gaussian distribution parameters. Standard deviation should always be a positive number.'
+    self.mean = a
+    self.stddev = b
+
+
+
+class SignalTimestep(TwoValueParameter) :
+  """A class to represent the signal/timestep parameter.
+
+  @ivar timestep: The timestep at which the signal should be implemented.
+  @type timestep: C{int}
+  @ivar signal: The signal, that is the factor concentration, that all factors
+  should acquire in the specified timestep.
+  @type signal: C{int} or C{float}
+
+  """
+
+  def __init__(self, a, b) :
+    """The constructor and checks that both values are positive and timestep is
+    integer.
+
+    """
+    if a < 0 or b < 0 :
+      raise TypeError, 'Both arguments for the signal/timestep parameter should be positive.'
+    if isinstance(b, int) and isinstance(a, (int, float,)) :
+      self.signal = a
+      self.timestep = b
+    else :
+      raise TypeError, 'Check the type of the signal timestep parameter'
+
+
+
+class ControlParameters(object) :
+  """Superclass for control parameters. Implements some common function for the
+  various control parameters classes.
+
+  """
+
+  def __str__(self) :
+    """Try to print as best as possible the instance variables of any control
+    parameter class.
+    """
+    string = ''
+    for ivar, value in self.__dict__.iteritems() :
+      string = string + '#%s: %s\n' % (str(ivar), str(value))
+    return string
+
+
+class SimulatorControlParameters(ControlParameters) :
+  """Class to collect and represent the simulator's control parameters.
+
+  @ivar latticeSize: The size of the lattice, should be a L{LatticeSize}
+  object. Mandatory control parameter
+  @type latticeSize: C{class 'LatticeSize'}
+  @ivar timesteps: The number of timesteps that the simulator is running.
+  Mandatory control parameter
+  @type timesteps: C{int}
+  @ivar randomSeed: The seed of the random number generators. (Default = 1)
+  @type randomSeed: C{int}
+  @ivar samplingInterval: The sampling interval for the time_series method.
+  (default = 1)
+  @type samplingInterval: C{int}
+  @ivar initialisationVariables: The variables for the initialisation of the
+  factor concentrations. Can be either a L{GaussianParameters} or an
+  L{UniformParameters} object.
+  @type initialisationVariables: C{class 'GaussianParameters'} or
+  C{class 'UniformParameters'}
+  @ivar factorInitialisation: Parameter to initialise factor concentrations to
+  user specified values.
+  @ivar signalTimestep: A signal (set all factors' concentration to the
+  specified value) at a specified timestep.
+  @todo: Implement a factor initialisation dictionary class and therelevant
+  instance variable.
+  """
+
+  def __init__(self, latticeSize, timesteps, initialisationVariables = None, factorInitialisation = None, signalTimestep = None, randomSeed = 1, samplingInterval = 1) :
+    """The constructor of the class
+
+    Note that the only mandatory parameters are the size of the lattice and the
+    number of timesteps, the two default parameters are the random seed and the
+    sampling intervals and all the rest are optional parameters all sett to
+    'None'
+    """
+    if not isinstance(latticeSize, LatticeSize) :
+      raise StandardError, 'Error in lattice size parameter passing. A lattice size parameter should be an instance of LatticeSize'
+    self.latticeSize = latticeSize
+    if not isinstance(timesteps, int) :
+      raise StandardError, 'Only integers can be valid timesteps parameter.'
+    self.timesteps = timesteps
+    if not isinstance(randomSeed, int) :
+      raise StandardError, 'Only integers are accepted from the current random number generator.'
+    self.randomSeed = randomSeed
+    if not isinstance(samplingInterval, int) :
+      raise StandardError, 'Only integers can be valid sampling interval parameter.'
+    self.samplingInterval = samplingInterval
+    if initialisationVariables and not isinstance(initialisationVariables, (UniformParameters, GaussianParameters,)) :
+      raise StandardError, 'The initialisation variables should be either a UniformParameters or a GaussianParameters instance.'
+    self.initialisationvariables = initialisationVariables
+    if signalTimestep and not isinstance(signalTimestep, SignalTimestep) :
+      raise StandardError, 'The signal-timestep paramter should be a TwoValueParameter instance.'
+    self.signalTimestep = signalTimestep
+    #FIXME: Implement the factor initalisation class.
+    self.factorInitialisation = factorInitialisation
+
+
+
 class TranssysInstanceCoordinated(transsys.TranssysInstance):
-  """Extended TranssysInstance class.
+  """Extended L{transsys.TranssysInstance} class.
 
   Provides the TranssysInstance objects with an additional functionality,
   theirs Cartesian coordinates on the lattice.
@@ -187,21 +403,23 @@ class TranssysInstanceCoordinated(transsys.TranssysInstance):
   @type timestep: C{int}
   @ivar factor_concentration: A list containing the factor concentrations.
   @type factor_concentration: C{list} of C{float}s
-  @ivar coordinates: A list denoting the coordinates on the lattice. (the
-  length of the list equals the dimension of the lattice)
-  @type coordinates: C{list} of C{int}s
+  @ivar xCoord: The x-coordinate of the instance.
+  @type xCoord: C{int}
+  @ivar yCoord: The y-coordinate of the instance.
+  @type yCoord: C{int}
   """
 
-  def __init__(self, tp, coords=None, timestep=None):
+  def __init__(self, tp, xCoord=None, yCoord=None, timestep=None):
     """Constructor of the class, overrides the TranssysInstance constructor.
 
     The coordinates of a transsys instance are stored in a list.
 
     @param tp: A valid transsys program.
     @type tp: C{class 'transsys.TranssysProgram'}
-    @param coords: A list denoting the coordinates on the lattice. (the
-    length of the list equals the dimension of the lattice)
-    @type coords: C{list} of C{int}s
+    @param xCoord: The x-coordinate of the instance.
+    @type xCoord: C{int}
+    @param yCoord: The y-coordinate of the instance.
+    @type yCoord: C{int}
     @param timestep: The number of timesteps that the simulator runs.
     @type timestep: C{int}
     """
@@ -211,8 +429,10 @@ class TranssysInstanceCoordinated(transsys.TranssysInstance):
     # transsys.statistics class.
     self.transsys_program = tp
     self.timestep = timestep
-    self.factor_concentration = [0.0] * self.transsys_program.num_factors()
-    self.coordinates = coords
+    self.numFactors = self.transsys_program.num_factors()
+    self.factor_concentration = [0.0] * self.numFactors
+    self.x = xCoord
+    self.y = yCoord
 
 
   def time_series(self, num_timesteps, sampling_period=1, lsys_lines=None, lsys_symbol=None):
@@ -237,14 +457,16 @@ class TranssysInstanceCoordinated(transsys.TranssysInstance):
      # comments at the constructor of the class as well.
 #      a.factor_concentration_stddev = t.factor_concentration_stddev
 #      a.factor_concentration_entropy = t.factor_concentration_entropy
-      coordTI.coordinates = self.coordinates
+      coordTI.x = self.x
+      coordTI.y = self.y
       tsCoordinated.append(coordTI)
     return tsCoordinated
 
 
 
 class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
-  """The main class of the simulator, contains a lattice of transsys programs.
+  """The central class of the simulator, represents a 2D lattice of
+  L{TranssysInstanceCoordinated} objects.
 
   All the methods for the representation and simulation of a two dimensional
   toroidal lattice are implemented in this class.
@@ -257,10 +479,13 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
   @type lattice: C{list} of C{list} of C{transsys.TranssysInstance} objects
   @ivar transsysProgram: The transsys program.
   @type transsysProgram: C{class 'transsys.TranssysProgram'}
-  @ivar size: The dimensions of tHe lattice.
-  @type size: C{tuple}
-  @Ivar timestep: The timestep.
+  @ivar latticeSize: An object of L{LatticeSize} which holds the dimensions of
+  the lattice.
+  @type latticeSize: C{class 'LatticeSize'}
+  @ivar timestep: The timestep.
   @type timestep: C{int}
+  @ivar numFactors: The number of factors of the transsys program.
+  @type numFactors: C{int}
   """
 
   def __init__(self, tp, size, timestep=None):
@@ -268,17 +493,18 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
 
     @param tp: The transsys program.
     @type tp: C{class 'transsys.TranssysProgram'}
-    @param size: The size of the lattice.
-    @type size: C{tuple}
+    @param size: An instance of an L{LatticeSize} object to represent the
+    size of the lattice..
+    @type size: a L{LatticeSize} object
     @param timestep: The timestep.
     @type timestep: C{int}
     """
     # Call the base class constructor.
     transsys.TranssysInstanceCollection.__init__(self)
-    # The name of the lattice.
-    self.name = tp.name + '_on_a_toroidal_two_dimentional_' + str(size[0]) + 'x' + str(size[1]) + '_lattice'
-    self.size = size
     self.transsysProgram = tp
+    self.latticeSize = size
+    # The name of the lattice.
+    self.name = tp.name + '_on_a_' + str(self.latticeSize.width) + 'x' + str(self.latticeSize.height) + '_lattice_with_periodic_boundaries'
     self.timestep = timestep
     self.lattice = self.lattice_generator()
     # Safeguard for acceptable diffusibility parameters.
@@ -289,6 +515,7 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
         continue
       else :
         raise StandardError, 'Diffusibility expression error. The accepted diffusibility values resides within the range of 0.0 to 1.0 [0.0, 1.0]'
+    self.numFactors = self.transsysProgram.num_factors()
 
 
   def lattice_generator(self):
@@ -300,36 +527,32 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
     @rtype: C{list} of C{list} of C{transsys.TranssysInstance} objects
     """
     lattice = []
-    for i in xrange(self.size[0]):
+    for i in xrange(self.latticeSize.width):
       lattice.append([])
-      for j in xrange(self.size[1]):
-        coordinates = [i+1, j+1]
-#        if self.timestep :
-#          timestep = self.timestep
-#        else :
-#          timestep = 0
-        lattice[i].append(TranssysInstanceCoordinated(self.transsysProgram, coordinates))
+      for j in xrange(self.latticeSize.height):
+        lattice[i].append(TranssysInstanceCoordinated(self.transsysProgram, i+1, j+1))
     return lattice
 
 
   def perturb_factor(self, fc, perturbObj):
     """Return a perturbed value of a factor concentration.
 
+    This function clips (rejects) possible negative factor concentration values
+    that might generated by the perturbation procedure.
     @param fc: The factor concentration.
     @type fc: C{float}
-    @param perturbObj: A perturbation random object.
-    @type perturbObj: C{class 'xxxxxRNG'}
-    @todo: Implement the perturbation object. (basicaly it should be a random
-    uniform object). And the homogenisation switch, basicly a constant random
-    number
+    @param perturbObj: A random object of the class L{RandomObject}.
+    @type perturbObj: C{class 'RandomObject'}
+    @todo: Implement the homogenisation switch, basicaly it can be a constant
+    random object!
     """
     fcP = fc + perturbObj.random_value()
-    # This is a way to make sure that after a perturbation factor
-    # concentration will remain positive.
+    # The next line rejects negative values for factor concentration.
     if fcP < 0 :
-      return self.perturb_factor(fc, perturbObj) # this recursion clips the
-                                                 # negative values.
-#      raise StandardError, 'Error in perturb factor. Factor concentrtion took negative value.'
+      return self.perturb_factor(fc, perturbObj) # Might exceed the maximum
+                                                 #number of recursions if the
+                                                 #perturbation object is not
+                                                 #chosen carefully.
     return fcP
 
 
@@ -338,31 +561,17 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
 
     Wraper of the previous method L{perturb_factor} for all the factors on
     the lattice.
-
-    @param perturbObj: A perturbation random object.
-    @type perturbObj: C{class 'xxxxxRNG'}
-    @rtype: C{'None'}
-    """
-    for i in xrange(self.size[0]):
-      for j in xrange(self.size[1]):
-        self.lattice[i][j].factor_concentration = map(lambda fc: self.perturb_factor(fc, perturbObj), self.lattice[i][j].factor_concentration)
-
-
-  def initialise_lattice(self, rndObj):
-    """Initialise the factor concentrations on the lattice.
-
     The result of this function depends on the type of the random object that
-    it is called with.
-    The actual randomisation takes place in the L{perturb_factor} method above.
-    @param rndObj: A random number generator object.
-    @type rndObj: C{class 'RandomObject'}
+    it is called with. (either a UnifromRNG or a gaussianRNG)
+    @param perturbObj: A perturbation random object L{RandomObject}.
+    @type perturbObj: C{class 'RandomObject'}
     @rtype: C{None}
     """
-    if not isinstance(rndObj, RandomObject) :
+    if not isinstance(perturbObj, RandomObject) :
       raise StandardError, 'Lattice initialisation error. The lattice can be initialised only with a random object.'
-    for i in xrange(self.size[0]):
-      for j in xrange(self.size[1]):
-        self.lattice[i][j].factor_concentration = map(lambda fc: self.perturb_factor(fc, rndObj), self.lattice[i][j].factor_concentration)
+    for i in xrange(self.latticeSize.width):
+      for j in xrange(self.latticeSize.height):
+        self.lattice[i][j].factor_concentration = map(lambda fc: self.perturb_factor(fc, perturbObj), self.lattice[i][j].factor_concentration)
 
 
   def get_transsys_program(self):
@@ -386,53 +595,53 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
     @rtype: C{list} of C{transsys.TranssysInstance} objects
     """
     tiList = []
-    for i in xrange(len(self.lattice)):
-      for j in xrange(len(self.lattice[i])):
+    for i in xrange(self.latticeSize.width):
+      for j in xrange(self.latticeSize.height):
         tiList.append(self.lattice[i][j])
     return tiList
 
 
-  def write_table_header(self, f, rndseed=None):
+  def write_table_header(self, infile, rndseed=None):
     """Overrides the write_table_header method of the superclass.
 
     Writes to the output file the header of the factor's table.
     (compatible to R)
 
-    @param f: An open for writing C{file} object.
-    @type f: C{file}
+    @param infile: An open for writing C{file} object.
+    @type infile: C{file}
     @param rndseed: The random seed of the simulator.
     @type rndseed: C{int}
     @rtype: C{None}
     @precondition: An open, ready for writting file object.
     """
-    f.write('# Table of coordinated (x, y) factor concentrations (Header file)\n')
-    f.write('# random seed: %i \n' % rndseed)
-    f.write('timestep x y')
+    infile.write('# Table of coordinated (x, y) factor concentrations (Header file)\n')
+    infile.write('# random seed: %i \n' % rndseed)
+    infile.write('timestep x y')
     for factor in self.transsysProgram.factor_list :
-      f.write(' %s' % factor.name)
-    f.write('\n')
+      infile.write(' %s' % factor.name)
+    infile.write('\n')
 
 
-  def write_table(self, f):
+  def write_table(self, infile):
     """Overrides the write_table method of the superclass.
 
     Writes at the output file the factor table (factor concentrations) for each
     factor of each transsys program in each timestep of the simulator.
 
-    @param f: An open for writing C{file} object.
-    @type f: C{file}
+    @param infile: An open for writing C{file} object.
+    @type infile: C{file}
     @rtype: C{None}
     @precondition: An open, ready for writting file object.
     """
     for ti in self.transsys_instance_list():
       if self.timestep is None :
-        f.write('NA')
+        infile.write('NA')
       else :
-        f.write('%i' % self.timestep)
-      f.write(' %i %i' % (ti.coordinates[0], ti.coordinates[1]))
+        infile.write('%i' % self.timestep)
+      infile.write(' %i %i' % (ti.x, ti.y))
       for fc in ti.factor_concentration :
-        f.write(' %1.17e' % fc)
-      f.write('\n')
+        infile.write(' %1.17e' % fc)
+      infile.write('\n')
 
 
   def update_factor_concentrations(self, currentState):
@@ -456,19 +665,19 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
     # cells, the instances in the edges are interacting with the opposite
     # cells forming the toroidal.
     # First assign the dimensions of the lattice.
-    x = self.size[0]
-    y = self.size[1]
+    x = self.latticeSize.width
+    y = self.latticeSize.height
     latticeFactorConcentrations = []
     # Begin the calculations.
-    for i in xrange(len(self.lattice)):
+    for i in xrange(self.latticeSize.width):
       latticeFactorConcentrations.append([])
-      for j in xrange(len(self.lattice[i])):
+      for j in xrange(self.latticeSize.height):
         # The factor concentrations manipulation.
-        factorConcentrationsUpdate = [0.0] * self.transsysProgram.num_factors()
+        factorConcentrationsUpdate = [0.0] * self.numFactors
         # Get the current lattice concentrations.
         factorConcentrationsOld = currentState[i][j].factor_concentration
-        if len(factorConcentrationsOld) != len(factorConcentrationsUpdate):
-          raise StandardError, 'Factor number inconsistancy between the new and the old factor concentrations list.'
+#        if len(factorConcentrationsOld) != len(factorConcentrationsUpdate):
+#          raise StandardError, 'Factor number inconsistancy between the new and the old factor concentrations list.'
         for k in xrange(len(factorConcentrationsUpdate)):
           # The main calculation of the new factor concentrations.
           # Introduce "per factor" diffusibility expression.
@@ -493,20 +702,18 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
     @type timesteps: C{int}
     @rtype: C{None}
     """
-    # Produce a copy of the current state of the simulator.
-#    currentState = self.lattice ## Possible Kkkkludge
+    # Update all the factor concentrations.
     updateFactorConcentrations = self.update_factor_concentrations(self.lattice)
     for i in xrange(len(self.lattice)):
       for j in xrange(len(self.lattice[i])):
-        if len(self.lattice[i][j].factor_concentration) != len(updateFactorConcentrations[i][j]):
-          raise StandardError, 'update_function Error. Factor number inconsistancy'
-        else :
-          self.lattice[i][j].factor_concentration = updateFactorConcentrations[i][j]
-          # The timeseries doesn't work with timestep 1, returns zero.
-          # Thats why a timestep = 2 is used.
-          self.lattice[i][j] = self.lattice[i][j].time_series(2)[1]
-          # Then set the timestep.
-          self.lattice[i][j].timestep = timesteps
+#        if len(self.lattice[i][j].factor_concentration) != len(updateFactorConcentrations[i][j]):
+#          raise StandardError, 'update_function Error. Factor number inconsistancy'
+        self.lattice[i][j].factor_concentration = updateFactorConcentrations[i][j]
+        # The timeseries doesn't work with timestep 1, returns zero.
+        # Thats why a timestep = 2 is used.
+        self.lattice[i][j] = self.lattice[i][j].time_series(2).pop()
+        # Then set the timestep.
+        self.lattice[i][j].timestep = timesteps
 
 
   def timestep_factor_concentration(self, signalC):
@@ -519,12 +726,12 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
     @type signalC: C{float}
     @rtype: C{None}
     """
-    for i in xrange(self.size[0]):
-      for j in xrange(self.size[1]):
+    for i in xrange(self.latticeSize.width):
+      for j in xrange(self.latticeSize.height):
         self.lattice[i][j].factor_concentration = [signalC for fc in self.lattice[i][j].factor_concentration]
 
 
-  def signal_factor_concentration(self, initDict, i=0, j=0):
+  def signal_factor_concentration(self, initDict, i = 0, j = 0):
     """Set factors' concentration to user defined values.
 
     Function changes the factor concentration of the defiened factors before
@@ -558,7 +765,7 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
 
 
 class TranssysLatticeTimeseries(object):
-  """Keep the whole timeseries of the simulator.
+  """Class to represent the timeseries of the lattice simulator.
 
   Keep record of all the important things during the simulation process.
   The position of the transsys instances on the lattice the timestep and the
@@ -584,7 +791,7 @@ class TranssysLatticeTimeseries(object):
   """
 
 
-  def __init__(self, transsysLattice, timesteps, samplingInterval=1, timestepSignal=None):
+  def __init__(self, transsysLattice, timesteps, samplingInterval = 1, timestepSignal = None):
     """Constructor of the class.
 
     @param transsysLattice: A transsys instance lattice object.
@@ -603,7 +810,7 @@ class TranssysLatticeTimeseries(object):
     self.timesteps = timesteps
     self.samplingInterval = samplingInterval
     self.latticeTimeseries = self.transsys_lattice_timeseries(transsysLattice, timesteps, samplingInterval, timestepSignal)
-    self.maxFactorConcentration = self.max_factor_concentration()
+#    self.maxFactorConcentration = self.max_factor_concentration()
 
 
   def transsys_lattice_timeseries(self, transsysLattice, timesteps, samplingInterval, timestepSignal=None):
@@ -621,7 +828,7 @@ class TranssysLatticeTimeseries(object):
     @param timestepSignal: The timestep signal parameter. Defines the factor
     concentration and the timestep that it will be introduced (to all factors
     untill now)
-    @type timestepSignal: C{float}:C{int}
+    @type timestepSignal: C{class 'TwoValueParameter'}
     @return: A list with all the C{TranssysInstanceLattice} instances of the
     simulator.
     @rtype: C{list} of C{TranssysInstanceLattice} objects
@@ -631,8 +838,8 @@ class TranssysLatticeTimeseries(object):
     for i in xrange(timesteps + 1):
       transsysLattice.timestep = i
       if timestepSignal :
-        if i == timestepSignal[1] :
-          transsysLattice.timestep_factor_concentration(timestepSignal[0])
+        if i == timestepSignal.timestep :
+          transsysLattice.timestep_factor_concentration(timestepSignal.signal)
       # Append the deepcopy according to the sampling intervals.
       if i % samplingInterval == 0 :
         latticeTimeseries.append(copy.deepcopy(transsysLattice))
@@ -640,22 +847,25 @@ class TranssysLatticeTimeseries(object):
     return latticeTimeseries
 
 
-  def write_factor_table(self, fileObj):
+  def write_factor_table(self, infile):
     """Write the whole factor table in a file.
 
     Calls the L{TranssysInstanceLattice.write_table} for the whole transsys
     lattice timeseries.
 
-    @param fileObj: An open file object ready for writing.
-    @type fileObj: C{file}
+    @param infile: An open file object ready for writing.
+    @type infile: C{file}
     @rtype: C{None}
     @precondition: An open, ready for writting file object.
     """
     # Write the whole timeseries table.
     for til in self.latticeTimeseries :
-      til.write_table(fileObj)
+      til.write_table(infile)
 
 
+  # This function was needed only witrht he old animation approach. Obsolete
+  # after the complete R animation approach. Therefore the max_concentration
+  # instance variable des not exist anymore.
   def max_factor_concentration(self, factorName=None):
     """The maximal observed factor concentration of a specified factor.
 
@@ -698,6 +908,7 @@ class TranssysLatticeTimeseries(object):
 
 
 
+
 def pickle(object):
   """Return the pickled representation of the object as a string.
 
@@ -712,54 +923,10 @@ def unpickle(fileObj):
 
   @returns: The pickled object.
   @rtype: C{class 'object'}
-  @precondition: An open, ready for reading file object.
+  @precondition: An open, ready for reading file object, containing a pickled
+  object.
   """
   return cPickle.load(fileObj)
-
-
-def generate_pgm(fileObj, transsysLattice, pgmFactor, maxCon):
-  """Produce the contents of the portable gray map (.pgm) image file.
-
-  Write the to a .pgm file and then close it.
-
-  Suitable for view/animate/analyse with the Imagemagick graphics suite.
-  But this approach has been replaced by a more reliable .R script.
-
-  @param fileObj: An open raedy for writting file object.
-  @type fileObj: C{file}
-  @param transsysLattice: The whole transsys lattice.
-  @type transsysLattice: C{class 'TranssysLattice'}
-  @param pgmFactor: The name of the factor that will be imaged.
-  @type pgmFactor: C{str}
-  @param maxCon: The maximum nuber of factor concentration that can be drawn
-  by the imaging proccedure. (constant provided by the user)
-  @type maxCon: C{int}
-  @rtype: C{None}
-  @precondition: An open, ready for writting file object.
-  """
-  # Find the index (on  the transsys program level) of the apropriate factor.
-  factorIndex = transsysLattice.transsysProgram.find_factor_index(pgmFactor)
-  # Generate the apropriate .pgm image format.
-  pgmMagic = 'P2' # .pgm file magic line, P2 for .pgm,
-  pgmComment = '# Raster .pgm image representation of factor' + pgmFactor + ' on a' + transsysLattice.name
-  pgmSize = str(transsysLattice.size[0]) + ' ' + str(transsysLattice.size[1])
-  pgmMaxval = 256
-  pgmRaster = ''
-  for i in xrange(transsysLattice.size[0]):
-    pgmRasterLine = ''
-    for j in xrange(transsysLattice.size[1]):
-      # Safeguard for zero maximum factor concentration.
-      if maxCon == 0 :
-        pixValue = pgmMaxval
-      else :
-        pixValue = int(pgmMaxval - round(transsysLattice.lattice[i][j].factor_concentration[factorIndex] * pgmMaxval / maxCon))
-      # Safeguard for negative color values.
-      if pixValue < 0 :
-        raise StandardError, 'Netpbm raster image gets a negative value. Please select a biger number for the maximum factor concentration (option -m)'
-      pgmRasterLine = pgmRasterLine + str(pixValue) + ' '
-    pgmRaster = pgmRaster + pgmRasterLine + '\n'
-  pgmText = pgmMagic + '\n' + pgmComment + '\n' + pgmSize + '\n' + str(pgmMaxval)  + '\n' + pgmRaster
-  fileObj.write(pgmText)
 
 
 def print_summary_statistics(tlt, fileObj):
