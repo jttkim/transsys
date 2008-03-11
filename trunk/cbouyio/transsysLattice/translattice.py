@@ -17,7 +17,7 @@ implemented until now.
 @copyright: The program is coming as it is. You have the right to redistribute,
 transform and change the source code presuming the apropriate reference and
 the lisence is kept free.
-@license: GNU GPL2 or newer.
+@license: GNU GPL3 or newer.
 @contact: U{Costas Bouyioukos<mailto:konsb@cmp.uea.ac.uk>}
 @version: $Id$
 """
@@ -40,7 +40,6 @@ import copy
 import cPickle
 
 import transsys
-
 
 
 
@@ -208,16 +207,25 @@ class TwoValueParameter(object) :
   borders. Also objects of this class are representing the signal-timestep
   switch.
   @ivar a: The first parameter
-  @type a: C{int} of C{float}
+  @type a: Numeric or another TwoValueParameter
   @ivar b: The second parameter
-  @type b: C{int} of C{float}
+  @type b: Numeric or another TwoValueParameter
   """
 
+  def __init__(self, a, b) :
+    """The constructor.
+
+    Holds the two arguments a and b.
+    """
+    self.a = a
+    self.b = b
+
   def __str__(self) :
-    """A method try to print as best as possible the object.
+    """Try to print as best as possible the object.
 
     """
     string = ''
+#    string = '#%s ' % self.__class__.__name__
     for k, v in self.__dict__.iteritems() :
       string = string + '%s: %s ' % (str(k), str(v))
     return string
@@ -269,6 +277,20 @@ class UniformParameters(TwoValueParameter) :
       raise TypeError, 'A float or an integer are valid numeric argumenets for the uniform distribution parameters.'
 
 
+  def getRNG(self, rndSeed) :
+    """Method to construct the random number generator.
+
+    Returns a Uniform random number generator.
+    @param rndSeed: the random seed for the random number generator.
+    @type rndSeed: C{int}
+    @requires: An integer random seed.
+    @return: A random number generator object of the form xxxxRNG.
+    @rtype: C{class 'RandomObject'}
+    """
+    return UniformRNG(rndSeed, self.lower, self.upper)
+
+
+
 
 class GaussianParameters(TwoValueParameter) :
   """Class to represent the variables (mean, stddev) to define a Gaussian
@@ -288,6 +310,19 @@ class GaussianParameters(TwoValueParameter) :
       raise TypeError, 'Error in the gaussian distribution parameters. Standard deviation should always be a positive number.'
     self.mean = a
     self.stddev = b
+
+
+  def getRNG(self, rndSeed) :
+    """Method to construct the random number generator.
+
+    Returns a Gaussian random number generator.
+    @param rndSeed: the random seed for the random number generator.
+    @type rndSeed: C{int}
+    @requires: An integer random seed.
+    @return: A random number generator object of the form xxxxRNG.
+    @rtype: C{class 'RandomObject'}
+    """
+    return GaussianRNG(rndSeed, self.mean, self.stddev)
 
 
 
@@ -318,7 +353,7 @@ class SignalTimestep(TwoValueParameter) :
 
 
 class ControlParameters(object) :
-  """Superclass for control parameters. Implements some common function for the
+  """Superclass for control parameters. Implements some common methods for the
   various control parameters classes.
 
   """
@@ -347,8 +382,8 @@ class SimulatorControlParameters(ControlParameters) :
   @ivar samplingInterval: The sampling interval for the time_series method.
   (default = 1)
   @type samplingInterval: C{int}
-  @ivar initialisationVariables: The variables for the initialisation of the
-  factor concentrations. Can be either a L{GaussianParameters} or an
+  @ivar initialisationVariables: The variables for the random initialisation of
+  the factor concentrations. Can be either a L{GaussianParameters} or an
   L{UniformParameters} object.
   @type initialisationVariables: C{class 'GaussianParameters'} or
   C{class 'UniformParameters'}
@@ -382,7 +417,7 @@ class SimulatorControlParameters(ControlParameters) :
     self.samplingInterval = samplingInterval
     if initialisationVariables and not isinstance(initialisationVariables, (UniformParameters, GaussianParameters,)) :
       raise StandardError, 'The initialisation variables should be either a UniformParameters or a GaussianParameters instance.'
-    self.initialisationvariables = initialisationVariables
+    self.initialisationVariables = initialisationVariables
     if signalTimestep and not isinstance(signalTimestep, SignalTimestep) :
       raise StandardError, 'The signal-timestep paramter should be a TwoValueParameter instance.'
     self.signalTimestep = signalTimestep
@@ -601,47 +636,66 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
     return tiList
 
 
-  def write_table_header(self, infile, rndseed=None):
+  def write_table_header(self, outfile, rndseed=None):
     """Overrides the write_table_header method of the superclass.
 
     Writes to the output file the header of the factor's table.
     (compatible to R)
 
-    @param infile: An open for writing C{file} object.
-    @type infile: C{file}
+    @param outfile: An open for writing C{file} object.
+    @type outfile: C{file}
     @param rndseed: The random seed of the simulator.
     @type rndseed: C{int}
     @rtype: C{None}
     @precondition: An open, ready for writting file object.
     """
-    infile.write('# Table of coordinated (x, y) factor concentrations (Header file)\n')
-    infile.write('# random seed: %i \n' % rndseed)
-    infile.write('timestep x y')
+    outfile.write('# Table of coordinated (x, y) factor concentrations (Header file)\n')
+    outfile.write('# random seed: %i \n' % rndseed)
+    outfile.write('timestep x y')
     for factor in self.transsysProgram.factor_list :
-      infile.write(' %s' % factor.name)
-    infile.write('\n')
+      outfile.write(' %s' % factor.name)
+    outfile.write('\n')
 
 
-  def write_table(self, infile):
+  def write_table(self, outfile):
     """Overrides the write_table method of the superclass.
 
     Writes at the output file the factor table (factor concentrations) for each
     factor of each transsys program in each timestep of the simulator.
 
-    @param infile: An open for writing C{file} object.
-    @type infile: C{file}
+    @param outfile: An open for writing C{file} object.
+    @type outfile: C{file}
     @rtype: C{None}
     @precondition: An open, ready for writting file object.
     """
     for ti in self.transsys_instance_list():
       if self.timestep is None :
-        infile.write('NA')
+        outfile.write('NA')
       else :
-        infile.write('%i' % self.timestep)
-      infile.write(' %i %i' % (ti.x, ti.y))
+        outfile.write('%i' % self.timestep)
+      outfile.write(' %i %i' % (ti.x, ti.y))
       for fc in ti.factor_concentration :
-        infile.write(' %1.17e' % fc)
-      infile.write('\n')
+        outfile.write(' %1.17e' % fc)
+      outfile.write('\n')
+
+
+  def expression_table(self) :
+    """Method to extract a factor expression table.
+
+    The table has rows = <num_factors> and columns = <num_instances>, therefore
+    is a <factors>x<instnaces> table containing the factor concentrations.
+    @return: A factor x instances factor concentration table.
+    @rtype: C{list} of {list}s of {float}s
+    """
+    exprTable = []
+    for i in xrange(self.transsysProgram.num_factors()) :
+      exprVector = []
+      for ti in self.transsys_instance_list() :
+        exprVector.append(ti.factor_concentration[i])
+      exprTable.append(exprVector)
+    return exprTable
+
+
 
 
   def update_factor_concentrations(self, currentState):
