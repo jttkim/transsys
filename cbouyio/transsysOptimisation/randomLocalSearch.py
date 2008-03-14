@@ -28,7 +28,7 @@ import math
 # Random objects already implemented in the transsysLattice module.
 
 
-class Point(translattice.TwoValueParameter) :
+class Point(translattice.Parameter) :
   """Class to represent a two dimensional point.
   """
 
@@ -69,7 +69,7 @@ class Point(translattice.TwoValueParameter) :
 
 
 
-class Circle(translattice.TwoValueParameter) :
+class Circle(translattice.Parameter) :
   """Class to represent a circle. Coordinates of the centre and radius
   """
 
@@ -226,13 +226,15 @@ class EngineeringParameters(translattice.ControlParameters) :
     @type perturbObj: C{class 'translattice.RandomObject'}
     @param cycle: The optimisation cycle. Used only for naming purposes.
     @type cycle: C{int}
-    @rtype: C{None}
+    @return: A perturbed copy of the engineered control parameters.
+    @rtype: C{class 'EngineeringParameters'}
     """
     perturbLowPoint = Point(perturb_value(self.get_lowPoint().get_x(), perturbObj), perturb_value(self.get_lowPoint().get_x(), perturbObj))
     perturbHighPoint = Point(perturb_value(self.get_highPoint().get_x(), perturbObj), perturb_value(self.get_highPoint().get_y(), perturbObj))
     perturbCentre = Point(perturb_value(self.get_circle().get_centre().get_x(), perturbObj), perturb_value(self.get_circle().get_centre().get_x(), perturbObj))
     perturbCircle = Circle(perturbCentre, perturb_value(self.get_circle().get_r(), perturbObj))
-    self.set_perturbed_parameters(perturbLowPoint, perturbHighPoint, perturbCircle)
+    engpPerturbed = EngineeringParameters(perturbLowPoint, perturbHighPoint, perturbCircle)
+    return engpPerturbed
 
 
 
@@ -444,7 +446,7 @@ class OptimisationBookKeeping(object) :
     function.
     @type bestTP: C{class 'transsys.TranssysProgram'}
     """
-    self.tf.write('%s%s\n' % (str(currentTP), str(bestTP)))
+    self.tf.write('%s\n%s\n' % (str(currentTP), str(bestTP)))
 
 
   def print_header(self) :
@@ -453,7 +455,7 @@ class OptimisationBookKeeping(object) :
     The headers are printed in order to help parsing the results with other
     applications (i.e. R).
     """
-    self.nf.write('OptCycle\tCrndS\tBrndS\tCObj\tClBm\tCcBm\tBObj\tBlBm\tBcBm\tCLx\tCLy\tCHx\tCHy\tCCx\tCCy\tCRd\tBLx\tBLy\tBHx\tBHy\tBCx\tBCy\tBRd\n')
+    self.nf.write('OptCycle\tCurrRNDSeed\tBestRNDSeed\tCurrObj\tCurrLatBM\tCurrCtrlBM\tBestObj\tBestLatBM\tBestCtrlBM\tCurrLowX\tCurrLowY\tCurrHighX\tCurrHighY\tCurrCircX\tCurrCircY\tCurrRadius\tBestLowX\tBestLowY\tBestHighX\tBestHighY\tBestCircX\tBestCircY\tBestRadius\n')
 
 
 
@@ -485,6 +487,8 @@ def perturb_value(value, perturbObj) :
   """
   perturbValue = value * math.exp(perturbObj.random_value())
   return perturbValue
+
+
 
 
 
@@ -636,7 +640,7 @@ def optimisation(engineeredCP, simulatorCP, optimiserCP, logObj) :
 
   # Calculate the initial transsys program optimisation objective.
   objectiveInit = objective(transsysProgram, latticeSize, timesteps, initialNoise, rndSeed)
-  engBest = copy.deepcopy(engineeredCP)
+  engBest = engineeredCP
   tpBest = transsysProgram
   rndSeedBest = rndSeed
 
@@ -645,14 +649,16 @@ def optimisation(engineeredCP, simulatorCP, optimiserCP, logObj) :
 
   # Basic optimisation loop.
   for cycle in xrange(optimisationCycles) :
-    rndSeedCurrent = cycle + 1 + optimiserCP.rndParam
+    # Set the current random seed.
+    rndSeedCurrent = optimiserCP.rndParam + (cycle + 1)
     # Set the random objects.
     perturbObj = translattice.UniformRNG(rndSeedCurrent, -perturbOffset, perturbOffset)
     # Polymorphism will take care of the random object initalisation.
     initialObj = initialNoise.getRNG(rndSeedCurrent)
 
-    # Perturb the engineered control parameters.
-    engineeredCP.perturb_eng_parameters(perturbObj)
+    # Perturb the engineered control parameters. (here is the actual
+    # implementation of the random local search)
+    engineeredCP = engBest.perturb_eng_parameters(perturbObj)
     # Generate the transsys programs.
     tpCurrent = TranssysProgramDummy('engineered' + str(cycle + 1), engineeredCP)
     tpBest = TranssysProgramDummy('engineeredBest' + str(rndSeedCurrent), engBest)

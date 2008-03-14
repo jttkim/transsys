@@ -197,42 +197,28 @@ class FactorValueParameter(object) :
 
 
 
-class TwoValueParameter(object) :
-  """Superclass to represent a two value parameter.
+class Parameter(object) :
+  """Superclass to represent a parameter.
 
-  This kind of parameters are used to designate perturbation ranges of the
-  simulator. Untill now are used to specify the parameter of the random number
-  generation distributions. For Gaussian distributions the parameters are the
-  mean and the stddev and for uniform distributions are the low and upper
-  borders. Also objects of this class are representing the signal-timestep
-  switch.
-  @ivar a: The first parameter
-  @type a: Numeric or another TwoValueParameter
-  @ivar b: The second parameter
-  @type b: Numeric or another TwoValueParameter
+  This is a class of parameters that do not contain a single value. Complex
+  types of parameters include: parameters for the random initial conditions or
+  the  lattice size, or for the control points of engineered transsys programs.
+  This superclass provides a universall printing method for these complex
+  parameters.
   """
 
-  def __init__(self, a, b) :
-    """The constructor.
-
-    Holds the two arguments a and b.
-    """
-    self.a = a
-    self.b = b
-
   def __str__(self) :
-    """Try to print as best as possible the object.
+    """Try to print the parameter's values as best as posible..
 
     """
     string = ''
-#    string = '#%s ' % self.__class__.__name__
     for k, v in self.__dict__.iteritems() :
       string = string + '%s: %s ' % (str(k), str(v))
     return string
 
 
 
-class LatticeSize(TwoValueParameter) :
+class LatticeSize(Parameter) :
   """Class to represent the size of the lattice. Width and hight.
 
   @ivar width: The width of the lattice
@@ -252,7 +238,7 @@ class LatticeSize(TwoValueParameter) :
 
 
 
-class UniformParameters(TwoValueParameter) :
+class UniformParameters(Parameter) :
   """Class to represent the lower and upper bound required to define a uniform
   distribution.
 
@@ -292,7 +278,7 @@ class UniformParameters(TwoValueParameter) :
 
 
 
-class GaussianParameters(TwoValueParameter) :
+class GaussianParameters(Parameter) :
   """Class to represent the variables (mean, stddev) to define a Gaussian
   distribution.
 
@@ -326,7 +312,7 @@ class GaussianParameters(TwoValueParameter) :
 
 
 
-class SignalTimestep(TwoValueParameter) :
+class SignalTimestep(Parameter) :
   """A class to represent the signal/timestep parameter.
 
   @ivar timestep: The timestep at which the signal should be implemented.
@@ -419,7 +405,7 @@ class SimulatorControlParameters(ControlParameters) :
       raise StandardError, 'The initialisation variables should be either a UniformParameters or a GaussianParameters instance.'
     self.initialisationVariables = initialisationVariables
     if signalTimestep and not isinstance(signalTimestep, SignalTimestep) :
-      raise StandardError, 'The signal-timestep paramter should be a TwoValueParameter instance.'
+      raise StandardError, 'The signal-timestep paramter should be a SignalTimestep object.'
     self.signalTimestep = signalTimestep
     #FIXME: Implement the factor initalisation class.
     self.factorInitialisation = factorInitialisation
@@ -882,7 +868,7 @@ class TranssysLatticeTimeseries(object):
     @param timestepSignal: The timestep signal parameter. Defines the factor
     concentration and the timestep that it will be introduced (to all factors
     untill now)
-    @type timestepSignal: C{class 'TwoValueParameter'}
+    @type timestepSignal: C{class 'Parameter'}
     @return: A list with all the C{TranssysInstanceLattice} instances of the
     simulator.
     @rtype: C{list} of C{TranssysInstanceLattice} objects
