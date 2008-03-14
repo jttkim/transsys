@@ -1,15 +1,8 @@
 #!/usr/bin/env python
 
-# $Rev::               $:  Revision of last commit
-# $Author::            $:  Author of last commit
-# $Date$:  Date of last commit
-
-# A script that constructs a Transsys Programme using RegulonDB data.
-# Contributed by CBouyio, at UEA on 27/03/2006
+# A script to construct a Transsys Programme data from the RegulonDB database.
+# Begin devoloping by CBouyio, at UEA on 27/03/2006
 # Uploaded to the repository on 1/04/2006, version 1.
-
-# Indicate the program version
-__version__ = "$Id$"
 
 import re
 import getopt
@@ -219,11 +212,11 @@ for gene in genesSet :
 ## Begin the transsys implementation.
 
 # Parameter Initialization.
-decay         = transsys.ExpressionNodeValue(0.5)
-diffusibility = transsys.ExpressionNodeValue(1.0)
-v_max         = transsys.ExpressionNodeValue(1.0)
+decay         = transsys.ExpressionNodeValue(0.2)
+diffusibility = transsys.ExpressionNodeValue(0.0)
+v_max         = transsys.ExpressionNodeValue(2.0)
 k_m           = transsys.ExpressionNodeValue(1.0)
-constitutive  = transsys.ExpressionNodeValue(0.5)
+constitutive  = transsys.ExpressionNodeValue(0.1)
 name          = infile.name
 
 # Keep as a 'transsys program' name everything that is before the first 
