@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
-# A script for the testing during transsysOptimisation development.
-# might evolve to a proper optimisation application.
+# A script to run an optimisation experment.
 
 import transsys
 import translattice
@@ -15,53 +14,44 @@ import time
 
 def usage() :
   print """
-  -h, --help  switch  : Prints this screen and exit.
-          -d  number  : The diffusibility value. Assign to all factors the
-                        user defined diffusibility expression.
+  --help  switch  : Prints this screen and exit.
   """
 
 
-def assign_diffusing_factor(transsysProgram) :
-  """Assigns a diffusibility expression to a randomly picked factor.
+# !!!!!!!!!!!! carefull the only default control parameter untill now.... !!!!
+#FIXME: This shousl change in proper version of the optimiser.
+randomParam = time.strftime('%d%m%Y')
+#randomParam = 11032008
 
-  Used only in the cases of randomly generated transsys programs.
-  """
-  factor = transsysProgram.factor_list[random.randrange(transsysProgram.num_factors())]
-  factor.diffusibility_expression.value = 0.01
-#  factor.diffusibility_expression.value = random.uniform(0, 0.015)
-
-
-# Command line parsing
-optlist, args = getopt.getopt(sys.argv[1:], 'hn:o:p:r:t:u:', ['help'])
-
+# Command line parsing of the control parameters.
+optlist, args = getopt.getopt(sys.argv[1:], 'hw:l:o:u:r:t:f:', ['help'])
 for opt, par in optlist :
   if opt in ('-h', '--help') :
     usage()
     sys.exit()
-  if opt in ('-n') :
-    var = par.split('x')
-    if len(var) != 2 :
-      raise StandardError, 'Error in the format of -n input option, please check the help (-h, --help) for more information'
-    var = map(lambda dim:int(dim), var)
-    latticeSize = tuple(var)
-  if opt in ('-o') :
-    optCycles = par
-  if opt in ('-p') :
+  if opt in ('-w') :
+    width = int(par)
+  if opt in ('-l') :
+    height = int(par)
+  if opt == '-o' :
+    optCycles = int(par)
+  if opt == '-u' :
     var = par.split(':')
     if len(var) != 2 :
-      raise StandardError, 'Error in the format of -p input option, please check the help (-h, --help) for more information'
-    var = map(lambda r:float(r), var)
-    perturbRange = tuple(var)
-  if opt in ('-r') :
-    rndSeed = par
-  if opt in ('-t') :
-    timesteps = par
-  if opt in ('-u') :
-    var = par.split(':')
-    if len(var) != 2 :
-      raise StandardError, 'Error in the format of -u input option, please check the help (-h, --help) for more information'
-    var = map(lambda r:float(r), var)
-    unifRange = tuple(var)
+      raise StandardError, 'Error in the format of -u input option, initial uniform noise should come in the format <min>:<max>'
+    low = float(var[0])
+    high = float(var[1])
+  if opt == '-r' :
+    randomParam = int(par)
+  if opt == '-t' :
+    timesteps = int(par)
+  if opt == '-f' :
+    perturbationOffset = float(par)
+
+# Construct the objects.
+latticeSize = translattice.LatticeSize(width, height)
+initialNoise = translattice.UniformParameters(low, high)
+
 
 # I/O implementation.
 if len(args) > 0 :
@@ -76,35 +66,20 @@ else :
 # Parse the transsys program.
 #tp = transsys.TranssysProgramParser(infile).parse()
 
-scp = translattice.SimulatorControlParameters(translattice.LatticeSize(20, 20), 700, translattice.UniformParameters(0, 15))
+scp = translattice.SimulatorControlParameters(latticeSize, timesteps, initialNoise, randomSeed = int(randomParam))
 
-date = time.strftime('%d%m%Y')
-#date = 11032008
+ocp = randomLocalSearch.OptimisationControlParameters(optCycles, perturbationOffset, int(randomParam))
 
-ocp = randomLocalSearch.OptimisationControlParameters(100, 0.05, int(date))
-
+# the engineered control parameters are hardcoded in the file.
 engp = randomLocalSearch.EngineeringParameters(randomLocalSearch.Point(1, 1), randomLocalSearch.Point(9, 14), randomLocalSearch.Circle(randomLocalSearch.Point(10, 10), 2), 0.01, 0.0, 0.01, 0.002)
 
-#tp = randomLocalSearch.TranssysProgramDummy('engineered', engp)
+# !!!!!! extreme care with the filenames. !!!
+numericalOut = 'numericalOut' + str(randomParam) + '.dat'
+transsysOut = 'transsysProgramsOut' + str(randomParam) + '.tra'
 
-# Keep the consistancy between the random seeds.
-scp.randomSeed = ocp.rndParam
+# Instantiate the log keeping object
+log = randomLocalSearch.OptimisationBookKeeping(numericalOut, transsysOut, scp, ocp)
 
-## Random transsys parameter.
-#rtp = transsys.RandomTranssysParameters(rndSeed)
-#rtp.parse(infile)
-#tp = rtp.generate_transsys(name='Optimised')
-#assign_diffusing_factor(tp)
-
-# !!!!!!!!!!!!!!!!!!!!!!
-numericalOut = open('numericalOut' + str(date) + '.dat', 'w')
-transsysOut = open('transsysProgramsOut' + str(date) + '.dat', 'w')
-
-# the bookeping
-log = randomLocalSearch.OptimisationBookKeeping(numericalOut, transsysOut)
-
-# Run the optimiser.
+# Run the optimiser!
 randomLocalSearch.optimisation(engp, scp, ocp, log)
-
-log.print_control_parameters(scp, ocp)
 
