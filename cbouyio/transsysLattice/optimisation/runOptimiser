@@ -20,8 +20,7 @@ def usage() :
 
 # !!!!!!!!!!!! carefull the only default control parameter untill now.... !!!!
 #FIXME: This should change in proper version of the optimiser.
-randomParam = time.strftime('%d%m%Y')
-#randomParam = 11032008
+randomParam = int(time.strftime('%d%m%Y'))
 numericalOut = None
 transsysOptOut = None
 
@@ -74,10 +73,10 @@ else :
 
 ## Construct the control parameters.
 # The simulator's control parameters.
-scp = translattice.SimulatorControlParameters(latticeSize, timesteps, initialNoise, randomSeed = int(randomParam))
+scp = translattice.SimulatorControlParameters(latticeSize, timesteps, initialNoise, randomSeed = randomParam)
 
 # The optimiser control parameters.
-ocp = randomLocalSearch.OptimisationControlParameters(optCycles, perturbationOffset, int(randomParam))
+ocp = randomLocalSearch.OptimisationControlParameters(optCycles, perturbationOffset, randomParam)
 
 #!!! The engineered control parameters are hardcoded in the file.
 engp = randomLocalSearch.EngineeringParameters(randomLocalSearch.Point(1, 1), randomLocalSearch.Point(9, 14), randomLocalSearch.Circle(randomLocalSearch.Point(10, 10), 2), 0.01, 0.0, 0.01, 0.002)
