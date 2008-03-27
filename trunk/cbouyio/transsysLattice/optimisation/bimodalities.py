@@ -15,12 +15,12 @@ a given threshold, the optimal threshold wich maximises bimodality score and the
 sum of bimodalities for a data table/frame.
 
 @author: Costas Bouyioukos
-@email: konsb@cmp.uea.ac.uk
-@organisation: University of East Anglia
+@organization: University of East Anglia
 @since: 20/12/2007
 @license: GNU General Public Lisence 3 or newer.
 @contact: U{Costas Bouyioukos<mailto:konsb@cmp.uea.ac.uk>}
-@version: $Id$"""
+@version: $Id$
+"""
 
 
 # Version Information.

@@ -226,8 +226,6 @@ class EngineeringParameters(translattice.ControlParameters) :
     points and the circle (centre and radius).
     @param perturbObj: The perturbation object.
     @type perturbObj: C{class 'translattice.RandomObject'}
-    @param cycle: The optimisation cycle. Used only for naming purposes.
-    @type cycle: C{int}
     @return: A perturbed copy of the engineered control parameters.
     @rtype: C{class 'EngineeringParameters'}
     """
@@ -305,8 +303,8 @@ class TranssysProgramDummy(transsys.TranssysProgram) :
   def get_eng_parameters(self) :
     """Accessor to the engineered control parameters of a TranssysProgramDummy.
 
-    @return : The control parameters of an engineered transsys program.
-    @rtype : C{class 'EngineeringParameters'}
+    @return: The control parameters of an engineered transsys program.
+    @rtype: C{class 'EngineeringParameters'}
     """
     pass
 
@@ -383,93 +381,85 @@ class OptimisationBookKeeping(object) :
     applications (i.e. R).
     """
     if self.nf :
-      self.nf.write('OptCycle\tCurrRNDSeed\tOptFlag\tCurrObj\tCurrLatBM\tCurrCtrlBM\tBestObj\tBestLatBM\tBestCtrlBM\tCurrLowX\tCurrLowY\tCurrHighX\tCurrHighY\tCurrCircX\tCurrCircY\tCurrRadius\tBestLowX\tBestLowY\tBestHighX\tBestHighY\tBestCircX\tBestCircY\tBestRadius\t')
+      self.nf.write('OptCycle\tRNGSeed\tOptFlag\tAltObj\tAltLatBM\tAltCtrlBM\tBestObj\tBestLatBM\tBestCtrlBM\tAltLowX\tAltLowY\tAltHighX\tAltHighY\tAltCircX\tAltCircY\tAltRadius\tBestLowX\tBestLowY\tBestHighX\tBestHighY\tBestCircX\tBestCircY\tBestRadius\t')
       #FIXME: this should be able to address various transsys program
       # (i.e. with more than two factors.
-      self.nf.write('LatBest_muA\tLatBest_stdevA\tLatBest_muB\tLatBest_stdevB\tLatBestFCA\tLatBestFCB\n')
+      self.nf.write('LatBest_muA\tLatBest_stdevA\tLatBest_muB\tLatBest_stdevB\n')
 
 
-  def write_log(self, optCycle, rndSeedCurrent, optStep, currentObj, optObj, engParamCurrent, engParamBest, currentTP, bestTP) :
+  def write_log(self, optCycle, rndSeedCurrent, optStep, altObj, bestObj, altENGParam, bestENGParam, altTP, bestTP) :
     """Curry out the printing of the optimisers results.
 
     Actually write_log is a wrapper method which calls print_objectives and
     print_parameters methods respectivelly.
     @param optCycle: The optimisation cycle.
     @type optCycle: C{int}
-    @param rndSeedCurrent: The random number generator seed.
-    @type rndSeed: C{int}
+    @param rndSeedCurrent: The current run's random number generator seed.
+    @type rndSeedCurrent: C{int}
     @param optStep: A boolean designates whether the optimiser has actually made
     an optimisation step.
     @type optStep: C{bool}
-    @param currentObj: The optimisation objective score of the current
+    @param altObj: The optimisation objective function score of the current
+    alternative transsys program. (and some more things, a tuple)
+    @type altObj: Some class (possibly objective class)
+    @param bestObj: The optimisation objective function score of the current
+    best transsys program. (and some more things, a tuple)
+    @type bestObj: Some class (possibly objective class)
+    @param altENGParam: The engineered control parameters of the current
     alternative transsys program.
-    @type currentObj: Numeric
-    @param optObj: The optimisation score of the current best transsys
-    program.
-    @type optObjective: Numeric
-    @param engParamCurrent: The engineered control parameters of the current
-    alternative transsys program.
-    @type: C{class 'EngineeringParameters'}
-    @param engBest: The engineered control parameters of the current best
+    @type altENGParam: C{class 'EngineeringParameters'}
+    @param bestENGParam: The engineered control parameters of the current best
     transsys program.
-    @type engBest: C{class 'EngineeringParameters'}
-    @param currentTP: The current alternative transsys program. That is the one
+    @type bestENGParam: C{class 'EngineeringParameters'}
+    @param altTP: The current alternative transsys program. That is the one
     generated in the particular optimisation cycle.
-    @type currentTP: C{class 'transsys.TranssysProgram'}
+    @type altTP: C{class 'transsys.TranssysProgram'}
     @param bestTP: The current best transsys program. That is the one with the
     highest score of the objective function.
     @type bestTP: C{class 'transsys.TranssysProgram'}
     """
-    self.print_transsys_programs(currentTP, bestTP)
+    self.print_transsys_programs(altTP, bestTP)
     if self.nf :
-      self.print_numerical(optCycle, rndSeedCurrent, optStep, currentObj, optObj, engParamCurrent, engParamBest)
+      self.print_numerical(optCycle, rndSeedCurrent, optStep, altObj, bestObj, altENGParam, bestENGParam)
 
 
-  def print_numerical(self, optCycle, rndSeedCurrent, optStep, currentObj, optObj, ePC, ePB) :
+  def print_numerical(self, optCycle, rndSeedCurrent, optStep, altObj, bestObj,
+      altECP, bestECP) :
     """Method to print the optimisation objective values. Prints both the
     current objective value as well as the best objective value of the "best"
     transsys program found so far.
     @param optCycle: The optimisation cycle.
     @type optCycle: C{int}
-    @param rndSeed: The random number generator seed.
-    @type rndSeed: C{int}
-    @param currentObj: The current (this particular optimisation cycle) value of
+    @param rndSeedCurrent: The random number generator seed.
+    @type rndSeedCurrent: C{int}
+    @param altObj: The current (this particular optimisation cycle) value of
     the objective function.
-    @type currentObj: Numeric
-    @param optObjective: The overall optimisation objective value.
-    @type optObjective: Numeric
-    @param ePC: The current engineered control parameters.
-    @type ePC: C{class 'EngineeringParameters'}
-    @param ePB: The best engineered control parameters.
-    @type ePB: C{class 'EngineeringParameters'}
+    @type altObj: Numeric
+    @param bestObj: The overall optimisation objective value.
+    @type bestObj: Numeric
+    @param altECP: The current engineered control parameters.
+    @type altECP: C{class 'EngineeringParameters'}
+    @param bestECP: The best engineered control parameters.
+    @type bestECP: C{class 'EngineeringParameters'}
     """
-    self.nf.write('%i\t%i\t%s\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%s\t%s\n' % (optCycle, rndSeedCurrent, str.upper(str(optStep)), currentObj[0], currentObj[1], currentObj[2], optObj[0], optObj[1], optObj[2], ePC.get_lowPoint().x, ePC.get_lowPoint().y, ePC.get_highPoint().x, ePC.get_highPoint().y, ePC.get_circle().get_centre().x, ePC.get_circle().get_centre().y, ePC.get_circle().r, ePB.get_lowPoint().x, ePB.get_lowPoint().y, ePB.get_highPoint().x, ePB.get_highPoint().y, ePB.get_circle().get_centre().x, ePB.get_circle().get_centre().y, ePB.get_circle().r, statlib.stats.lmean(optObj[3][0]), statlib.stats.lstdev(optObj[3][0]), statlib.stats.lmean(optObj[3][1]), statlib.stats.lstdev(optObj[3][1]), str(tuple(optObj[3][0])), str(tuple(optObj[3][1]))))
+    self.nf.write('%i\t%i\t%s\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n' % (optCycle, rndSeedCurrent, str.upper(str(optStep)), altObj[0], altObj[1], altObj[2], bestObj[0], bestObj[1], bestObj[2], altECP.get_lowPoint().x, altECP.get_lowPoint().y, altECP.get_highPoint().x, altECP.get_highPoint().y, altECP.get_circle().get_centre().x, altECP.get_circle().get_centre().y, altECP.get_circle().r, bestECP.get_lowPoint().x, bestECP.get_lowPoint().y, bestECP.get_highPoint().x, bestECP.get_highPoint().y, bestECP.get_circle().get_centre().x, bestECP.get_circle().get_centre().y, bestECP.get_circle().r, statlib.stats.lmean(bestObj[3][0]), statlib.stats.lstdev(bestObj[3][0]), statlib.stats.lmean(bestObj[3][1]), statlib.stats.lstdev(bestObj[3][1])))
 
 
-  def print_transsys_programs(self, currentTP, bestTP) :
-    """Print the transsys program parameters that are subject to perturbations
-    (i.e. the ExpressionNodeValues of the genes). This method prints a list with
-    all the perturbed values of both the current and the "best" perturbed
-    program as well as the both (current and "best") transsys programs in every
-    cycle of the optimiser.
-    @param optCycle: The optimisation cycle.
-    @type optCycle: C{int}
-    @param rndSeed: The random number generator seed.
-    @type rndSeed: C{int}
-    @param currentExprValues: The current transsys program parameters that are
-    subject to optimisation.
-    @type currentExprValues: C{list} of {float}s
-    @param bestExprValues: The parameters of the transsys program with the best
-    optimisation score.
-    @type bestExprValues: C{list} of {float}s
-    @param currentTP: The transsys program that has generated in the particular
-    optimisation cycle.
-    @type currentTP: C{class 'transsys.TranssysProgram'}
-    @param bestTP: The transsys program with the highest score of the objective
-    function.
-    @type bestTP: C{class 'transsys.TranssysProgram'}
+  def print_transsys_programs(self, alternativeTP, currentBestTP) :
+    """Print the transsys programs that are participating in to any optimisation
+    cycle.
+
+    This method writes in a transsys file (.tra) both the current alternative
+    and the CURRENT best transsys programs of every cycle of the optimiser, the
+    output file is fully compatible to the transsys program parser.
+    @param alternativeTP: The transsys program that has generated in the
+    particular optimisation cycle.
+    @type alternativeTP: C{class 'transsys.TranssysProgram'}
+    @param currentBestTP: The current best transsys program, that is the one
+    that its objective is the one calculated in the current optimisation cycle.
+    @type currentBestTP: C{class 'transsys.TranssysProgram'}
     """
-    self.tf.write('%s\n%s\n' % (str(currentTP), str(bestTP)))
+    self.tf.write('%s\n%s\n' % (str(alternativeTP), str(currentBestTP)))
 
 
 
@@ -620,11 +610,15 @@ def objective(tp, latticeSize, timesteps, initialNoise, rndSeed):
 def optimisation(engineeredCP, simulatorCP, optimiserCP, logObj) :
   """Curry out the optimisation experiment.
 
-  This function implements all the necessary steps to run a complete
-  optimisation expreriment, it reports a bunch of optimisation results at the
-  logging object.
-  @param transsysProgram: A transsys program instance.
-  @type transsysProgram: C{class 'transsys.TranssysProgram'}
+  This is the wrapper function for the optimiser. this function integrates all
+  the nessecary steps to run a random local search experiment on an engineered
+  transsys program (a TranssysProgramDummy object, actually the function
+  "optimises" the control parameters of the engineered transsys program). All
+  the calculations are curried out in the relative methods/functions above here
+  anly the evaluation is taking place. The function returns nothing but writes
+  in the log object after each optimisation cycle.
+  @param engineeredCP: The TranssyProgramDummy (engineered) control parameters.
+  @type engineeredCP: C{class 'EngineeringParameters'}
   @param simulatorCP: An 'translattice.SimulatorControlParameters' object which
   contains the lattice simulator's control parameters. See docstring of
   L{translattice.SimulatorControlParameters}.
@@ -636,6 +630,8 @@ def optimisation(engineeredCP, simulatorCP, optimiserCP, logObj) :
   @param logObj: An object to keep logging and print out the optimisation
   results.
   @type logObj: C{class 'OptimisationBookKeeping'}
+  @return: Nothing (But writes all the numerical output and the generated
+  transsys programs in a numerical and a .tra output file respectively)
   @rtype: C{None}
   """
   # Get the parameters.
@@ -652,7 +648,7 @@ def optimisation(engineeredCP, simulatorCP, optimiserCP, logObj) :
     # Boolean to check whether an optimisation step is succsefull or not.
     optStep = False
     # Set the current random seed.
-    rndSeedCurrent = optimiserCP.rndParam + cycle
+    rndSeedCurrent = optimiserCP.rndParam + (cycle + 1)
     # Set the random objects.
     perturbObj = translattice.UniformRNG(rndSeedCurrent, -perturbOffset, perturbOffset)
     # Polymorphism will take care of the random object initalisation.
@@ -660,23 +656,24 @@ def optimisation(engineeredCP, simulatorCP, optimiserCP, logObj) :
 
     # Perturb the engineered control parameters. (here is the actual
     # implementation of the random local search)
-    engCurrent = engBest.perturb_eng_parameters(perturbObj)
+    engPAlternative = engBest.perturb_eng_parameters(perturbObj)
     # Generate the transsys programs.
-    tpCurrent = TranssysProgramDummy('engineeredCurrent' + str(cycle), engCurrent)
-    tpBest = TranssysProgramDummy('engineeredBest' + str(rndSeedCurrent), engBest)
+    tpAlternative = TranssysProgramDummy('tpAlternative' + str(cycle + 1), engPAlternative)
+    tpBest = TranssysProgramDummy('currentBest' + str(rndSeedCurrent), engBest)
 
     # Calculate the objectives of both the best and the alternative transsys
     # programs, with the same initial conditions.
     objectiveBest = objective(tpBest, latticeSize, timesteps, initialNoise, rndSeedCurrent)
-    objectiveCurrent = objective(tpCurrent, latticeSize, timesteps, initialNoise, rndSeedCurrent)
+    objectiveAlternative = objective(tpAlternative, latticeSize, timesteps, initialNoise, rndSeedCurrent)
 
     # If an optimisation step occurs.
-    if objectiveCurrent[0] > objectiveBest[0] :
+    if objectiveAlternative[0] > objectiveBest[0] :
       optStep = True
 
     # Print the optimisation's log.
-    logObj.write_log(cycle + 1, rndSeedCurrent, optStep, objectiveCurrent, objectiveBest, engineeredCP, engBest, tpCurrent, tpBest)
+    logObj.write_log(cycle + 1, rndSeedCurrent, optStep, objectiveAlternative, objectiveBest, engPAlternative, engBest, tpAlternative, tpBest)
 
     # Change the control parameters (the random local search)
-    if objectiveCurrent[0] > objectiveBest[0] :
-      engBest = copy.deepcopy(engineeredCP)
+    if objectiveAlternative[0] > objectiveBest[0] :
+      engBest = copy.deepcopy(engPAlternative)
+
