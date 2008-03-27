@@ -6,6 +6,7 @@
 import unittest
 import sys
 import os
+import filecmp
 
 import transsys
 import transsys.clib
@@ -100,56 +101,16 @@ class TestRandomWalkOptimisation(unittest.TestCase) :
 """
 
 
-    self.dummyPerturbExpect = """transsys engineered1
-{
-  factor A
-  {
-    decay: 0.01;
-    diffusibility: 0.0;
-  }
-
-  factor B
-  {
-    decay: 0.01;
-    diffusibility: 0.002;
-  }
-
-  gene geneA
-  {
-    promoter
-    {
-      constitutive: (0.00481296626531 + ((0.152529635495 - 0.00481296626531) * ((((A - 9.90911724498) * (A - 9.90911724498)) + ((B - 9.03916879365) * (B - 9.03916879365))) <= (2.70833248416 * 2.70833248416))));
-    }
-    product
-    {
-      default: A;
-    }
-  }
-
-  gene geneB
-  {
-    promoter
-    {
-      constitutive: (0.0200344354774 + ((0.0857795363603 - 0.0200344354774) * ((((A - 9.90911724498) * (A - 9.90911724498)) + ((B - 9.03916879365) * (B - 9.03916879365))) <= (2.70833248416 * 2.70833248416))));
-    }
-    product
-    {
-      default: B;
-    }
-  }
-}
-"""
-
-
     self.CPExpected = """#randomSeed: 1
-#initialisationvariables: upper: 15 lower: 0 
+#initialisationVariables: upper: 15.0 lower: 0.0 
 #factorInitialisation: None
 #signalTimestep: None
-#latticeSize: width: 10 height: 10 
+#latticeSize: width: 8 height: 8 
 #samplingInterval: 1
 #timesteps: 300
-#cycles: 2
-#offset: 0.5
+#rndParam: 1
+#cycles: 3
+#offset: 0.1
 #decayA: 0.01
 #decayB: 0.01
 #lowPoint: y: 1.0 x: 1.0 
@@ -160,13 +121,7 @@ class TestRandomWalkOptimisation(unittest.TestCase) :
 """
 
 
-    self.OptFunctionDummyExpect = """OptCycle: 0
-CurrentObjective: 8.628835
-OptimisationObjective: 8.628835
-CurrentExpressionValues: [0.01, 0.089999999999999997, 0.01, 10.0, 10.0, 10.0, 10.0, 2.0, 2.0, 0.01, 0.14000000000000001, 0.01, 10.0, 10.0, 10.0, 10.0, 2.0, 2.0]
-BestExpressionvalues: [0.01, 0.089999999999999997, 0.01, 10.0, 10.0, 10.0, 10.0, 2.0, 2.0, 0.01, 0.14000000000000001, 0.01, 10.0, 10.0, 10.0, 10.0, 2.0, 2.0]
-CurrentTranssysProgram:
-transsys engineered
+    self.dummyPerturbExpect = """transsys engineeredPerturbed
 {
   factor A
   {
@@ -184,7 +139,7 @@ transsys engineered
   {
     promoter
     {
-      constitutive: (0.01 + ((0.09 - 0.01) * ((((A - 10.0) * (A - 10.0)) + ((B - 10.0) * (B - 10.0))) <= (2.0 * 2.0))));
+      constitutive: (0.009294826377 + ((0.094875413505 - 0.009294826377) * ((((A - 9.9908743406) * (A - 9.9908743406)) + ((B - 9.89949064633) * (B - 9.89949064633))) <= (2.0615657669 * 2.0615657669))));
     }
     product
     {
@@ -196,7 +151,7 @@ transsys engineered
   {
     promoter
     {
-      constitutive: (0.01 + ((0.14 - 0.01) * ((((A - 10.0) * (A - 10.0)) + ((B - 10.0) * (B - 10.0))) <= (2.0 * 2.0))));
+      constitutive: (0.0107195785487 + ((0.133307198471 - 0.0107195785487) * ((((A - 9.9908743406) * (A - 9.9908743406)) + ((B - 9.89949064633) * (B - 9.89949064633))) <= (2.0615657669 * 2.0615657669))));
     }
     product
     {
@@ -204,248 +159,37 @@ transsys engineered
     }
   }
 }
-
-BestTranssysProgram:
-transsys engineered
-{
-  factor A
-  {
-    decay: 0.01;
-    diffusibility: 0.0;
-  }
-
-  factor B
-  {
-    decay: 0.01;
-    diffusibility: 0.002;
-  }
-
-  gene geneA
-  {
-    promoter
-    {
-      constitutive: (0.01 + ((0.09 - 0.01) * ((((A - 10.0) * (A - 10.0)) + ((B - 10.0) * (B - 10.0))) <= (2.0 * 2.0))));
-    }
-    product
-    {
-      default: A;
-    }
-  }
-
-  gene geneB
-  {
-    promoter
-    {
-      constitutive: (0.01 + ((0.14 - 0.01) * ((((A - 10.0) * (A - 10.0)) + ((B - 10.0) * (B - 10.0))) <= (2.0 * 2.0))));
-    }
-    product
-    {
-      default: B;
-    }
-  }
-}
-
---------------------------------------------------------------------------------
-OptCycle: 1
-CurrentObjective: -16.235837
-OptimisationObjective: 8.628835
-CurrentExpressionValues: [0.01, 0.089999999999999997, 0.01, 10.0, 10.0, 10.0, 10.0, 2.0, 2.0, 0.01, 0.14000000000000001, 0.01, 10.0, 10.0, 10.0, 10.0, 2.0, 2.0]
-BestExpressionvalues: [0.0069375545153243312, 0.11716512789463146, 0.0069375545153243312, 9.9544549047067736, 9.9544549047067736, 9.5074543352306922, 9.5074543352306922, 2.3273729757632831, 2.3273729757632831, 0.014154305167460095, 0.10958619936124425, 0.014154305167460095, 9.9544549047067736, 9.9544549047067736, 9.5074543352306922, 9.5074543352306922, 2.3273729757632831, 2.3273729757632831]
-CurrentTranssysProgram:
-transsys engineered1
-{
-  factor A
-  {
-    decay: 0.01;
-    diffusibility: 0.0;
-  }
-
-  factor B
-  {
-    decay: 0.01;
-    diffusibility: 0.002;
-  }
-
-  gene geneA
-  {
-    promoter
-    {
-      constitutive: (0.00693755451532 + ((0.117165127895 - 0.00693755451532) * ((((A - 9.95445490471) * (A - 9.95445490471)) + ((B - 9.50745433523) * (B - 9.50745433523))) <= (2.32737297576 * 2.32737297576))));
-    }
-    product
-    {
-      default: A;
-    }
-  }
-
-  gene geneB
-  {
-    promoter
-    {
-      constitutive: (0.0141543051675 + ((0.109586199361 - 0.0141543051675) * ((((A - 9.95445490471) * (A - 9.95445490471)) + ((B - 9.50745433523) * (B - 9.50745433523))) <= (2.32737297576 * 2.32737297576))));
-    }
-    product
-    {
-      default: B;
-    }
-  }
-}
-
-BestTranssysProgram:
-transsys engineered
-{
-  factor A
-  {
-    decay: 0.01;
-    diffusibility: 0.0;
-  }
-
-  factor B
-  {
-    decay: 0.01;
-    diffusibility: 0.002;
-  }
-
-  gene geneA
-  {
-    promoter
-    {
-      constitutive: (0.01 + ((0.09 - 0.01) * ((((A - 10.0) * (A - 10.0)) + ((B - 10.0) * (B - 10.0))) <= (2.0 * 2.0))));
-    }
-    product
-    {
-      default: A;
-    }
-  }
-
-  gene geneB
-  {
-    promoter
-    {
-      constitutive: (0.01 + ((0.14 - 0.01) * ((((A - 10.0) * (A - 10.0)) + ((B - 10.0) * (B - 10.0))) <= (2.0 * 2.0))));
-    }
-    product
-    {
-      default: B;
-    }
-  }
-}
-
---------------------------------------------------------------------------------
-OptCycle: 2
-CurrentObjective: -2.217634
-OptimisationObjective: 8.628835
-CurrentExpressionValues: [0.01, 0.089999999999999997, 0.01, 10.0, 10.0, 10.0, 10.0, 2.0, 2.0, 0.01, 0.14000000000000001, 0.01, 10.0, 10.0, 10.0, 10.0, 2.0, 2.0]
-BestExpressionvalues: [0.009259709607100099, 0.073107558863030442, 0.009259709607100099, 9.3071902629676977, 9.3071902629676977, 12.939702040147498, 12.939702040147498, 1.4145991526747521, 1.4145991526747521, 0.0046219140871941681, 0.15331222867542596, 0.0046219140871941681, 9.3071902629676977, 9.3071902629676977, 12.939702040147498, 12.939702040147498, 1.4145991526747521, 1.4145991526747521]
-CurrentTranssysProgram:
-transsys engineered2
-{
-  factor A
-  {
-    decay: 0.01;
-    diffusibility: 0.0;
-  }
-
-  factor B
-  {
-    decay: 0.01;
-    diffusibility: 0.002;
-  }
-
-  gene geneA
-  {
-    promoter
-    {
-      constitutive: (0.0092597096071 + ((0.073107558863 - 0.0092597096071) * ((((A - 9.30719026297) * (A - 9.30719026297)) + ((B - 12.9397020401) * (B - 12.9397020401))) <= (1.41459915267 * 1.41459915267))));
-    }
-    product
-    {
-      default: A;
-    }
-  }
-
-  gene geneB
-  {
-    promoter
-    {
-      constitutive: (0.00462191408719 + ((0.153312228675 - 0.00462191408719) * ((((A - 9.30719026297) * (A - 9.30719026297)) + ((B - 12.9397020401) * (B - 12.9397020401))) <= (1.41459915267 * 1.41459915267))));
-    }
-    product
-    {
-      default: B;
-    }
-  }
-}
-
-BestTranssysProgram:
-transsys engineered
-{
-  factor A
-  {
-    decay: 0.01;
-    diffusibility: 0.0;
-  }
-
-  factor B
-  {
-    decay: 0.01;
-    diffusibility: 0.002;
-  }
-
-  gene geneA
-  {
-    promoter
-    {
-      constitutive: (0.01 + ((0.09 - 0.01) * ((((A - 10.0) * (A - 10.0)) + ((B - 10.0) * (B - 10.0))) <= (2.0 * 2.0))));
-    }
-    product
-    {
-      default: A;
-    }
-  }
-
-  gene geneB
-  {
-    promoter
-    {
-      constitutive: (0.01 + ((0.14 - 0.01) * ((((A - 10.0) * (A - 10.0)) + ((B - 10.0) * (B - 10.0))) <= (2.0 * 2.0))));
-    }
-    product
-    {
-      default: B;
-    }
-  }
-}
-
---------------------------------------------------------------------------------
 """
 
-    self.OptFunctionTPExpect = """OptCycle: 0
-CurrentObjective: 455564883918.891418
-OptimisationObjective: 455564883918.891418
-CurrentExpressionValues: [0.5, 3.0, 0.5, 2.1499999999999999, 0.5, 3.0]
-BestExpressionvalues: [0.5, 3.0, 0.5, 2.1499999999999999, 0.5, 3.0]
-CurrentTranssysProgram:
-transsys testOptimisation
+    self.transsysOutExpected = """#randomSeed: 1
+#initialisationVariables: upper: 15.0 lower: 0.0 
+#factorInitialisation: None
+#signalTimestep: None
+#latticeSize: width: 8 height: 8 
+#samplingInterval: 1
+#timesteps: 300
+#rndParam: 1
+#cycles: 3
+#offset: 0.1
+transsys engineeredCurrent0
 {
   factor A
   {
-    decay: 0.1;
-    diffusibility: 0.01;
+    decay: 0.01;
+    diffusibility: 0.0;
   }
 
-  factor I
+  factor B
   {
-    decay: 0.1;
-    diffusibility: 1.0;
+    decay: 0.01;
+    diffusibility: 0.002;
   }
 
-  gene gene_a
+  gene geneA
   {
     promoter
     {
-      A: activate(0.5, 3.0);
-      I: repress(0.5, 2.15);
+      constitutive: (0.009294826377 + ((0.094875413505 - 0.009294826377) * ((((A - 9.9908743406) * (A - 9.9908743406)) + ((B - 9.89949064633) * (B - 9.89949064633))) <= (2.0615657669 * 2.0615657669))));
     }
     product
     {
@@ -453,40 +197,38 @@ transsys testOptimisation
     }
   }
 
-  gene gene_i
+  gene geneB
   {
     promoter
     {
-      A: activate(0.5, 3.0);
+      constitutive: (0.0107195785487 + ((0.133307198471 - 0.0107195785487) * ((((A - 9.9908743406) * (A - 9.9908743406)) + ((B - 9.89949064633) * (B - 9.89949064633))) <= (2.0615657669 * 2.0615657669))));
     }
     product
     {
-      default: I;
+      default: B;
     }
   }
 }
 
-BestTranssysProgram:
-transsys testOptimisation
+transsys engineeredBest1
 {
   factor A
   {
-    decay: 0.1;
-    diffusibility: 0.01;
+    decay: 0.01;
+    diffusibility: 0.0;
   }
 
-  factor I
+  factor B
   {
-    decay: 0.1;
-    diffusibility: 1.0;
+    decay: 0.01;
+    diffusibility: 0.002;
   }
 
-  gene gene_a
+  gene geneA
   {
     promoter
     {
-      A: activate(0.5, 3.0);
-      I: repress(0.5, 2.15);
+      constitutive: (0.01 + ((0.09 - 0.01) * ((((A - 10.0) * (A - 10.0)) + ((B - 10.0) * (B - 10.0))) <= (2.0 * 2.0))));
     }
     product
     {
@@ -494,46 +236,38 @@ transsys testOptimisation
     }
   }
 
-  gene gene_i
+  gene geneB
   {
     promoter
     {
-      A: activate(0.5, 3.0);
+      constitutive: (0.01 + ((0.14 - 0.01) * ((((A - 10.0) * (A - 10.0)) + ((B - 10.0) * (B - 10.0))) <= (2.0 * 2.0))));
     }
     product
     {
-      default: I;
+      default: B;
     }
   }
 }
 
---------------------------------------------------------------------------------
-OptCycle: 1
-CurrentObjective: 72999357915084.859375
-OptimisationObjective: 72999357915084.859375
-CurrentExpressionValues: [0.34687772576621656, 4.2462915502380287, 0.65091737719239695, 1.6829309187619652, 0.49772274523533866, 2.8522363005692073]
-BestExpressionvalues: [0.34687772576621656, 4.2462915502380287, 0.65091737719239695, 1.6829309187619652, 0.49772274523533866, 2.8522363005692073]
-CurrentTranssysProgram:
-transsys testOptimisation
+transsys engineeredCurrent1
 {
   factor A
   {
-    decay: 0.1;
-    diffusibility: 0.01;
+    decay: 0.01;
+    diffusibility: 0.0;
   }
 
-  factor I
+  factor B
   {
-    decay: 0.1;
-    diffusibility: 1.0;
+    decay: 0.01;
+    diffusibility: 0.002;
   }
 
-  gene gene_a
+  gene geneA
   {
     promoter
     {
-      A: activate(0.346877725766, 4.24629155024);
-      I: repress(0.650917377192, 1.68293091876);
+      constitutive: (0.0109549558988 + ((0.0823616522995 - 0.0109549558988) * ((((A - 10.6940217312) * (A - 10.6940217312)) + ((B - 10.4832536218) * (B - 10.4832536218))) <= (2.06905764746 * 2.06905764746))));
     }
     product
     {
@@ -541,40 +275,38 @@ transsys testOptimisation
     }
   }
 
-  gene gene_i
+  gene geneB
   {
     promoter
     {
-      A: activate(0.497722745235, 2.85223630057);
+      constitutive: (0.0109369896542 + ((0.12884586199 - 0.0109369896542) * ((((A - 10.6940217312) * (A - 10.6940217312)) + ((B - 10.4832536218) * (B - 10.4832536218))) <= (2.06905764746 * 2.06905764746))));
     }
     product
     {
-      default: I;
+      default: B;
     }
   }
 }
 
-BestTranssysProgram:
-transsys testOptimisation
+transsys engineeredBest2
 {
   factor A
   {
-    decay: 0.1;
-    diffusibility: 0.01;
+    decay: 0.01;
+    diffusibility: 0.0;
   }
 
-  factor I
+  factor B
   {
-    decay: 0.1;
-    diffusibility: 1.0;
+    decay: 0.01;
+    diffusibility: 0.002;
   }
 
-  gene gene_a
+  gene geneA
   {
     promoter
     {
-      A: activate(0.346877725766, 4.24629155024);
-      I: repress(0.650917377192, 1.68293091876);
+      constitutive: (0.01 + ((0.09 - 0.01) * ((((A - 10.0) * (A - 10.0)) + ((B - 10.0) * (B - 10.0))) <= (2.0 * 2.0))));
     }
     product
     {
@@ -582,46 +314,38 @@ transsys testOptimisation
     }
   }
 
-  gene gene_i
+  gene geneB
   {
     promoter
     {
-      A: activate(0.497722745235, 2.85223630057);
+      constitutive: (0.01 + ((0.14 - 0.01) * ((((A - 10.0) * (A - 10.0)) + ((B - 10.0) * (B - 10.0))) <= (2.0 * 2.0))));
     }
     product
     {
-      default: I;
+      default: B;
     }
   }
 }
 
---------------------------------------------------------------------------------
-OptCycle: 2
-CurrentObjective: 1280618705729303.500000
-OptimisationObjective: 1280618705729303.500000
-CurrentExpressionValues: [0.40365692242125972, 5.6676205679443035, 0.433651971829496, 1.0500988938999978, 0.69631927906304769, 2.6667764511936078]
-BestExpressionvalues: [0.40365692242125972, 5.6676205679443035, 0.433651971829496, 1.0500988938999978, 0.69631927906304769, 2.6667764511936078]
-CurrentTranssysProgram:
-transsys testOptimisation
+transsys engineeredCurrent2
 {
   factor A
   {
-    decay: 0.1;
-    diffusibility: 0.01;
+    decay: 0.01;
+    diffusibility: 0.0;
   }
 
-  factor I
+  factor B
   {
-    decay: 0.1;
-    diffusibility: 1.0;
+    decay: 0.01;
+    diffusibility: 0.002;
   }
 
-  gene gene_a
+  gene geneA
   {
     promoter
     {
-      A: activate(0.403656922421, 5.66762056794);
-      I: repress(0.433651971829, 1.0500988939);
+      constitutive: (0.00948942497837 + ((0.0876893717778 - 0.00948942497837) * ((((A - 10.254628389) * (A - 10.254628389)) + ((B - 9.16774059391) * (B - 9.16774059391))) <= (1.81444707398 * 1.81444707398))));
     }
     product
     {
@@ -629,40 +353,38 @@ transsys testOptimisation
     }
   }
 
-  gene gene_i
+  gene geneB
   {
     promoter
     {
-      A: activate(0.696319279063, 2.66677645119);
+      constitutive: (0.0100888508517 + ((0.142940209913 - 0.0100888508517) * ((((A - 10.254628389) * (A - 10.254628389)) + ((B - 9.16774059391) * (B - 9.16774059391))) <= (1.81444707398 * 1.81444707398))));
     }
     product
     {
-      default: I;
+      default: B;
     }
   }
 }
 
-BestTranssysProgram:
-transsys testOptimisation
+transsys engineeredBest3
 {
   factor A
   {
-    decay: 0.1;
-    diffusibility: 0.01;
+    decay: 0.01;
+    diffusibility: 0.0;
   }
 
-  factor I
+  factor B
   {
-    decay: 0.1;
-    diffusibility: 1.0;
+    decay: 0.01;
+    diffusibility: 0.002;
   }
 
-  gene gene_a
+  gene geneA
   {
     promoter
     {
-      A: activate(0.403656922421, 5.66762056794);
-      I: repress(0.433651971829, 1.0500988939);
+      constitutive: (0.01 + ((0.09 - 0.01) * ((((A - 10.0) * (A - 10.0)) + ((B - 10.0) * (B - 10.0))) <= (2.0 * 2.0))));
     }
     product
     {
@@ -670,28 +392,47 @@ transsys testOptimisation
     }
   }
 
-  gene gene_i
+  gene geneB
   {
     promoter
     {
-      A: activate(0.696319279063, 2.66677645119);
+      constitutive: (0.01 + ((0.14 - 0.01) * ((((A - 10.0) * (A - 10.0)) + ((B - 10.0) * (B - 10.0))) <= (2.0 * 2.0))));
     }
     product
     {
-      default: I;
+      default: B;
     }
   }
 }
 
---------------------------------------------------------------------------------
 """
 
-    self.simulatorParameters = translattice.SimulatorControlParameters(translattice.LatticeSize(10, 10), 300, translattice.UniformParameters(0, 15))
 
-    self.optimisationParameters = randomLocalSearch.OptimisationControlParameters(2, 0.5)
+    self.numericalOutExpected = """#randomSeed: 1
+#initialisationVariables: upper: 15.0 lower: 0.0 
+#factorInitialisation: None
+#signalTimestep: None
+#latticeSize: width: 8 height: 8 
+#samplingInterval: 1
+#timesteps: 300
+#rndParam: 1
+#cycles: 3
+#offset: 0.1
+OptCycle	CurrRNDSeed	OptFlag	CurrObj	CurrLatBM	CurrCtrlBM	BestObj	BestLatBM	BestCtrlBM	CurrLowX	CurrLowY	CurrHighX	CurrHighY	CurrCircX	CurrCircY	CurrRadius	BestLowX	BestLowY	BestHighX	BestHighY	BestCircX	BestCircY	BestRadius	LatBest_muA	LatBest_stdevA	LatBest_muB	LatBest_stdevB	LatBestFCA	LatBestFCB
+1	1	FALSE	28.437905	36.125156	7.687252	30.744648	37.107781	6.363133	1.000000	1.000000	9.000000	14.000000	10.000000	10.000000	2.000000	1.000000	1.000000	9.000000	14.000000	10.000000	10.000000	2.000000	2.516018	2.872222	3.228841	2.896957	(1.0497992458659853, 1.5128019586822383, 1.3154078003078216, 9.0379524826517805, 1.0200034767172639, 1.5657591248758773, 1.5117025575757708, 1.2785918989939413, 1.1192396638412581, 1.6140612328538022, 0.96967742253170985, 1.6418098250630668, 1.1102925272875155, 0.97232189873680208, 1.27307509235893, 1.1224191534498964, 1.1118973710819668, 1.1641263479027855, 1.5670926976423576, 1.4234394531560179, 9.1716001167947283, 1.0398873816254932, 9.0893655594540483, 1.6398173602479782, 9.1489984815334608, 1.1741210510670863, 9.1530367349682784, 1.3226526607433908, 0.97635676961634243, 1.5375403644732641, 1.0782256707445139, 9.0757981664622651, 1.2265956729778884, 1.3249644492282571, 1.3341683922661509, 1.3111842268944787, 0.98294893992604082, 1.6742051763802988, 1.2404963138209699, 1.3204125250684846, 1.5177662611274587, 1.5837998047084911, 1.3288964315969087, 1.3759927153934746, 1.1490447008603519, 1.6550266785236116, 9.1148803926611723, 9.160229788830307, 1.5461732684417739, 1.363901479668904, 0.99224415625840334, 1.3702582602287332, 1.3222382506105403, 1.2134185887829161, 1.3470713296499068, 1.4014873526653209, 0.97153787939523961, 1.0813180845964068, 9.1505219061893914, 9.1206016194653028, 1.1387568255829956, 1.4461104424135471, 0.96323695728091752, 1.5067788710308176)	(1.3851185935129759, 1.5917182765306295, 3.2156274277211683, 9.9716046766513422, 2.4006943877750455, 1.3687688227201338, 1.3182952411981859, 1.3318482020114357, 1.4795192890925339, 1.369459890525716, 1.6925476267169888, 2.4477762481607073, 2.3312459733933015, 1.6116824075666571, 2.162188006100866, 1.593493925419815, 2.4634267996225194, 1.6606640848553269, 2.2883065393674276, 2.4045940784452888, 9.0005966719582808, 3.0074886234566161, 9.2041470682506272, 3.2257407678024332, 9.9481263782324358, 3.1373244674987917, 9.0492901526187755, 2.3339878461643306, 2.2590932332942639, 1.775134882028425, 3.2661745709097243, 10.118846870682015, 2.6305865010689935, 1.7666065256427905, 2.2348860098650056, 1.4987561571082428, 1.4439952975787445, 1.5708833017286752, 2.6517471436449505, 3.473828012138092, 2.412391523073294, 1.5278803263593861, 1.5964019025389413, 1.473888073581626, 1.4346426221466382, 2.2176216754138425, 9.7993221110177569, 9.9229136405771836, 1.5534048752943292, 1.5761696831586509, 2.4492128675285705, 2.4567856901169125, 1.5495716588323289, 1.474550575346316, 2.3021139272723734, 2.3407625726309238, 1.4242514790367229, 2.295418977462472, 9.9979593602922687, 10.662811296096567, 2.4313459710781617, 1.3628829212811948, 1.3242669871972912, 1.3734262759746227)
+2	2	FALSE	3.223130	7.767057	4.543927	26.983752	33.737014	6.753262	1.000000	1.000000	9.000000	14.000000	10.000000	10.000000	2.000000	1.000000	1.000000	9.000000	14.000000	10.000000	10.000000	2.000000	2.755832	3.073390	3.637326	3.039527	(9.1648193334546519, 0.99255905044286652, 9.1530172735800406, 1.4436217710289498, 9.0043726079906783, 1.3785005754836408, 1.2677654690673528, 9.007941093054086, 1.649347148344563, 1.2781998131257957, 0.97738552441377158, 1.2929412656112882, 1.2305031788853229, 1.3377098938193426, 1.1246546508699262, 1.1901386048397666, 1.3262866095739025, 1.4471154167902831, 9.1611965530295816, 9.0485799382281193, 9.1078115525518388, 1.2112095514906673, 1.6585463359667625, 9.1132874604663723, 1.2903760607449015, 1.311419918452368, 1.3193845084140106, 1.2113104975321733, 1.6127909249650101, 1.3685705692618744, 1.4833761973661947, 1.1141262603365387, 1.465573384896887, 1.6188523116997668, 1.6213808645445438, 1.6552072201936585, 1.3218912982174598, 9.0378211214020201, 1.1803559732342719, 1.3275134748293529, 1.4094412623755219, 9.1460357925663427, 1.6186412821060943, 1.4988312662398471, 1.4312484047698364, 1.1176612640111367, 1.0291297879032195, 1.5791310343027343, 1.1057902359808616, 1.2620629998620565, 0.97440536376590048, 1.0773970688442969, 1.0119437950477768, 0.96960301805510973, 0.96651355567237718, 1.5492735012538636, 1.0861198381476342, 1.2345865391024038, 1.6792175202948125, 0.9776390645001648, 9.0112103683115219, 1.0341679455806141, 0.97362398600545363, 9.1220897111885009)	(10.074037969488451, 3.109569603129517, 9.1730525600621515, 3.315168307451962, 10.005894013410384, 2.4865872213779512, 2.5387453936405384, 10.736990505983499, 2.598740370419848, 1.8647197974441425, 3.2210075946207368, 2.9074508576778206, 3.4168349223486048, 1.8099777737581335, 1.7146873599928909, 3.2668595205045996, 2.4436003232012138, 2.4347864736396452, 10.002436960369208, 10.76800430998097, 10.115004870471383, 2.5765956974818485, 2.3199311106921043, 9.0689489421825957, 1.5911923858963861, 1.6956128561976629, 2.4938213195356753, 2.671493039697483, 2.6678688894602853, 2.501127244186002, 1.7155752070692272, 2.2265949431104293, 1.4964561802845917, 2.1825895996207403, 1.6168815922917241, 1.6092388517473533, 2.3511434663100883, 9.0078207097119858, 2.2038690564711874, 1.5237682445651801, 2.1554771597166815, 8.8847029433922078, 2.1317861140907146, 1.4385295171277184, 1.6360028866464515, 2.260532749788974, 1.5260484612237206, 1.4948866949381245, 1.7963408631282274, 2.2339683477926662, 1.5705709479483132, 1.5710388663677592, 2.3621328160881783, 1.6890310516461353, 1.5587218063555108, 2.2901954725799119, 3.2716501463388736, 1.8218414395019245, 2.271667142081053, 2.5135263557699035, 9.8495106702533626, 2.4795881160571867, 2.4728438887534492, 9.9835737585663686)
+3	3	TRUE	38.001606	42.080759	4.079153	34.432956	38.582088	4.149132	1.000000	1.000000	9.000000	14.000000	10.000000	10.000000	2.000000	1.000000	1.000000	9.000000	14.000000	10.000000	10.000000	2.000000	2.546722	2.836882	3.236986	2.727140	(1.1260090769776112, 1.2231030879358504, 1.4112473532089453, 0.96064565711332739, 1.1417433970830511, 1.6833687995920721, 1.5662713673286242, 1.421066200700104, 1.417971120323567, 1.3358182207061269, 1.4448583915563959, 9.1163962912053655, 1.172575636589926, 1.587652549096161, 9.0545615164466167, 9.0291965723537295, 1.2414994827932344, 1.278028317603439, 1.5974652078150438, 1.0509796229801316, 1.6611792442232596, 1.4119299927139757, 1.3240938475041659, 1.2090935675529346, 1.380742560278863, 1.4526343117470748, 9.1108122055814587, 1.4447569260394386, 9.1186302415449436, 1.6164656050764368, 1.4760524790183629, 1.5627010521893556, 1.1605776365500313, 9.0994585353225759, 1.016074202342512, 1.2529003308563673, 1.1671494484846874, 1.5929782339842475, 1.4030174754550251, 1.4794535561948556, 9.1240894676239552, 1.3227531110118604, 1.1787565502724506, 1.3921526715400723, 1.0961580534594453, 1.4000269086003676, 0.98217546770341813, 1.1818170451818362, 1.6105539633274257, 1.2896426064356439, 9.032285129840643, 8.9700318908657852, 1.6428927161553992, 1.2681493953723033, 1.1257670545547664, 1.6702399252158786, 1.3543919129981654, 1.2563934032455351, 0.96571028096747913, 1.4159995859094903, 1.4124396390322467, 1.4506476122154339, 9.0786740377507442, 0.96727682760898281)	(1.5573377823750247, 1.413468944604851, 1.563772324925877, 2.2414998155853816, 1.5117076744718143, 1.6863721617896452, 3.187453699980725, 2.4924492170337009, 2.3881470656879795, 1.6113598608205666, 2.2273824105223636, 8.9037735548167536, 2.2784044794559688, 2.3601331560682581, 9.8908599531817512, 9.8574687465088555, 1.7236575664743659, 1.76266180037565, 2.3770718281833263, 2.4473872610541281, 2.3290997264290079, 1.6718778374370267, 2.3718714788181452, 2.430276496719149, 1.8256230577890435, 3.2141595382103496, 9.2641848710215911, 3.1013319820247589, 9.0095112127829537, 2.1561764455544288, 1.4771840120950683, 1.5306227803542034, 3.1043630083807976, 9.4022685409563387, 3.224509692684014, 1.8279592649524141, 2.1918194247401002, 1.4197439067080406, 1.317406908888453, 1.5955959658301049, 9.1903565314236353, 3.3299968980578267, 2.6916433896309049, 2.3425629139024879, 1.5585992444042376, 1.3468559780602249, 1.5091119299063869, 2.2772959307921621, 2.3147925317697142, 2.5582694999504048, 9.8114879706943992, 9.7360060741026846, 2.2634087157053004, 1.5833029371998704, 2.2108145407409827, 1.6855624358987693, 1.4908860534761816, 1.5546754491496086, 2.3450798305211809, 2.3869971449428613, 1.5857701378635991, 2.1998686306593482, 9.0081066582548992, 2.2377159998487053)
+"""
+
+
+    self.simulatorParameters = translattice.SimulatorControlParameters(translattice.LatticeSize(8, 8), 300, translattice.UniformParameters(0.0, 15.0))
+
+    self.optimisationParameters = randomLocalSearch.OptimisationControlParameters(3, 0.1, 1)
 
     self.engParameters = randomLocalSearch.EngineeringParameters(randomLocalSearch.Point(1, 1), randomLocalSearch.Point(9, 14), randomLocalSearch.Circle(randomLocalSearch.Point(10, 10), 2), 0.01, 0.0, 0.01, 0.002)
 
+
+  # Tests Implementation
 
   def testEngineeredGeneration(self) :
     """Test to check weather the engineered transsys program is the same with the expected."""
@@ -702,9 +443,9 @@ transsys testOptimisation
   def testPerturbation(self) :
     """Test weather the perturbation function produces the expected perturbed transsys program.
     """
-    tpDummy = randomLocalSearch.TranssysProgramDummy('engineered', self.engParameters)
-    perturbObj = translattice.UniformRNG(1, -1, 1)
-    tpDummyPerturb = randomLocalSearch.perturb_transsys_dummy(tpDummy, perturbObj, 1)
+    perturbObj = translattice.UniformRNG(self.optimisationParameters.rndParam, -self.optimisationParameters.offset, self.optimisationParameters.offset)
+    perturbedEngParameters = self.engParameters.perturb_eng_parameters(perturbObj)
+    tpDummyPerturb = randomLocalSearch.TranssysProgramDummy('engineeredPerturbed', perturbedEngParameters)
     self.assertEqual(self.dummyPerturbExpect, str(tpDummyPerturb))
 
 
@@ -719,29 +460,39 @@ transsys testOptimisation
   def testOptimisationFunctionDummy(self) :
     """Test whether the optimisation function returns the expeceted results (TranssysProgramDummy).
 
-    Run on a dummy transsys program object.
+    Actually the optimiser runs on the engineered parameter set, that is what is getting optimised.
     """
-    tpDummy = randomLocalSearch.TranssysProgramDummy('engineered', self.engParameters)
-    output = randomLocalSearch.OptimisationBookKeeping()
-    randomLocalSearch.transsys_lattice_optimisation(tpDummy, self.simulatorParameters, self.optimisationParameters, output)
-    self.assertEqual(self.OptFunctionDummyExpect, output.print_all())
+    transOut = open('abcdefghij.tra', 'w')
+    numericalOut = open('abcdefghij.dat', 'w')
+    log = randomLocalSearch.OptimisationBookKeeping(self.simulatorParameters, self.optimisationParameters, transOut, numericalOut)
+    randomLocalSearch.optimisation(self.engParameters, self.simulatorParameters, self.optimisationParameters, log)
+    transOut.close()
+    numericalOut.close()
+    transOut = open('abcdefghij.tra', 'r')
+    numricalOut =  open('abcdefghij.dat', 'r')
+    transsysOptOut = transOut.read()
+    numericalOptOut = numricalOut.read()
+    self.assertEqual(self.transsysOutExpected, transsysOptOut)
+    self.assertEqual(self.numericalOutExpected, numericalOptOut)
 
 
+#  def testOptimisationfunctionTp(self) :
+#    """Test whether the optimisation function returns the expeceted results (TranssysProgram).
+#
+#    Run on a transsys program object.
+#    """
+#    f = open('abcdefghij.tra', 'w')
+#    f.write('%s\n' % self.tpOptTest)
+#    f.close()
+#    tp = transsys.TranssysProgramParser(open('abcdefghij.tra', 'r')).parse()
+#    os.unlink('abcdefghij.tra')
+#    output = randomLocalSearch.OptimisationBookKeeping()
+#    randomLocalSearch.transsys_lattice_optimisation(tp, self.simulatorParameters, self.optimisationParameters, output)
+#    self.assertEqual(self.OptFunctionTPExpect, output.print_all())
 
-  def testOptimisationfunctionTp(self) :
-    """Test whether the optimisation function returns the expeceted results (TranssysProgram).
 
-    Run on a transsys program object.
-    """
-    f = open('abcdefghij.tra', 'w')
-    f.write('%s\n' % self.tpOptTest)
-    f.close()
-    tp = transsys.TranssysProgramParser(open('abcdefghij.tra', 'r')).parse()
-    os.unlink('abcdefghij.tra')
-    output = randomLocalSearch.OptimisationBookKeeping()
-    randomLocalSearch.transsys_lattice_optimisation(tp, self.simulatorParameters, self.optimisationParameters, output)
-    self.assertEqual(self.OptFunctionTPExpect, output.print_all())
-
+#  def tearDown(self) :
+#    os.unlink(
 
 # Run the tests.
 suite = unittest.TestSuite()

@@ -19,12 +19,14 @@ def usage() :
 
 
 # !!!!!!!!!!!! carefull the only default control parameter untill now.... !!!!
-#FIXME: This shousl change in proper version of the optimiser.
+#FIXME: This should change in proper version of the optimiser.
 randomParam = time.strftime('%d%m%Y')
 #randomParam = 11032008
+numericalOut = None
+transsysOptOut = None
 
 # Command line parsing of the control parameters.
-optlist, args = getopt.getopt(sys.argv[1:], 'hw:l:o:u:r:t:f:', ['help'])
+optlist, args = getopt.getopt(sys.argv[1:], 'hw:l:o:u:r:t:f:n:p:', ['help'])
 for opt, par in optlist :
   if opt in ('-h', '--help') :
     usage()
@@ -47,8 +49,12 @@ for opt, par in optlist :
     timesteps = int(par)
   if opt == '-f' :
     perturbationOffset = float(par)
+  if opt == '-n' :
+    numericalOut = open(par, 'w')
+  if opt == '-p' :
+    transsysOptOut = open(par, 'w')
 
-# Construct the objects.
+# Construct the parameter objects.
 latticeSize = translattice.LatticeSize(width, height)
 initialNoise = translattice.UniformParameters(low, high)
 
@@ -63,22 +69,22 @@ if len(args) > 1 :
 else :
   outfile = sys.stdout
 
-# Parse the transsys program.
+## Parse the transsys program.
 #tp = transsys.TranssysProgramParser(infile).parse()
 
+## Construct the control parameters.
+# The simulator's control parameters.
 scp = translattice.SimulatorControlParameters(latticeSize, timesteps, initialNoise, randomSeed = int(randomParam))
 
+# The optimiser control parameters.
 ocp = randomLocalSearch.OptimisationControlParameters(optCycles, perturbationOffset, int(randomParam))
 
-# the engineered control parameters are hardcoded in the file.
+#!!! The engineered control parameters are hardcoded in the file.
 engp = randomLocalSearch.EngineeringParameters(randomLocalSearch.Point(1, 1), randomLocalSearch.Point(9, 14), randomLocalSearch.Circle(randomLocalSearch.Point(10, 10), 2), 0.01, 0.0, 0.01, 0.002)
 
-# !!!!!! extreme care with the filenames. !!!
-numericalOut = 'numericalOut' + str(randomParam) + '.dat'
-transsysOut = 'transsysProgramsOut' + str(randomParam) + '.tra'
 
 # Instantiate the log keeping object
-log = randomLocalSearch.OptimisationBookKeeping(numericalOut, transsysOut, scp, ocp)
+log = randomLocalSearch.OptimisationBookKeeping(scp, ocp, transsysOptOut, numericalOut)
 
 # Run the optimiser!
 randomLocalSearch.optimisation(engp, scp, ocp, log)
