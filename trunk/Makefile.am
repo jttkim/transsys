@@ -32,7 +32,7 @@
 
 AM_CFLAGS = -Wall -pedantic
 
-EXTRA_DIST = BUGS
+EXTRA_DIST = BUGS toolbox/transsys
 
 SUBDIRS = src doc toolbox python
 
