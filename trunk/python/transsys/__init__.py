@@ -2000,6 +2000,21 @@ copy.deepcopy on it."""
     return pc
 
 
+  def squared_difference_sum(self, other) :
+    """Compute the sum of squared differences in factor concentrations.
+
+The other transsys instance must be of the same program than this
+one.
+"""
+    if self.transsys_program is not other.transsys_program :
+      raise StandardError, 'transsys programs are not identical'
+    s = 0.0
+    for i in xrange(len(self.factor_concentration)) :
+      d = self.factor_concentration[i] - other.factor_concentration[i]
+      s = s + d * d
+    return s
+
+
   def write_table_line(self, f) :
     if self.timestep is None :
       f.write('NA')
