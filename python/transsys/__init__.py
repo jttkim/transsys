@@ -1958,6 +1958,15 @@ class TranssysInstance(object) :
     return s
 
 
+  def get_factor_concentration(self, factor) :
+    """FIXME: to be done
+"""
+    factor_index = self.transsys_program.find_factor_index(factor)
+    if factor_index == -1 :
+      raise StandardError, 'factor "%s" not in transsys program "%s"' % (factor, transsys_program.name)
+    return self.factor_concentration[factor_index]
+
+
   def clone(self) :
     """Clones this transsys instance.
 The state (factor concentrations, time step etc.) is copied, but for the
@@ -2135,6 +2144,21 @@ are required, the instances should be cloned.
     raise StandardError, 'transsys_instance_list not overridden by subclass'
 
 
+  def get_factor_expression_list(self, factor) :
+    """Return a list of expression levels for a factor.
+
+@param factor: the name of the factor, as a string
+@type factor: C{String}
+@return list of expression levels
+@rtype: list of floats
+"""
+    instance_list = self.transsys_instance_list()
+    expression_list = []
+    for i in instance_list :
+      expression_list.append(i.get_factor_concentration(factor))
+    return expression_list
+    
+
   def write_table_header(self, f) :
     """Write a header for a table of records describing the instances in this
 collection.
@@ -2160,7 +2184,7 @@ also override write_table_header accordingly.
     self.write_table_header(f)
     for ti in self.transsys_instance_list() :
       ti.write_table_line(f)
-    
+
 
   def get_transsys_program(self) :
     """Return the transsys program of which the instances."""
