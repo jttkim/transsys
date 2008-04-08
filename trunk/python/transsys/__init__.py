@@ -709,7 +709,7 @@ any identifier nodes that may appear in the parameters to the link element."""
 
 
   def canonicalise(self) :
-    """Clip the spec parameter to non-negative it is a constant.
+    """Clip the spec parameter to non-negative if it is a constant.
 
 Notice that negative max parameters are permitted. These effectively
 invert C{activate} to C{repress} and vice versa, thus creating a

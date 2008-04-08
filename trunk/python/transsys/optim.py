@@ -778,6 +778,9 @@ the unconstrained optimiser space.
   def setParameters(self, parameter_list) :
     """Set parameters in C{transsys_program} according to the optimiser space
 values provided by C{parameter_list}.
+
+This base class implementation does not do any transformation, so
+it should be overridden by subclasses.
 """
     if self.transsys_program is None :
       raise StandardError, 'no transsys program, cannot set parameters'
