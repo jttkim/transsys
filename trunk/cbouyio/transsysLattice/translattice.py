@@ -350,7 +350,7 @@ class ControlParameters(object) :
     """
     string = ''
     for ivar, value in self.__dict__.iteritems() :
-      string = string + '#%s: %s\n' % (str(ivar), str(value))
+      string = string + '# %s: %s\n' % (str(ivar), str(value))
     return string
 
 
@@ -544,7 +544,7 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
 
     Works with 2D lattices untill now....
 
-    @return: A lattice populated with transsys instances.
+    @return: A <width>x<height> lattice populated with transsys instances.
     @rtype: C{list} of C{list} of C{transsys.TranssysInstance} objects
     """
     lattice = []
@@ -682,6 +682,22 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
     return exprTable
 
 
+  def get_factor_expression_profile(self, factorName) :
+    """Return the factor expression profile of the lattice
+
+    @return: The expression profile of the specified factor from the lattice.
+    The same function can apply to any C{transsys.TranssysInstanceCollection}
+    object.
+    @rtype: C{list} of C{float}s
+    """
+    # Method is not needed anymore it has implemented in a higher lever (i.e.
+    # the TranssysInstanceCollection class)
+    raise StandardError, 'This method is obsolete should not be called anymore. Try the equivalent method of the superclass'
+#    factorExpression = []
+#    factorIndex = self.transsysProgram.find_factor_index(factorName)
+#    for ti in self.transsys_instance_list() :
+#      factorExpression.append(ti.factor_concentration[factorIndex])
+#    return factorExpression
 
 
   def update_factor_concentrations(self, currentState):
@@ -709,23 +725,26 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
     y = self.latticeSize.height
     latticeFactorConcentrations = []
     # Begin the calculations.
-    for i in xrange(self.latticeSize.width):
+    for i in xrange(x) :
       latticeFactorConcentrations.append([])
-      for j in xrange(self.latticeSize.height):
+      for j in xrange(y) :
         # The factor concentrations manipulation.
-        factorConcentrationsUpdate = [0.0] * self.numFactors
+        factorConcentrationNew = [0.0] * self.numFactors
         # Get the current lattice concentrations.
-        factorConcentrationsOld = currentState[i][j].factor_concentration
-#        if len(factorConcentrationsOld) != len(factorConcentrationsUpdate):
+        factorConcentrationOld = currentState[i][j].factor_concentration
+#        if len(factorConcentrationOld) != len(factorConcentrationNew):
 #          raise StandardError, 'Factor number inconsistancy between the new and the old factor concentrations list.'
-        for k in xrange(len(factorConcentrationsUpdate)):
+        for k in xrange(len(factorConcentrationNew)):
           # The main calculation of the new factor concentrations.
           # Introduce "per factor" diffusibility expression.
           diffRate = self.transsysProgram.factor_list[k].diffusibility_expression.value
           # Check the toroidal transformations by using the modulo division!
-          fc = (factorConcentrationsOld[k] + diffRate * self.lattice[(x + i - 1) % x][j].factor_concentration[k] + diffRate * self.lattice[i][(y + j - 1) % y].factor_concentration[k] + diffRate * self.lattice[i][(j + 1) % y].factor_concentration[k] + diffRate * self.lattice[(i + 1) % x][j].factor_concentration[k]) / (4 * diffRate + 1)
-          factorConcentrationsUpdate[k] = fc
-        latticeFactorConcentrations[i].append(factorConcentrationsUpdate)
+          if diffRate == 0.0 :
+            factorConcentrationNew[k] = factorConcentrationOld[k]
+          else :
+            fcNew = (factorConcentrationOld[k] + diffRate * self.lattice[(x + i - 1) % x][j].factor_concentration[k] + diffRate * self.lattice[i][(y + j - 1) % y].factor_concentration[k] + diffRate * self.lattice[i][(j + 1) % y].factor_concentration[k] + diffRate * self.lattice[(i + 1) % x][j].factor_concentration[k]) / (4 * diffRate + 1)
+            factorConcentrationNew[k] = fcNew
+        latticeFactorConcentrations[i].append(factorConcentrationNew)
     return latticeFactorConcentrations
 
 
@@ -742,8 +761,9 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
     @type timesteps: C{int}
     @rtype: C{None}
     """
-    # Update all the factor concentrations.
+    # First calculate all the factor concentrations after diffusion.
     updateFactorConcentrations = self.update_factor_concentrations(self.lattice)
+    # Then set the lattice's factor concentration to the new ones.
     for i in xrange(len(self.lattice)):
       for j in xrange(len(self.lattice[i])):
 #        if len(self.lattice[i][j].factor_concentration) != len(updateFactorConcentrations[i][j]):
@@ -919,6 +939,7 @@ class TranssysLatticeTimeseries(object):
     @return: Maximum of factor concentration.
     @rtype: C{float}
     """
+    # method become obsolete after the abolition of the .pgm imaging framework.
     maxFC = 0.0
     for til in self.latticeTimeseries :
       for ti in til.transsys_instance_list():
