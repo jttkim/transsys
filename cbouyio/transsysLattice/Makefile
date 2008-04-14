@@ -2,7 +2,7 @@
 # $Author::            $:  Author of last commit
 # $Date$:  Date of last commit
 
-PYTHONMODULES	= translattice.py
+PYTHONMODULES	= translattice.py bimodalities.py randomLocalSearch.py
 
 html : $(PYTHONMODULES)
 	rm -rf html/
