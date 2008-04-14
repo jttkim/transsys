@@ -10,9 +10,9 @@
 A pure python module for calculating bimodalirties.
 
 The module contains all the high level functions to conduct all the necessary
-bimodalities calculations. It calculates the bimodality score of a data set for
-a given threshold, the optimal threshold wich maximises bimodality score and the
-sum of bimodalities for a data table/frame.
+bimodalities calculations. It calculates the bimodality score of a
+TranssysInstanceCollection object. Returns also (as instance variables) the
+thresholds and the partial bimodality scores.
 
 @author: Costas Bouyioukos
 @organization: University of East Anglia
@@ -31,17 +31,82 @@ import math
 import statlib.stats
 
 
-def bimodality(data, threshold):
-  """Function to calculate bimodality for a given threshold.
+class BimodalitiesCollection(object) :
+  """A class wich gathers the bimodality calculations.
 
-  Bimodality is calculated as the distance between two means over the sum of
-  their standard deviations.
+  @ivar totalBimodality: The total bimodality score of an extire lattice.
+  vector.
+  @type totalBimodality: Numeric
+  @ivar thresholds: A dictionary of factors (keys) and threshold values (values)
+  by wich the bimodality scores has been calculated.
+  @type thresholds: A C{dict} of <factor><thresholds> key/value pairs.
+  @ivar bimodalities: A dictionary of factors (keys) and bimodality scores
+  (values).
+  @type bimodalities:  A C{dict} of <factor><bimodalities> key/value pairs.
+  """
+
+
+  def __init__(self, transsysLattice) :
+    """The constructor
+
+    @param transsysLattice: A transsys instance lattice object.
+    @type transsysInstanceCollection: C{class 'transsys.Transsyslattice'}
+    """
+    self.bimodalities = {}
+    self.thresholds = {}
+    self.totalBimodality = self.total_bimodality(transsysLattice)
+
+
+  def total_bimodality(self, lattice) :
+    """Calculates the bimodality score for the relevant thresold. Stores the
+    bimodalities and the thresholds into the relative dictionaries and returns
+    the total bimodality score of the lattice.
+
+    The function raises an exception when the length of the expression profile
+    is less than 4 (a bimodality score cannot be defined for lists smaller than
+    four.
+    @return: The bimodality score of the lattice (TranssysInstanceCollection).
+    @rtype: C{float}
+    """
+    totalBM = 0
+    for factorName in lattice.transsysProgram.factor_names() :
+      bmScore = 0
+      optThres = 0
+      factorExpression = lattice.get_factor_expression_list(factorName)
+      if len(factorExpression) < 4 :
+        raise StandardError, 'Bimodality calculation does not make sense for such a small data set.'
+      # iterate over set... set is a non reduntant set of the factorExpression
+      # list.
+      for thres in set(factorExpression) :
+        # Actual calculation of the bimodality score.
+        bm = bimodality(factorExpression, thres)
+        if bm > bmScore :
+          bmScore = bm
+          optThres = thres
+      self.bimodalities[factorName] = bmScore
+      self.thresholds[factorName] = optThres
+    for bm in self.bimodalities.itervalues() :
+      totalBM = totalBM + bm
+    return totalBM
+
+
+
+def bimodality(data, threshold):
+  """Function to calculate the bimodality of an one dimensional data set for a
+  given threshold.
+
+  First the data set is partitioned in two subsets S1 and S2 (for threshold t
+  then S1 = {x_i, if x_i <= t} and S2 = {x_i, if x_i > t}).
+  Then, bimodality is calculated as the quotient of the distance between the
+  means of each subset over the sum of the standard deviations.
+  Returns zero if all the elements are equal and also zero if any subset
+  is smaller than one.
   @param data: A one dimentional data set.
   @type data: C{list}
   @param threshold: A scalar variable.
-  @type threshold: C{float}
-  @precondition: threshold should be an element of the list containing the data.
-  @return: The bimodality (C{float})
+  @type threshold: Numeric
+  @return: The bimodality.
+  @rtype: C{float}
   """
   subset1 = []
   subset2 = []
@@ -58,47 +123,6 @@ def bimodality(data, threshold):
   mu2 = statlib.stats.lmean(subset2)
   sigma1 = statlib.stats.lstdev(subset1)
   sigma2 = statlib.stats.lstdev(subset2)
-#  # Treat the special case of the sum of stdevs to be zero.
-#  if sigma1 + sigma2 == 0 :
-#    return 1e3000
   bimodality = float(abs(mu1 - mu2)) / float(sigma1 + sigma2)
   return bimodality
-
-
-def bimodality_score(data):
-  """Function to calculate the bimodality score (maximum bimodality) of an one
-  dimensional data set.
-
-  Bimodality score is defined as the maximum bimodality that a partition of the
-  data set can have.
-  @param data: A one dimentional data set.
-  @type data: C{list}
-  @return: The bimodality (C{float})
-  """
-  if len(data) < 4 :
-    raise StandardError, 'Bimodality calculation does not make sense for such a small data set.'
-  bmScore = 0
-  for thres in set(data) :
-    # Actual calculation of the bimodality score.
-    bm = bimodality(data, thres)
-    if bm > bmScore :
-      bmScore = bm
-  return bmScore
-
-
-def total_bimodality(dataFrame):
-  """Function to calculate the total bimodality score of a multi dimensional
-  data set/frame.
-
-  The total bimodality score is the sum of the bimodality scores for all the
-  data vectors of the data frame.
-  @param dataFrame: A mutli-dimenstional data frame.
-  @type dataFrame: C{list} of C{list}s
-  @return: The total bimodality score of a data set/frame. (C{float})
-  """
-  totalBM = 0
-  for data in dataFrame :
-    bm = bimodality_score(data)
-    totalBM = totalBM + bm
-  return totalBM
 
