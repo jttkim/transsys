@@ -1,0 +1,805 @@
+#!/usr/bin/env python
+
+# A unit testing framework for the transsys lattice module.
+# adapted and evolved from the testlattice shell script.
+
+import unittest
+import sys
+import os
+import filecmp
+
+import transsys
+import transsys.clib
+import translattice
+
+import randomLocalSearch
+
+
+class TestRandomWalkOptimisation(unittest.TestCase) :
+
+  def setUp(self) :
+    self.tpOptTest = """transsys patternFormation
+
+# This is the statrting point of the pattern formation experiments.
+
+# It has been fine tuned manualy according to the simpliest Meinhardt pattern
+# formation principle, and so forth is the first transsys program suspectible
+# for pattern formation.
+
+# $Id: patternFormation.tra 255 2007-02-16 19:41:17Z cbouyio $
+
+{
+  factor A
+  {
+    decay: 0.1;
+    diffusibility: 0.01;
+  }
+
+  factor I
+  {
+    decay: 0.1;
+    diffusibility: 1.0;
+  }
+
+  gene gene_a
+  {
+    promoter
+    {
+      A: activate(0.5, 3.0);
+      I: repress(0.5, 2.15);
+    }
+    product
+    {
+      default: A;
+    }
+  }
+
+  gene gene_i
+  {
+    promoter
+    {
+      A: activate(0.5, 3.0);
+    }
+    product
+    {
+      default: I;
+    }
+  }
+}
+"""
+
+    self.dummyExpect = """transsys engineered
+{
+  factor A
+  {
+    decay: 0.01;
+    diffusibility: 0.0;
+  }
+
+  factor B
+  {
+    decay: 0.01;
+    diffusibility: 0.002;
+  }
+
+  gene geneA
+  {
+    promoter
+    {
+      constitutive: (0.01 + ((0.09 - 0.01) * ((((A - 10.0) * (A - 10.0)) + ((B - 10.0) * (B - 10.0))) <= (2.0 * 2.0))));
+    }
+    product
+    {
+      default: A;
+    }
+  }
+
+  gene geneB
+  {
+    promoter
+    {
+      constitutive: (0.01 + ((0.14 - 0.01) * ((((A - 10.0) * (A - 10.0)) + ((B - 10.0) * (B - 10.0))) <= (2.0 * 2.0))));
+    }
+    product
+    {
+      default: B;
+    }
+  }
+}
+"""
+
+
+    self.CPExpected = """# randomSeed: 8
+# initialisationVariables: upper: 15.0 lower: 0.0 
+# factorInitialisation: None
+# signalTimestep: None
+# latticeSize: width: 8 height: 8 
+# samplingInterval: 1
+# timesteps: 200
+# rndParam: 8
+# cycles: 3
+# offset: 0.1
+# decayA: 0.01
+# decayB: 0.01
+# lowPoint: y: 1.0 x: 1.0 
+# diffusibilityA: 0.0
+# diffusibilityB: 0.002
+# circle: r: 2.0 centre: y: 10.0 x: 10.0  
+# highPoint: y: 14.0 x: 9.0 
+"""
+
+
+    self.dummyPerturbExpect = """transsys engineeredPerturbed
+{
+  factor A
+  {
+    decay: 0.01;
+    diffusibility: 0.0;
+  }
+
+  factor B
+  {
+    decay: 0.01;
+    diffusibility: 0.002;
+  }
+
+  gene geneA
+  {
+    promoter
+    {
+      constitutive: (0.00946808117158 + ((0.0835191419138 - 0.00946808117158) * ((((A - 9.20385250185) * (A - 9.20385250185)) + ((B - 9.50742706976) * (B - 9.50742706976))) <= (2.20995662445 * 2.20995662445))));
+    }
+    product
+    {
+      default: A;
+    }
+  }
+
+  gene geneB
+  {
+    promoter
+    {
+      constitutive: (0.010968681769 + ((0.145853954174 - 0.010968681769) * ((((A - 9.20385250185) * (A - 9.20385250185)) + ((B - 9.50742706976) * (B - 9.50742706976))) <= (2.20995662445 * 2.20995662445))));
+    }
+    product
+    {
+      default: B;
+    }
+  }
+}
+"""
+
+
+    self.transsysOutExpectedTP = """# randomSeed: 8
+# initialisationVariables: upper: 15.0 lower: 0.0 
+# factorInitialisation: None
+# signalTimestep: None
+# latticeSize: width: 8 height: 8 
+# samplingInterval: 1
+# timesteps: 200
+# rndParam: 8
+# cycles: 3
+# offset: 0.1
+transsys patternFormationAlternative_1
+// RNG Seed: 8
+{
+  factor A
+  {
+    decay: 0.1;
+    diffusibility: 0.01;
+  }
+
+  factor I
+  {
+    decay: 0.1;
+    diffusibility: 1.0;
+  }
+
+  gene gene_a
+  {
+    promoter
+    {
+      A: activate(0.473404058579, 3.29060453071);
+      I: repress(0.463995232854, 2.23990001053);
+    }
+    product
+    {
+      default: A;
+    }
+  }
+
+  gene gene_i
+  {
+    promoter
+    {
+      A: activate(0.460192625092, 2.85222812093);
+    }
+    product
+    {
+      default: I;
+    }
+  }
+}
+
+transsys patternFormationCurrentBest_1
+// RNG Seed: 8
+{
+  factor A
+  {
+    decay: 0.1;
+    diffusibility: 0.01;
+  }
+
+  factor I
+  {
+    decay: 0.1;
+    diffusibility: 1.0;
+  }
+
+  gene gene_a
+  {
+    promoter
+    {
+      A: activate(0.5, 3.0);
+      I: repress(0.5, 2.15);
+    }
+    product
+    {
+      default: A;
+    }
+  }
+
+  gene gene_i
+  {
+    promoter
+    {
+      A: activate(0.5, 3.0);
+    }
+    product
+    {
+      default: I;
+    }
+  }
+}
+
+transsys patternFormationAlternative_2
+// RNG Seed: 9
+{
+  factor A
+  {
+    decay: 0.1;
+    diffusibility: 0.01;
+  }
+
+  factor I
+  {
+    decay: 0.1;
+    diffusibility: 1.0;
+  }
+
+  gene gene_a
+  {
+    promoter
+    {
+      A: activate(0.496314386651, 2.92494206879);
+      I: repress(0.465129555577, 2.313543223);
+    }
+    product
+    {
+      default: A;
+    }
+  }
+
+  gene gene_i
+  {
+    promoter
+    {
+      A: activate(0.453001351643, 3.00166971252);
+    }
+    product
+    {
+      default: I;
+    }
+  }
+}
+
+transsys patternFormationCurrentBest_2
+// RNG Seed: 9
+{
+  factor A
+  {
+    decay: 0.1;
+    diffusibility: 0.01;
+  }
+
+  factor I
+  {
+    decay: 0.1;
+    diffusibility: 1.0;
+  }
+
+  gene gene_a
+  {
+    promoter
+    {
+      A: activate(0.5, 3.0);
+      I: repress(0.5, 2.15);
+    }
+    product
+    {
+      default: A;
+    }
+  }
+
+  gene gene_i
+  {
+    promoter
+    {
+      A: activate(0.5, 3.0);
+    }
+    product
+    {
+      default: I;
+    }
+  }
+}
+
+transsys patternFormationAlternative_3
+// RNG Seed: 10
+{
+  factor A
+  {
+    decay: 0.1;
+    diffusibility: 0.01;
+  }
+
+  factor I
+  {
+    decay: 0.1;
+    diffusibility: 1.0;
+  }
+
+  gene gene_a
+  {
+    promoter
+    {
+      A: activate(0.503452862908, 2.88363740726);
+      I: repress(0.472451096049, 2.18147195696);
+    }
+    product
+    {
+      default: A;
+    }
+  }
+
+  gene gene_i
+  {
+    promoter
+    {
+      A: activate(0.482296639555, 3.20235500816);
+    }
+    product
+    {
+      default: I;
+    }
+  }
+}
+
+transsys patternFormationCurrentBest_3
+// RNG Seed: 10
+{
+  factor A
+  {
+    decay: 0.1;
+    diffusibility: 0.01;
+  }
+
+  factor I
+  {
+    decay: 0.1;
+    diffusibility: 1.0;
+  }
+
+  gene gene_a
+  {
+    promoter
+    {
+      A: activate(0.496314386651, 2.92494206879);
+      I: repress(0.465129555577, 2.313543223);
+    }
+    product
+    {
+      default: A;
+    }
+  }
+
+  gene gene_i
+  {
+    promoter
+    {
+      A: activate(0.453001351643, 3.00166971252);
+    }
+    product
+    {
+      default: I;
+    }
+  }
+}
+
+"""
+
+
+    self.numericalOutExpectedTP = """# randomSeed: 8
+# initialisationVariables: upper: 15.0 lower: 0.0 
+# factorInitialisation: None
+# signalTimestep: None
+# latticeSize: width: 8 height: 8 
+# samplingInterval: 1
+# timesteps: 200
+# rndParam: 8
+# cycles: 3
+# offset: 0.1
+OptCycle	RNGSeed	OptFlag	AltObj	AltLatBM	AltCtrlBM	BestObj	BestLatBM	BestCtrlBM	Average_A	Stddev_A	Entropy_A	Min_A	Max_A	Average_I	Stddev_I	Entropy_I	Min_I	Max_I
+1	8	FALSE	-122762530.548074	4.383187	122762534.931261	-19881108.210644	4.354596	19881112.565241	6.831964	0.000000	6.000000	6.831964	6.831964	27.954163	0.000000	6.000000	27.954163	27.954163
+2	9	TRUE	-0.016728	4.344895	4.361624	-22171529.595831	3.889497	22171533.485328	6.831964	0.000000	6.000000	6.831964	6.831964	27.954163	0.000000	6.000000	27.954163	27.954163
+3	10	FALSE	-90387.558961	29.685417	90417.244379	0.315423	4.029516	3.714093	0.000000	0.000000	5.974494	0.000000	0.000001	0.000359	0.000004	5.999890	0.000351	0.000368
+"""
+
+
+    self.transsysOutExpectedENG = """# randomSeed: 8
+# initialisationVariables: upper: 15.0 lower: 0.0 
+# factorInitialisation: None
+# signalTimestep: None
+# latticeSize: width: 8 height: 8 
+# samplingInterval: 1
+# timesteps: 200
+# rndParam: 8
+# cycles: 3
+# offset: 0.1
+transsys tpAlternative_1
+// RNG Seed: 8
+{
+  factor A
+  {
+    decay: 0.01;
+    diffusibility: 0.0;
+  }
+
+  factor B
+  {
+    decay: 0.01;
+    diffusibility: 0.002;
+  }
+
+  gene geneA
+  {
+    promoter
+    {
+      constitutive: (0.00946808117158 + ((0.0835191419138 - 0.00946808117158) * ((((A - 9.20385250185) * (A - 9.20385250185)) + ((B - 9.50742706976) * (B - 9.50742706976))) <= (2.20995662445 * 2.20995662445))));
+    }
+    product
+    {
+      default: A;
+    }
+  }
+
+  gene geneB
+  {
+    promoter
+    {
+      constitutive: (0.010968681769 + ((0.145853954174 - 0.010968681769) * ((((A - 9.20385250185) * (A - 9.20385250185)) + ((B - 9.50742706976) * (B - 9.50742706976))) <= (2.20995662445 * 2.20995662445))));
+    }
+    product
+    {
+      default: B;
+    }
+  }
+}
+
+transsys currentBest_1
+// RNG Seed: 8
+{
+  factor A
+  {
+    decay: 0.01;
+    diffusibility: 0.0;
+  }
+
+  factor B
+  {
+    decay: 0.01;
+    diffusibility: 0.002;
+  }
+
+  gene geneA
+  {
+    promoter
+    {
+      constitutive: (0.01 + ((0.09 - 0.01) * ((((A - 10.0) * (A - 10.0)) + ((B - 10.0) * (B - 10.0))) <= (2.0 * 2.0))));
+    }
+    product
+    {
+      default: A;
+    }
+  }
+
+  gene geneB
+  {
+    promoter
+    {
+      constitutive: (0.01 + ((0.14 - 0.01) * ((((A - 10.0) * (A - 10.0)) + ((B - 10.0) * (B - 10.0))) <= (2.0 * 2.0))));
+    }
+    product
+    {
+      default: B;
+    }
+  }
+}
+
+transsys tpAlternative_2
+// RNG Seed: 9
+{
+  factor A
+  {
+    decay: 0.01;
+    diffusibility: 0.0;
+  }
+
+  factor B
+  {
+    decay: 0.01;
+    diffusibility: 0.002;
+  }
+
+  gene geneA
+  {
+    promoter
+    {
+      constitutive: (0.00992628773302 + ((0.0837233200038 - 0.00992628773302) * ((((A - 9.06002703286) * (A - 9.06002703286)) + ((B - 10.0055657084) * (B - 10.0055657084))) <= (2.16583674604 * 2.16583674604))));
+    }
+    product
+    {
+      default: A;
+    }
+  }
+
+  gene geneB
+  {
+    promoter
+    {
+      constitutive: (0.00974980689598 + ((0.150649326149 - 0.00974980689598) * ((((A - 9.06002703286) * (A - 9.06002703286)) + ((B - 10.0055657084) * (B - 10.0055657084))) <= (2.16583674604 * 2.16583674604))));
+    }
+    product
+    {
+      default: B;
+    }
+  }
+}
+
+transsys currentBest_2
+// RNG Seed: 9
+{
+  factor A
+  {
+    decay: 0.01;
+    diffusibility: 0.0;
+  }
+
+  factor B
+  {
+    decay: 0.01;
+    diffusibility: 0.002;
+  }
+
+  gene geneA
+  {
+    promoter
+    {
+      constitutive: (0.01 + ((0.09 - 0.01) * ((((A - 10.0) * (A - 10.0)) + ((B - 10.0) * (B - 10.0))) <= (2.0 * 2.0))));
+    }
+    product
+    {
+      default: A;
+    }
+  }
+
+  gene geneB
+  {
+    promoter
+    {
+      constitutive: (0.01 + ((0.14 - 0.01) * ((((A - 10.0) * (A - 10.0)) + ((B - 10.0) * (B - 10.0))) <= (2.0 * 2.0))));
+    }
+    product
+    {
+      default: B;
+    }
+  }
+}
+
+transsys tpAlternative_3
+// RNG Seed: 10
+{
+  factor A
+  {
+    decay: 0.01;
+    diffusibility: 0.0;
+  }
+
+  factor B
+  {
+    decay: 0.01;
+    diffusibility: 0.002;
+  }
+
+  gene geneA
+  {
+    promoter
+    {
+      constitutive: (0.0101438297267 + ((0.0914166776431 - 0.0101438297267) * ((((A - 10.6466931678) * (A - 10.6466931678)) + ((B - 10.668578874) * (B - 10.668578874))) <= (2.06234088037 * 2.06234088037))));
+    }
+    product
+    {
+      default: A;
+    }
+  }
+
+  gene geneB
+  {
+    promoter
+    {
+      constitutive: (0.00985878468511 + ((0.13200793957 - 0.00985878468511) * ((((A - 10.6466931678) * (A - 10.6466931678)) + ((B - 10.668578874) * (B - 10.668578874))) <= (2.06234088037 * 2.06234088037))));
+    }
+    product
+    {
+      default: B;
+    }
+  }
+}
+
+transsys currentBest_3
+// RNG Seed: 10
+{
+  factor A
+  {
+    decay: 0.01;
+    diffusibility: 0.0;
+  }
+
+  factor B
+  {
+    decay: 0.01;
+    diffusibility: 0.002;
+  }
+
+  gene geneA
+  {
+    promoter
+    {
+      constitutive: (0.01 + ((0.09 - 0.01) * ((((A - 10.0) * (A - 10.0)) + ((B - 10.0) * (B - 10.0))) <= (2.0 * 2.0))));
+    }
+    product
+    {
+      default: A;
+    }
+  }
+
+  gene geneB
+  {
+    promoter
+    {
+      constitutive: (0.01 + ((0.14 - 0.01) * ((((A - 10.0) * (A - 10.0)) + ((B - 10.0) * (B - 10.0))) <= (2.0 * 2.0))));
+    }
+    product
+    {
+      default: B;
+    }
+  }
+}
+
+"""
+
+
+    self.numericalOutExpectedENG = """# randomSeed: 8
+# initialisationVariables: upper: 15.0 lower: 0.0 
+# factorInitialisation: None
+# signalTimestep: None
+# latticeSize: width: 8 height: 8 
+# samplingInterval: 1
+# timesteps: 200
+# rndParam: 8
+# cycles: 3
+# offset: 0.1
+OptCycle	RNGSeed	OptFlag	AltObj	AltLatBM	AltCtrlBM	BestObj	BestLatBM	BestCtrlBM	AltLowX	AltLowY	AltHighX	AltHighY	AltCircX	AltCircY	AltRadius	BestLowX	BestLowY	BestHighX	BestHighY	BestCircX	BestCircY	BestRadius	LatBest_muA	LatBest_stdevA	LatBest_muB	LatBest_stdevB
+1	8	FALSE	13.578473	17.165756	3.587282	20.842919	22.859965	2.017046	0.946808	1.096868	8.351914	14.585395	9.203853	9.507427	2.209957	1.000000	1.000000	9.000000	14.000000	10.000000	10.000000	2.000000	2.058714	1.689446	2.364080	1.604426
+2	9	FALSE	11.658916	16.866671	5.207754	19.877446	23.785885	3.908439	0.992629	0.974981	8.372332	15.064933	9.060027	10.005566	2.165837	1.000000	1.000000	9.000000	14.000000	10.000000	10.000000	2.000000	2.298679	2.061963	2.695479	1.976469
+3	10	FALSE	4.474481	11.869563	7.395082	11.316457	17.524445	6.207989	1.014383	0.985878	9.141668	13.200794	10.646693	10.668579	2.062341	1.000000	1.000000	9.000000	14.000000	10.000000	10.000000	2.000000	2.971758	2.740509	3.513148	2.735731
+"""
+
+
+    self.optimisationParameters = randomLocalSearch.OptimisationControlParameters(3, 0.1, 8)
+
+
+    self.simulatorParameters = translattice.SimulatorControlParameters(translattice.LatticeSize(8, 8), 200, translattice.UniformParameters(0.0, 15.0), randomSeed = self.optimisationParameters.rndParam)
+
+
+    self.engParameters = randomLocalSearch.EngineeringParameters(randomLocalSearch.Point(1, 1), randomLocalSearch.Point(9, 14), randomLocalSearch.Circle(randomLocalSearch.Point(10, 10), 2), 0.01, 0.0, 0.01, 0.002)
+
+
+
+  # Tests Implementation
+
+  def testEngineeredGeneration(self) :
+    """Test to check weather the engineered transsys program is the same with the expected."""
+    tpDummy = randomLocalSearch.TranssysProgramDummy('engineered', self.engParameters)
+    self.assertEqual(self.dummyExpect, str(tpDummy))
+
+
+  def testPerturbation(self) :
+    """Test weather the perturbation function produces the expected perturbed transsys program.
+    """
+    perturbObj = translattice.UniformRNG(self.optimisationParameters.rndParam, -self.optimisationParameters.offset, self.optimisationParameters.offset)
+    perturbedEngParameters = self.engParameters.perturb_eng_parameters(perturbObj)
+    tpDummyPerturb = randomLocalSearch.TranssysProgramDummy('engineeredPerturbed', perturbedEngParameters)
+    self.assertEqual(self.dummyPerturbExpect, str(tpDummyPerturb))
+
+
+  def testControlParameters(self) :
+    """Test to see whether the optimisation and the simulator control parameters are set properly.
+
+    """
+    self.assertEqual(self.CPExpected, str(self.simulatorParameters) + str(self.optimisationParameters) + str(self.engParameters))
+
+
+
+  def testOptimisationFunctionDummy(self) :
+    """Test whether the optimisation function returns the expeceted results (TranssysProgramDummy).
+
+    Actually the optimiser runs on the engineered parameter set, that is what is getting optimised.
+    """
+    transOut = open('abcdefghij.tra', 'w')
+    numericalOut = open('abcdefghij.dat', 'w')
+    tp = randomLocalSearch.TranssysProgramDummy("engineered", self.engParameters)
+    log = randomLocalSearch.OptimisationBookKeeping(self.simulatorParameters, self.optimisationParameters, tp, transOut, numericalOut)
+    randomLocalSearch.optimisation(self.engParameters, self.simulatorParameters, self.optimisationParameters, log)
+    transOut.close()
+    numericalOut.close()
+    transOut = open('abcdefghij.tra', 'r')
+    numricalOut =  open('abcdefghij.dat', 'r')
+    transsysOptOut = transOut.read()
+    numericalOptOut = numricalOut.read()
+    os.unlink('abcdefghij.tra')
+    os.unlink('abcdefghij.dat')
+    self.assertEqual(self.transsysOutExpectedENG, transsysOptOut)
+    self.assertEqual(self.numericalOutExpectedENG, numericalOptOut)
+
+
+  def testOptimisationfunctionTp(self) :
+    """Test whether the optimisation function returns the expeceted results (TranssysProgram).
+
+    Run on a transsys program object.
+    """
+    tpFile = open('abcdefghijk.tra', 'w')
+    tpFile.write('%s\n' % self.tpOptTest)
+    tpFile.close()
+    tp = transsys.TranssysProgramParser(open('abcdefghijk.tra', 'r')).parse()
+    os.unlink('abcdefghijk.tra')
+    transOut = open('abcdefghij.tra', 'w')
+    numericalOut = open('abcdefghij.dat', 'w')
+    log = randomLocalSearch.OptimisationBookKeeping(self.simulatorParameters, self.optimisationParameters, tp, transOut, numericalOut)
+    randomLocalSearch.tp_optimisation(tp, self.simulatorParameters, self.optimisationParameters, log)
+    transOut.close()
+    numericalOut.close()
+    transOut = open('abcdefghij.tra', 'r')
+    numricalOut =  open('abcdefghij.dat', 'r')
+    transsysOptOut = transOut.read()
+    numericalOptOut = numricalOut.read()
+    os.unlink('abcdefghij.tra')
+    os.unlink('abcdefghij.dat')
+    self.assertEqual(self.transsysOutExpectedTP, transsysOptOut)
+    self.assertEqual(self.numericalOutExpectedTP, numericalOptOut)
+
+# Run the tests.
+suite = unittest.TestSuite()
+suite.addTest(unittest.makeSuite(TestRandomWalkOptimisation))
+result = unittest.TextTestRunner(verbosity = 2).run(suite)
+
