@@ -5,6 +5,7 @@
 # $Author::            $:  Author of last commit
 # $Date: 2007-12-20 20:55:15 +0000 (Thu, 20 Dec 2007) $:  Date of last commit
 
+
 """Python module implementing the random local search optimisation approach.
 
 @author: Costas Bouyioukos
@@ -14,20 +15,19 @@
 @contact: U{Costas Bouyioukos<mailto:konsb@cmp.uea.ac.uk>}
 @version: $Id: randomWalkOptimisation.py 275 2008-01-08 15:44:39Z cbouyio $"""
 
+
 # Version Information.
 __version__ = "$Id: randomWalkOptimisation.py 275 2008-01-08 15:44:39Z cbouyio $"
+
 
 import copy
 import sys
 import math
-import string
-import statlib.stats
 
 import transsys
 import translattice
 import bimodalities
 
-# Random objects already implemented in the transsysLattice module.
 
 
 class Point(translattice.Parameter) :
@@ -300,6 +300,16 @@ class TranssysProgramDummy(transsys.TranssysProgram) :
     return factor.unresolved_copy()
 
 
+  def perturb_transsys(self, perturbObj) :
+    """Method to perturb a TranssysProgramDummy.
+
+    Works by calling the perturb_eng_parameters method.
+    Polymorphic with the perturb_transsys function.
+    """
+    pass
+
+
+
   def get_eng_parameters(self) :
     """Accessor to the engineered control parameters of a TranssysProgramDummy.
 
@@ -348,7 +358,7 @@ class OptimisationBookKeeping(object) :
   @type transsysFile: An open ready to write C{file}
   """
 
-  def __init__(self, scp, ocp, transsysFile = None, numericalFile = None) :
+  def __init__(self, scp, ocp, tp, transsysFile = None, numericalFile = None) :
     if transsysFile :
       self.tf = transsysFile
     else :
@@ -358,7 +368,7 @@ class OptimisationBookKeeping(object) :
     else :
       self.nf = None
     self.print_control_parameters(scp, ocp)
-    self.print_header()
+    self.print_header(tp)
 
 
   def print_control_parameters(self, simulatorCP, optimiserCP) :
@@ -374,20 +384,23 @@ class OptimisationBookKeeping(object) :
     self.tf.write(str(optimiserCP))
 
 
-  def print_header(self) :
+  def print_header(self, tp) :
     """Print headers in the output files.
 
     The headers are printed in order to help parsing the results with other
     applications (i.e. R).
     """
     if self.nf :
-      self.nf.write('OptCycle\tRNGSeed\tOptFlag\tAltObj\tAltLatBM\tAltCtrlBM\tBestObj\tBestLatBM\tBestCtrlBM\tAltLowX\tAltLowY\tAltHighX\tAltHighY\tAltCircX\tAltCircY\tAltRadius\tBestLowX\tBestLowY\tBestHighX\tBestHighY\tBestCircX\tBestCircY\tBestRadius\t')
-      #FIXME: this should be able to address various transsys program
-      # (i.e. with more than two factors.
-      self.nf.write('LatBest_muA\tLatBest_stdevA\tLatBest_muB\tLatBest_stdevB\n')
+      if isinstance(tp, TranssysProgramDummy) :
+        self.nf.write('OptCycle\tRNGSeed\tOptFlag\tAltObj\tAltLatBM\tAltCtrlBM\tBestObj\tBestLatBM\tBestCtrlBM\tAltLowX\tAltLowY\tAltHighX\tAltHighY\tAltCircX\tAltCircY\tAltRadius\tBestLowX\tBestLowY\tBestHighX\tBestHighY\tBestCircX\tBestCircY\tBestRadius\tLatBest_muA\tLatBest_stdevA\tLatBest_muB\tLatBest_stdevB\n')
+      else :
+        self.nf.write('OptCycle\tRNGSeed\tOptFlag\tAltObj\tAltLatBM\tAltCtrlBM\tBestObj\tBestLatBM\tBestCtrlBM')
+        for fName in tp.factor_names() :
+          self.nf.write('\tAverage_%s\tStddev_%s\tEntropy_%s\tMin_%s\tMax_%s' % (fName, fName, fName, fName, fName))
+        self.nf.write('\n')
 
 
-  def write_log(self, optCycle, rndSeedCurrent, optStep, altObj, bestObj, altENGParam, bestENGParam, altTP, bestTP) :
+  def write_log(self, optCycle, rndSeedCurrent, optStep, altObj, bestObj, altTP, bestTP, altENGParam = None, bestENGParam = None) :
     """Curry out the printing of the optimisers results.
 
     Actually write_log is a wrapper method which calls print_objectives and
@@ -423,8 +436,7 @@ class OptimisationBookKeeping(object) :
       self.print_numerical(optCycle, rndSeedCurrent, optStep, altObj, bestObj, altENGParam, bestENGParam)
 
 
-  def print_numerical(self, optCycle, rndSeedCurrent, optStep, altObj, bestObj,
-      altECP, bestECP) :
+  def print_numerical(self, optCycle, rndSeedCurrent, optStep, altObj, bestObj, altECP, bestECP) :
     """Method to print the optimisation objective values. Prints both the
     current objective value as well as the best objective value of the "best"
     transsys program found so far.
@@ -442,7 +454,16 @@ class OptimisationBookKeeping(object) :
     @param bestECP: The best engineered control parameters.
     @type bestECP: C{class 'EngineeringParameters'}
     """
-    self.nf.write('%i\t%i\t%s\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n' % (optCycle, rndSeedCurrent, str.upper(str(optStep)), altObj[0], altObj[1], altObj[2], bestObj[0], bestObj[1], bestObj[2], altECP.get_lowPoint().x, altECP.get_lowPoint().y, altECP.get_highPoint().x, altECP.get_highPoint().y, altECP.get_circle().get_centre().x, altECP.get_circle().get_centre().y, altECP.get_circle().r, bestECP.get_lowPoint().x, bestECP.get_lowPoint().y, bestECP.get_highPoint().x, bestECP.get_highPoint().y, bestECP.get_circle().get_centre().x, bestECP.get_circle().get_centre().y, bestECP.get_circle().r, statlib.stats.lmean(bestObj[3][0]), statlib.stats.lstdev(bestObj[3][0]), statlib.stats.lmean(bestObj[3][1]), statlib.stats.lstdev(bestObj[3][1])))
+    if altECP and bestECP :
+      statsBest = bestObj.lattice.statistics()
+      self.nf.write('%i\t%i\t%s\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n' % (optCycle, rndSeedCurrent, str.upper(str(optStep)), altObj.objective, altObj.latticeBimodalities.totalBimodality, altObj.controlBimodalities.totalBimodality, bestObj.objective, bestObj.latticeBimodalities.totalBimodality, bestObj.controlBimodalities.totalBimodality, altECP.get_lowPoint().x, altECP.get_lowPoint().y, altECP.get_highPoint().x, altECP.get_highPoint().y, altECP.get_circle().get_centre().x, altECP.get_circle().get_centre().y, altECP.get_circle().r, bestECP.get_lowPoint().x, bestECP.get_lowPoint().y, bestECP.get_highPoint().x, bestECP.get_highPoint().y, bestECP.get_circle().get_centre().x, bestECP.get_circle().get_centre().y, bestECP.get_circle().r, statsBest.average[0], statsBest.standard_deviation[0], statsBest.average[1], statsBest.standard_deviation[1]))
+    else :
+      statsBest = bestObj.lattice.statistics()
+      self.nf.write('%i\t%i\t%s\t%f\t%f\t%f\t%f\t%f\t%f' % (optCycle, rndSeedCurrent, str.upper(str(optStep)), altObj.objective, altObj.latticeBimodalities.totalBimodality, altObj.controlBimodalities.totalBimodality, bestObj.objective, bestObj.latticeBimodalities.totalBimodality, bestObj.controlBimodalities.totalBimodality))
+      for i in xrange(statsBest.transsys_program.num_factors()) :
+        self.nf.write('\t%f\t%f\t%f\t%f\t%f' % (statsBest.average[i], statsBest.standard_deviation[i], statsBest.shannon_entropy[i], statsBest.min_factor_concentration[i], statsBest.max_factor_concentration[i]))
+      self.nf.write('\n')
+
 
 
   def print_transsys_programs(self, alternativeTP, currentBestTP) :
@@ -460,6 +481,107 @@ class OptimisationBookKeeping(object) :
     @type currentBestTP: C{class 'transsys.TranssysProgram'}
     """
     self.tf.write('%s\n%s\n' % (str(alternativeTP), str(currentBestTP)))
+
+
+
+class OptimisationObjective(object) :
+  """A class to wrap the calculations, represent the optimisation objective
+  score and to keep other usefull ststistics (e.g. lattice and control
+  bimodalities etc.).
+
+  @ivar objective: The optimisation objective score.
+  @type objective: Numeric
+  @ivar latticeBimodalities: A bimodalities object for the lattice experiment.
+  @type latticeBimodalities: C{class 'bimodalities.BimodalitiesCollection'}
+  @iver controlBimodalities: A bimodalities object for the control experiment.
+  @type controlBimodalities: C{class 'bimodalities.BimodalitiesCollection'}
+  @ivar lattice: The outcome of a transsys lattice simulation
+  experiment.
+  @type lattice: C{class 'translattice.TranssysInstanceLattice'}
+  """
+
+  def __init__(self, tp, latticeSize, timesteps, initialNoise, rndSeed) :
+    """The constructor of the class.
+
+    """
+    # The lattice lattice simulation experiment.
+    self.lattice = self.run_lattice(tp, latticeSize, timesteps, initialNoise, rndSeed)
+    # Construct the lattice bimodalities object.
+    self.latticeBimodalities = bimodalities.BimodalitiesCollection(self.lattice)
+    # The control simulation experiment.
+    zeroTP = set_transsys_diffusibilities(tp, 0)
+    contolLattice = self.run_lattice(zeroTP, latticeSize, timesteps, initialNoise, rndSeed)
+    # Construct the control experiment bimodalities object.
+    self.controlBimodalities = bimodalities.BimodalitiesCollection(contolLattice)
+    # Calculate the objective.
+    self.objective = self.latticeBimodalities.totalBimodality - self.controlBimodalities.totalBimodality
+
+
+
+  def run_lattice(self, tp, latticeSize, timesteps, initialNoise, rndSeed) :
+    """Method to conduct the lattice experiment.
+
+    The method curries out the lattice simulation experiment with the specified
+    parameters.
+    @param tp: The transsys program.
+    @type tp: C{class 'transsys.TranssyProgram'}
+    @param latticeSize: The parameter holding the size of the lattice.
+    @type latticeSize: C{class 'translattice.LatticeSize'}
+    @param timesteps: The number of timesteps for the simulator.
+    @type timesteps: C{int}
+    @param initialeNoise: An UniformParameters object which holds the
+    initialisation parameters for the lattice.
+    @type initialiseObj: C{class 'translattice.UniformParameters'}
+    @param rndSeed: The random number generator seed.
+    @type rndSeed: C{int}
+    @return: A lattice after running the simulator for the specified number of
+    timesteps.
+    @rtype: C{class 'translattice.TranssysInstanceLattice'}
+    """
+    # Construct the initialisation object.
+    initialiseObj = initialNoise.getRNG(rndSeed)
+    # Instantiate a transsys lattice.
+    transLat = translattice.TranssysInstanceLattice(tp, latticeSize, timesteps)
+    transLat.perturb_lattice(initialiseObj)
+    # Set always the same random seed for the clib.
+    transsys.clib.srandom(initialiseObj.rndSeed)
+    # Run the time-series.
+    transTS = translattice.TranssysLatticeTimeseries(transLat, timesteps, timesteps)
+    # Get the equilibration lattice (i.e. the last timestep)
+    lattice = transTS.latticeTimeseries.pop()
+    return lattice
+
+
+
+def set_transsys_diffusibilities(transsysProgram, diffusionLimit) :
+  """Assign a diffusibility expression of each factor of atranssys program.
+
+  The diffusibility is calculated as a random number from the interval [0,
+  diffusionLimit).
+  If the diffusionLimit = 0 (the control experiment) then a zero (0)
+  diffusibility expression is assigned to ALL the factors.
+  Also notice that the seed for the random number generator is always 1, since
+  we need to assigne diffusibilities only once in the begining of the
+  optimisation.
+  @param transsysProgram: An instance of a transsys program.
+  @type transsysProgram: C{class 'transsys.TranssysProgram'}
+  @param diffusionLimit: the upper limit for the diffusibility expression.
+  Diffusibility is allowed to take values from the [0, 1] interval
+  @type diffusionLimit: Numeric
+  @return: A copy of the transsysProgram with zero diffusibilities.
+  @rtype: C{class 'transsys.TranssysProgram'}
+  """
+  if diffusionLimit == 0 :
+    zeroTP = copy.deepcopy(transsysProgram)
+    for diffusion in zeroTP.getDiffusibilityValueNodes() :
+      diffusion.value = 0
+    return zeroTP
+  else :
+    diffList = []
+    rng = translattice.UniformRNG(1, 0, diffusionLimit)
+    for diffusion in transsysProgram.getDiffusibilityValueNodes() :
+      diffusion.value = rng.random_value()
+    return transsysProgram
 
 
 
@@ -516,97 +638,6 @@ def perturb_transsys(transsysProgram, perturbObj):
 
 
 
-def zero_transsys_diffusibility(transsysProgram):
-  """Set to zero the diffusibility expression of all factors.
-
-  @param transsysProgram: An instance of a transsys program.
-  """
-  for diffusion in transsysProgram.getDiffusibilityValueNodes() :
-    diffusion.value = 0
-
-
-
-def run_lattice(transsysProgram, latticeSize, timesteps, initialiseObj) :
-  """Function to conduct the lattice experiment.
-
-  It curries out the lattice simulation experiment with the specified
-  parameters.
-  @param transsysProgram: The transsys program.
-  @type transsysProgram: C{class 'transsys.TranssyProgram'}
-  @param latticeSize: The parameter holding the size of the lattice.
-  @type latticeSize: C{class 'translattice.LatticeSize'}
-  @param timesteps: The number of timesteps for the simulator.
-  @type timesteps: C{int}
-  @param initialiseObj: A randommnumber generator object specifying the initial
-  condictions of the factor concentrations.
-  @type initialiseObj: C{class 'translattice.RandomObject'}
-  @return: A lattice after running a lattice timeseries for the specified number
-  of timesteps.
-  @rtype: C{class 'translattice.TranssysInstanceLattice'}
-  """
-  # Set the transsys program to a local variable tp) to protect it from
-  # transforming the diffusion.
-  transLat = translattice.TranssysInstanceLattice(transsysProgram, latticeSize, timesteps)
-  transLat.perturb_lattice(initialiseObj)
-  # Set always the same random seed for the clib.
-  transsys.clib.srandom(initialiseObj.rndSeed)
-  transTS = translattice.TranssysLatticeTimeseries(transLat, timesteps, timesteps)
-  lattice = transTS.latticeTimeseries.pop()
-  return lattice
-
-
-def bimodality(lattice) :
-  """A function which wraps all the bimodalities module functions and
-  calculate the total bimodality from an expression table.
-
-  Returns a scalar.
-  @param lattice: A TranssysInstanceLattice object.
-  @type lattice: C{class translattice.TranssysInstanceLattice'}
-  @return: The total bimodality score.
-  @rtype: C{float}
-  """
-  expressionTable = lattice.expression_table()
-  return bimodalities.total_bimodality(expressionTable)
-
-
-def objective(tp, latticeSize, timesteps, initialNoise, rndSeed):
-  """A wrapper function which computes the optimisation objective.
-
-  Calls the run_lattice function once for the lattice and once for the control
-  experiment calculates the bimodalities and returns the optimisation
-  objective.
-
-  @return: The optimisation objective the lattice bimodality score and
-  the control bimodality score.
-  @rtype: C{tuple} of 3 C{float}s
-  """
-  # Construct the initial randomisation object for the lattice
-  initialObj = initialNoise.getRNG(rndSeed)
-  # Run the lattice experiment.
-  lattice = run_lattice(tp, latticeSize, timesteps, initialObj)
-  latticeBimodality = bimodality(lattice)
-
-  # The control.
-  # (re)Construct the initial randomisation object for the control. Note that
-  # initialObj = initialObj2 to provide the same initial conditions for the
-  # lattice and the control.
-  initialObj2 = initialNoise.getRNG(rndSeed)
-  # Copy the transsys program
-  tpZero = copy.deepcopy(tp)
-  # Zero the diffusibilities.
-  zero_transsys_diffusibility(tpZero)
-  # Run the control experiment.
-  control = run_lattice(tpZero, latticeSize, timesteps, initialObj2)
-  controlBimodality = bimodality(control)
-
-  # Calculate the objective.
-  objective = latticeBimodality - controlBimodality
-  # return the objective, the lattice bimodality score, the control bimodality
-  # score and the lattice expression table.
-  return (objective, latticeBimodality, controlBimodality, lattice.expression_table())
-
-
-
 def optimisation(engineeredCP, simulatorCP, optimiserCP, logObj) :
   """Curry out the optimisation experiment.
 
@@ -648,7 +679,7 @@ def optimisation(engineeredCP, simulatorCP, optimiserCP, logObj) :
     # Boolean to check whether an optimisation step is succsefull or not.
     optStep = False
     # Set the current random seed.
-    rndSeedCurrent = optimiserCP.rndParam + (cycle + 1)
+    rndSeedCurrent = optimiserCP.rndParam + cycle
     # Set the random objects.
     perturbObj = translattice.UniformRNG(rndSeedCurrent, -perturbOffset, perturbOffset)
     # Polymorphism will take care of the random object initalisation.
@@ -658,22 +689,87 @@ def optimisation(engineeredCP, simulatorCP, optimiserCP, logObj) :
     # implementation of the random local search)
     engPAlternative = engBest.perturb_eng_parameters(perturbObj)
     # Generate the transsys programs.
-    tpAlternative = TranssysProgramDummy('tpAlternative' + str(cycle + 1), engPAlternative)
-    tpBest = TranssysProgramDummy('currentBest' + str(rndSeedCurrent), engBest)
+    tpAlternative = TranssysProgramDummy('tpAlternative_' + str(cycle + 1), engPAlternative)
+    tpAlternative.comments = ['RNG Seed: %i' % rndSeedCurrent]
+    tpBest = TranssysProgramDummy('currentBest_' + str(cycle + 1), engBest)
+    tpBest.comments = ['RNG Seed: %i' % rndSeedCurrent]
 
     # Calculate the objectives of both the best and the alternative transsys
     # programs, with the same initial conditions.
-    objectiveBest = objective(tpBest, latticeSize, timesteps, initialNoise, rndSeedCurrent)
-    objectiveAlternative = objective(tpAlternative, latticeSize, timesteps, initialNoise, rndSeedCurrent)
+    objectiveBest = OptimisationObjective(tpBest, latticeSize, timesteps, initialNoise, rndSeedCurrent)
+    objectiveAlternative = OptimisationObjective(tpAlternative, latticeSize, timesteps, initialNoise, rndSeedCurrent)
 
     # If an optimisation step occurs.
-    if objectiveAlternative[0] > objectiveBest[0] :
+    if objectiveAlternative.objective > objectiveBest.objective :
       optStep = True
-
     # Print the optimisation's log.
-    logObj.write_log(cycle + 1, rndSeedCurrent, optStep, objectiveAlternative, objectiveBest, engPAlternative, engBest, tpAlternative, tpBest)
-
+    logObj.write_log(cycle + 1, rndSeedCurrent, optStep, objectiveAlternative, objectiveBest, tpAlternative, tpBest, engPAlternative, engBest)
     # Change the control parameters (the random local search)
-    if objectiveAlternative[0] > objectiveBest[0] :
+    if objectiveAlternative.objective > objectiveBest.objective :
       engBest = copy.deepcopy(engPAlternative)
+
+
+
+def tp_optimisation(tp, sCP, oCP, logObj) :
+  """Curry out the optimisation experiment.
+
+  This is the wrapper function for the optimiser. this function integrates all
+  the nessecary steps to run a random local search experiment on an engineered
+  transsys program (a TranssysProgramDummy object, actually the function
+  "optimises" the control parameters of the engineered transsys program). All
+  the calculations are curried out in the relative methods/functions above here
+  anly the evaluation is taking place. The function returns nothing but writes
+  in the log object after each optimisation cycle.
+  @param engineeredCP: The TranssyProgramDummy (engineered) control parameters.
+  @type engineeredCP: C{class 'EngineeringParameters'}
+  @param simulatorCP: An 'translattice.SimulatorControlParameters' object which
+  contains the lattice simulator's control parameters. See docstring of
+  L{translattice.SimulatorControlParameters}.
+  @type simulatorCP: C{class 'translattice.SimulatorControlParameters'}
+  @param optimiserCP: An 'OptimisationControlParameters' object which contains
+  the optimisation procedure control parameters (i.e. the optimisation cycles
+  and the perturbation offset). See L{OptimisationControlParameters}.
+  @type optimiserCP: C{class 'OptimisationControlParameters'}
+  @param logObj: An object to keep logging and print out the optimisation
+  results.
+  @type logObj: C{class 'OptimisationBookKeeping'}
+  @return: Nothing (But writes all the numerical output and the generated
+  transsys programs in a numerical and a .tra output file respectively)
+  @rtype: C{None}
+  """
+  # Get the parameters.
+  perturbOffset = oCP.offset
+  optimisationCycles = oCP.cycles
+  rndSeed = oCP.rndParam
+  initialNoise = sCP.initialisationVariables
+  latticeSize = sCP.latticeSize
+  timesteps = sCP.timesteps
+  tpBest = tp
+  tpName = tpBest.name
+  # Basic optimisation loop.
+  for cycle in xrange(optimisationCycles) :
+    # Boolean to check whether an optimisation step is succsefull or not.
+    optStep = False
+    # Set the current random seed.
+    rndSeedCurrent = oCP.rndParam + cycle
+    # Set the random objects.
+    perturbObj = translattice.UniformRNG(rndSeedCurrent, -perturbOffset, perturbOffset)
+    # Perturbe the transsys program.
+    tpAlternative = perturb_transsys(tpBest, perturbObj)
+    tpAlternative.name = tpName + 'Alternative_' + str(cycle + 1)
+    tpAlternative.comments = ['RNG Seed: %i' % rndSeedCurrent]
+    tpBest.name = tpName + 'CurrentBest_' + str(cycle + 1)
+    tpBest.comments = ['RNG Seed: %i' % rndSeedCurrent]
+    # Calculate the objectives of both the best and the alternative transsys
+    # programs, with the same initial conditions.
+    objectiveBest = OptimisationObjective(tpBest, latticeSize, timesteps, initialNoise, rndSeedCurrent)
+    objectiveAlternative = OptimisationObjective(tpAlternative, latticeSize, timesteps, initialNoise, rndSeedCurrent)
+    # If an optimisation step occurs.
+    if objectiveAlternative.objective > objectiveBest.objective :
+      optStep = True
+    # Print the optimisation's log.
+    logObj.write_log(cycle + 1, rndSeedCurrent, optStep, objectiveAlternative, objectiveBest, tpAlternative, tpBest)
+    # Change the control parameters (the random local search)
+    if objectiveAlternative.objective > objectiveBest.objective :
+      tpBest = copy.deepcopy(tpAlternative)
 
