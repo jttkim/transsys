@@ -23,6 +23,8 @@ def usage() :
 randomParam = int(time.strftime('%d%m%Y'))
 numericalOut = None
 transsysOptOut = None
+# FIXME: this should also change.
+infile = None
 
 # Command line parsing of the control parameters.
 optlist, args = getopt.getopt(sys.argv[1:], 'hw:l:o:u:r:t:f:n:p:', ['help'])
@@ -61,15 +63,13 @@ initialNoise = translattice.UniformParameters(low, high)
 # I/O implementation.
 if len(args) > 0 :
   infile = open(args[0], 'r')
-else :
-  infile = sys.stdin
+# FIXME: This should change !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#else :
+#  infile = sys.stdin
 if len(args) > 1 :
   outfile = open(args[1], 'w')
 else :
   outfile = sys.stdout
-
-## Parse the transsys program.
-#tp = transsys.TranssysProgramParser(infile).parse()
 
 ## Construct the control parameters.
 # The simulator's control parameters.
@@ -82,9 +82,21 @@ ocp = randomLocalSearch.OptimisationControlParameters(optCycles, perturbationOff
 engp = randomLocalSearch.EngineeringParameters(randomLocalSearch.Point(1, 1), randomLocalSearch.Point(9, 14), randomLocalSearch.Circle(randomLocalSearch.Point(10, 10), 2), 0.01, 0.0, 0.01, 0.002)
 
 
-# Instantiate the log keeping object
-log = randomLocalSearch.OptimisationBookKeeping(scp, ocp, transsysOptOut, numericalOut)
+# Parse the transsys program.
+if infile :
+  tp = transsys.TranssysProgramParser(infile).parse()
+else :
+  tp = randomLocalSearch.TranssysProgramDummy('aTranssysProgram', engp)
 
-# Run the optimiser!
-randomLocalSearch.optimisation(engp, scp, ocp, log)
+# Instantiate the log keeping object
+log = randomLocalSearch.OptimisationBookKeeping(scp, ocp, tp, transsysOptOut, numericalOut)
+
+# Run the optimiser. If a transsys program is provided then call the appropriate
+# function...
+# FIXME: Subject to change. Polymorphism should pick up the appropriate
+# perturbation function.
+if infile :
+  randomLocalSearch.tp_optimisation(tp, scp, ocp, log)
+else :
+  randomLocalSearch.optimisation(engp, scp, ocp, log)
 
