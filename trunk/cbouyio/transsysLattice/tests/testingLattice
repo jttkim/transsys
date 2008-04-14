@@ -283,11 +283,11 @@ else
 fi
 
 
-# test no 10: The random uniform test.
+# test no 10: The random Gauss test.
 # A two genes two factors transsys program (the same for all the lattice
 # initialisation tests) runs with a user specified random uniform initial values
 # form the range of [0, 1).
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -b 10:1 initialisationTest.tra initGaussianTMP.out
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -g 10:1 initialisationTest.tra initGaussianTMP.out
 then
   exit $?
 else
@@ -299,7 +299,7 @@ else
     exit $?
 #    let failure++
   else
-    echo 'test No 10: uniform lattice initialisation test: successful!'
+    echo 'test No 10: gaussian lattice initialisation test: successful!'
 #    let success++
   let notests++
   fi
