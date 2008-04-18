@@ -493,7 +493,7 @@ class OptimisationObjective(object) :
   @type objective: Numeric
   @ivar latticeBimodalities: A bimodalities object for the lattice experiment.
   @type latticeBimodalities: C{class 'bimodalities.BimodalitiesCollection'}
-  @iver controlBimodalities: A bimodalities object for the control experiment.
+  @ivar controlBimodalities: A bimodalities object for the control experiment.
   @type controlBimodalities: C{class 'bimodalities.BimodalitiesCollection'}
   @ivar lattice: The outcome of a transsys lattice simulation
   experiment.
@@ -529,9 +529,9 @@ class OptimisationObjective(object) :
     @type latticeSize: C{class 'translattice.LatticeSize'}
     @param timesteps: The number of timesteps for the simulator.
     @type timesteps: C{int}
-    @param initialeNoise: An UniformParameters object which holds the
+    @param initialNoise: An UniformParameters object which holds the
     initialisation parameters for the lattice.
-    @type initialiseObj: C{class 'translattice.UniformParameters'}
+    @type initialNoise: C{class 'translattice.UniformParameters'}
     @param rndSeed: The random number generator seed.
     @type rndSeed: C{int}
     @return: A lattice after running the simulator for the specified number of
@@ -720,16 +720,16 @@ def tp_optimisation(tp, sCP, oCP, logObj) :
   the calculations are curried out in the relative methods/functions above here
   anly the evaluation is taking place. The function returns nothing but writes
   in the log object after each optimisation cycle.
-  @param engineeredCP: The TranssyProgramDummy (engineered) control parameters.
-  @type engineeredCP: C{class 'EngineeringParameters'}
-  @param simulatorCP: An 'translattice.SimulatorControlParameters' object which
+  @param tp: The transsys program that will be subject to optimisation.
+  @type tp: C{class 'transsys.TranssysProgram'}
+  @param sCP: An 'translattice.SimulatorControlParameters' object which
   contains the lattice simulator's control parameters. See docstring of
   L{translattice.SimulatorControlParameters}.
-  @type simulatorCP: C{class 'translattice.SimulatorControlParameters'}
-  @param optimiserCP: An 'OptimisationControlParameters' object which contains
+  @type sCP: C{class 'translattice.SimulatorControlParameters'}
+  @param oCP: An 'OptimisationControlParameters' object which contains
   the optimisation procedure control parameters (i.e. the optimisation cycles
   and the perturbation offset). See L{OptimisationControlParameters}.
-  @type optimiserCP: C{class 'OptimisationControlParameters'}
+  @type oCP: C{class 'OptimisationControlParameters'}
   @param logObj: An object to keep logging and print out the optimisation
   results.
   @type logObj: C{class 'OptimisationBookKeeping'}

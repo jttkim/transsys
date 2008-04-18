@@ -49,8 +49,9 @@ class BimodalitiesCollection(object) :
   def __init__(self, transsysLattice) :
     """The constructor
 
-    @param transsysLattice: A transsys instance lattice object.
-    @type transsysInstanceCollection: C{class 'transsys.Transsyslattice'}
+    @param transsysLattice: A transsys instance lattice object. (this class can
+    be constructed for any other TranssysInstanceCollection object).
+    @type transsysLattice: C{class 'transsys.Transsyslattice'}
     """
     self.bimodalities = {}
     self.thresholds = {}
