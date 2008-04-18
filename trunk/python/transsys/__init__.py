@@ -2130,7 +2130,13 @@ class CollectionStatistics(object) :
     for i in xrange(self.transsys_program.num_factors()) :
       s = s + '%s\t%1.17e\t%1.17e\t%1.17e\t%1.17e\t%1.17e\n' % (self.transsys_program.factor_list[i].name, self.average[i], self.standard_deviation[i], self.shannon_entropy[i], self.min_factor_concentration[i], self.max_factor_concentration[i])
     return s
-    
+
+
+  # FIXME: should really have a complete set of accessors, these should be used
+  # when working with statistics objects rather than accessing lists by index
+  def get_average(self, factor_name) :
+    return self.average(self.transsys_program.find_factor_index(factor_name))
+
 
 class TranssysInstanceCollection(object) :
   """Abstract base class of collections of transsys instances which
@@ -2240,11 +2246,12 @@ C{None} values for all statistics is produced.
       stats.average[i] = fc_sum[i] / len(ti_list)
     stats.standard_deviation = [0.0] * n
     for ti in ti_list :
+      # iterate over factors by index
       for i in xrange(n) :
         d = stats.average[i] - ti.factor_concentration[i]
         stats.standard_deviation[i] = stats.standard_deviation[i] + d * d
     for i in xrange(n) :
-      stats.standard_deviation[i] = math.sqrt(stats.standard_deviation[i]) / (float(len(ti_list)) - 1.0)
+      stats.standard_deviation[i] = math.sqrt(stats.standard_deviation[i] / (float(len(ti_list)) - 1.0))
     stats.shannon_entropy = [0.0] * n
     for ti in ti_list :
       if fc_sum[i] > 0.0 :
