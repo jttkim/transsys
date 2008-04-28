@@ -40,11 +40,21 @@ extractPostscript <- function(filename, data, h=8, w=10)
 }
 
 
-bimodalitiesTabular <- function(data)
+summaryBimodalities <- function(data)
 # Produce a tabular representation of the summary statistics for all the
 # calcuated bimodalities.
 {
   a <- data.frame(data$AltObj, data$AltLatBM, data$AltCtrlBM, data$BestObj, data$BestLatBM, data$BestCtrlBM);
-  return(summary(a))
+  Minimum <- c(min(data$AltObj), min(data$AltLatBM), min(data$AltCtrlBM), min(data$BestObj), min(data$BestLatBM), min(data$BestCtrlBM));
+  FirstQuartile <- c(quantile(data$AltObj, probs=0.25), quantile(data$AltLatBM, probs=0.25), quantile(data$AltCtrlBM, probs=0.25), quantile(data$BestObj, probs=0.25), quantile(data$BestLatBM, probs=0.25), quantile(data$BestCtrlBM, probs=0.25));
+  Median <- c(median(data$AltObj), median(data$AltLatBM), median(data$AltCtrlBM), median(data$BestObj), median(data$BestLatBM), median(data$BestCtrlBM));
+  ThirdQuartile <- c(quantile(data$AltObj, probs=0.75), quantile(data$AltLatBM, probs=0.75), quantile(data$AltCtrlBM, probs=0.75), quantile(data$BestObj, probs=0.75), quantile(data$BestLatBM, probs=0.75), quantile(data$BestCtrlBM, probs=0.75));
+  IQR <-  c(IQR(data$AltObj), IQR(data$AltLatBM), IQR(data$AltCtrlBM), IQR(data$BestObj), IQR(data$BestLatBM), IQR(data$BestCtrlBM));
+  Maximum <- c(max(data$AltObj), max(data$AltLatBM), max(data$AltCtrlBM), max(data$BestObj), max(data$BestLatBM), max(data$BestCtrlBM));
+  Mean <- mean(a)
+  SD <- sd(a)
+  Variance <- sd(a)**2
+  d <- data.frame(Minimum, FirstQuartile, ThirdQuartile, Maximum, Median, IQR, Mean, SD, Variance, row.names=c("AltObj:","AltLatBM:","AltCtrlBM","BestObj:","BestLatBM:","BestCtrlBM:"));
+  return(d)
 }
 
