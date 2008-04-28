@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 # Subversion keywords.
-# $Rev::               $:  Revision of last commit
-# $Author::            $:  Author of last commit
+# $Rev:: 305           $:  Revision of last commit
+# $Author:: cbouyio    $:  Author of last commit
 # $Date: 2008-01-08 15:44:39 +0000 (Tue, 08 Jan 2008) $:  Date of last commit
 
 """bimodalities.py

@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 # Subversion keywords.
-# $Rev::               $:  Revision of last commit
-# $Author::            $:  Author of last commit
+# $Rev:: 305           $:  Revision of last commit
+# $Author:: cbouyio    $:  Author of last commit
 # $Date: 2007-12-20 20:55:15 +0000 (Thu, 20 Dec 2007) $:  Date of last commit
 
 
@@ -13,11 +13,11 @@
 @since: 20/12/2007
 @license: GNU General Public Licence 3 or newer.
 @contact: U{Costas Bouyioukos<mailto:konsb@cmp.uea.ac.uk>}
-@version: $Id: randomWalkOptimisation.py 275 2008-01-08 15:44:39Z cbouyio $"""
+@version: $Id$"""
 
 
 # Version Information.
-__version__ = "$Id: randomWalkOptimisation.py 275 2008-01-08 15:44:39Z cbouyio $"
+__version__ = "$Id$"
 
 
 import copy
@@ -27,7 +27,7 @@ import math
 import transsys
 import translattice
 import bimodalities
-
+import transsys.optim
 
 
 class Point(translattice.Parameter) :
@@ -119,32 +119,43 @@ class EngineeringParameters(translattice.ControlParameters) :
   """A class to aggregate the control parameters of the engineered transsys
   program.
 
-  The transsys program has the structure:
+  The transsys program has the following structure:
+
   transsys engineered
-  {factor A {decay: <decayA>; diffusibility: <diffusibilityA>;}
-  {factor B {decay: <decayB>; diffusibility: <diffusibilityB>;}
-
-  gene geneA
   {
-    promoter
+    factor A
     {
-      constitutive: (<lowPoint.x>/<decayA> + ((<highPoint.x>/<decayA> - <lowPoint.x>/<decayA>) * ((((A - <cirlce.x) * (A - <circle.x>)) + ((B - <circle.y>) * (B - <circle.y>))) <= (<circle.r> * <circle.r>))));
+      decay: <decayA>;
+      diffusibility: <diffusibilityA>;
     }
-    product
+    factor B
     {
-      default: A;
+      decay: <decayB>;
+      diffusibility: <diffusibilityB>;
     }
-  }
 
-  gene geneB
-  {
-    promoter
+    gene geneA
     {
-      constitutive: (<lowPoint.y>/<decayB> + ((<highPoint.y>/<decayB> - <lowPoint.y>/<decayB>) * ((((A - <cirlce.x) * (A - <circle.x>)) + ((B - <circle.y>) * (B - <circle.y>))) <= (<circle.r> * <circle.r>))));
+      promoter
+      {
+        constitutive: (<lowPoint.x>/<decayA> + ((<highPoint.x>/<decayA> - <lowPoint.x>/<decayA>) * ((((A - <cirlce.x) * (A - <circle.x>)) + ((B - <circle.y>) * (B - <circle.y>))) <= (<circle.r> * <circle.r>))));
+      }
+      product
+      {
+        default: A;
+      }
     }
-    product
+
+    gene geneB
     {
-      default: B;
+      promoter
+      {
+        constitutive: (<lowPoint.y>/<decayB> + ((<highPoint.y>/<decayB> - <lowPoint.y>/<decayB>) * ((((A - <cirlce.x) * (A - <circle.x>)) + ((B - <circle.y>) * (B - <circle.y>))) <= (<circle.r> * <circle.r>))));
+      }
+      product
+      {
+        default: B;
+      }
     }
   }
   """
@@ -220,10 +231,10 @@ class EngineeringParameters(translattice.ControlParameters) :
 
 
   def perturb_eng_parameters(self, perturbObj) :
-    """Perturb the parameters of a transsys program dummy
+    """Perturb the parameters of a transsys program dummy.
 
-    Actualy the things that are get perturbed are the high and low expression
-    points and the circle (centre and radius).
+    The actual parameters that getting perturbed are the high and low
+    expression points and the control circle (centre and radius).
     @param perturbObj: The perturbation object.
     @type perturbObj: C{class 'translattice.RandomObject'}
     @return: A perturbed copy of the engineered control parameters.
@@ -718,7 +729,7 @@ def tp_optimisation(tp, sCP, oCP, logObj) :
   transsys program (a TranssysProgramDummy object, actually the function
   "optimises" the control parameters of the engineered transsys program). All
   the calculations are curried out in the relative methods/functions above here
-  anly the evaluation is taking place. The function returns nothing but writes
+  only the evaluation is taking place. The function returns nothing but writes
   in the log object after each optimisation cycle.
   @param tp: The transsys program that will be subject to optimisation.
   @type tp: C{class 'transsys.TranssysProgram'}
