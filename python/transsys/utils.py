@@ -179,6 +179,26 @@ def table_row(l) :
   return s
 
 
+def dictionary_tablestring(d, row_format = '# %s: %s\n') :
+  """Render a dictionary as a 'table', consisting of name/value rows,
+formatted by the format string.
+
+The format string C{row_format} must contain exactly two string
+format conversions.
+
+@param d: the dictionary to be rendered as a table
+@type d: C{dictionary}
+@param row_format: the format string for the rows of the table
+@type row_format C{String}
+@return: the table as a string
+@rtype: C{String}
+"""
+  s = ''
+  for k in d.keys() :
+    s = s + row_format % (str(k), str(d[k]))
+  return s
+    
+
 def hamming_distance(s1, s2) :
   """Compute the Hamming distance (number of different elements)
 between two strings (or other sequence types).
