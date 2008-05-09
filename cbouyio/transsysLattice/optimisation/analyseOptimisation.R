@@ -1,46 +1,72 @@
-# An .R script implementing some usefull functions for the analysis of the
-# optimisation experiments output.
+# An .R script providing some usefull tools for the analyses of the
+# optimisation experiments results.
 
 
-plotBestObjective <- function(data)
+plotBestObjective <- function(data, title = "Current Best optimisation
+objective score", ...)
 # Plot the optimisation objective score of r the current best transsys program.
 {
-plot(data$OptCycle, data$BestObj, type= "l", ylim = c(min(data$BestObj), max(data$BestObj)), main = "Current Best's optimisation objective score", xlab = "Optimisation Cycles", ylab = "Optimisation Objective");
+  plot(data$OptCycle, data$BestObj, type= "l", ylim = c(min(data$BestObj), max(data$BestObj)), main = title, xlab = "Optimisation Cycles", ylab = "Optimisation Objective");
 }
 
 
-plotAltObjective <- function(data)
+plotAltObjective <- function(data, title = "Current Alternative optimisation
+objective score", ...)
 # Plot the optimisation objective score of r the current alternative transsys
 # program.
 {
-plot(data$OptCycle, data$AltObj, type= "l", ylim = c(min(data$AltObj), max(data$AltObj)), main = "Current Alternative's optimisation objective score", xlab = "Optimisation Cycles", ylab = "Optimisation Objective");
+  plot(data$OptCycle, data$AltObj, type= "l", ylim = c(min(data$AltObj), max(data$AltObj)), main = title, xlab = "Optimisation Cycles", ylab = "Optimisation Objective");
 }
 
 
-plotObjectives <- function(data)
+plotObjectives <- function(data, title = "Optimisation Objective scores of
+Current Best and Alternative.", ...)
 # Function to plot the Objective Score of the current best transsys program
 # (red) and the objective of the current alternative (blue). The actual
 # optimisation steps (i.e. the cycle where the current alternative is better
 # thatn the curren best) are designated by "|" on the plot.
 {
-  plot(data$OptCycle, data$BestObj, type = "l", col = "red", ylim = c(min(data$BestObj, data$AltObj), max(data$BestObj, data$AltObj)), main = "Optimisation Objective scores of Current Best and Alternative.", xlab = "Optimisation Cycles", ylab = "Optimisation Objective");
+  plot(data$OptCycle, data$BestObj, type = "l", col = "red", ylim = c(min(data$BestObj, data$AltObj), max(data$BestObj, data$AltObj)), main = title, xlab = "Optimisation Cycles", ylab = "Optimisation Objective");
   lines(data$OptCycle, data$AltObj, col = "blue");
   dOpt <- subset(data, OptFlag == TRUE);
   points(dOpt$OptCycle, (dOpt$OptFlag - abs(min(data$BestObj, data$AltObj))), pch = "|");
 }
 
 
-extractPostscript <- function(filename, data, h=8, w=10)
-# Function to produce a .ps of the plot that is the output of the plotObjective
-# function. Takes the filename as an argument.
+postscriptObjectives <- function(filename, data, h=8, w=10, ...)
+# Function to generate a .ps of the plot of both the objective function curves,
+# that is the output of the plotObjectives() function.
+# Takes the filename as an argument.
 {
   postscript(filename, horizontal = FALSE, paper = "special", height = h, width = w, onefile = FALSE);
-  plotObjectives(data);
+  plotObjectives(data, ...);
   dev.off();
 }
 
 
-summaryBimodalities <- function(data)
+postscriptBestObjective <- function(filename, data, h=8, w=10, ...)
+# Function to generate a .ps of the plot of the transsys Best objective score,
+# that is the output of the plotBestObjective() function.
+# Takes the filename as an argument.
+{
+  postscript(filename, horizontal = FALSE, paper = "special", height = h, width = w, onefile = FALSE);
+  plotBestObjective(data, ...);
+  dev.off();
+}
+
+
+postscriptAltObjective <- function(filename, data, h=8, w=10, ...)
+# Function to generate a .ps of the plot of the transsys Alternative objective
+# score, that is the output of the plotAltObjective() function.
+# Takes the filename as an argument.
+{
+  postscript(filename, horizontal = FALSE, paper = "special", height = h, width = w, onefile = FALSE);
+  plotAltObjective(data, ...);
+  dev.off();
+}
+
+
+summaryBimodalities <- function(data, ...)
 # Produce a tabular representation of the summary statistics for all the
 # calcuated bimodalities.
 {
