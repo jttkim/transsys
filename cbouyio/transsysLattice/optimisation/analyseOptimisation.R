@@ -2,36 +2,41 @@
 # optimisation experiments results.
 
 
-plotBestObjective <- function(data, title = "Current Best optimisation
-objective score", ...)
-# Plot the optimisation objective score of r the current best transsys program.
+plotOptSteps <- function(data, symbol = 6, ...)
+# Low level function to point the actual optimisation steps on a plot.
 {
-  plot(data$OptCycle, data$BestObj, type= "l", ylim = c(min(data$BestObj), max(data$BestObj)), main = title, xlab = "Optimisation Cycles", ylab = "Optimisation Objective");
+  dOpt <- subset(data, OptFlag == TRUE);
+  points(dOpt$OptCycle, dOpt$BestObj, pch = symbol);
 }
 
 
-plotAltObjective <- function(data, title = "Current Alternative optimisation
-objective score", ...)
-# Plot the optimisation objective score of r the current alternative transsys
+plotBestObjective <- function(data, title = "Current Best optimisation objective score", ylim = c(min(data$BestObj), max(data$BestObj)), ...)
+# Plot the optimisation objective score of the current best transsys program.
+{
+  plot(data$OptCycle, data$BestObj, type= "l", ylim = ylim, main = title, xlab = "Optimisation Cycles", ylab = "Optimisation Objective");
+  plotOptSteps(data, ...);
+}
+
+
+plotAltObjective <- function(data, title = "Current Alternative optimisation objective score", ylim = c(min(data$AltObj), max(data$AltObj)), ...)
+# Plot the optimisation objective score of the current alternative transsys
 # program.
 {
-  plot(data$OptCycle, data$AltObj, type= "l", ylim = c(min(data$AltObj), max(data$AltObj)), main = title, xlab = "Optimisation Cycles", ylab = "Optimisation Objective");
+  plot(data$OptCycle, data$AltObj, type= "l", ylim = ylim, main = title, xlab = "Optimisation Cycles", ylab = "Optimisation Objective");
 }
 
 
 plotObjectives <- function(data, title = "Optimisation Objective scores of
-Current Best and Alternative.", ...)
+Current Best and Alternative.", ylim = c(min(data$BestObj, data$AltObj), max(data$BestObj, data$AltObj)), ...)
 # Function to plot the Objective Score of the current best transsys program
 # (red) and the objective of the current alternative (blue). The actual
 # optimisation steps (i.e. the cycle where the current alternative is better
 # thatn the curren best) are designated by "|" on the plot.
 {
-  plot(data$OptCycle, data$BestObj, type = "l", col = "red", ylim = c(min(data$BestObj, data$AltObj), max(data$BestObj, data$AltObj)), main = title, xlab = "Optimisation Cycles", ylab = "Optimisation Objective");
+  plot(data$OptCycle, data$BestObj, type = "l", col = "red", ylim = ylim, main = title, xlab = "Optimisation Cycles", ylab = "Optimisation Objective");
   lines(data$OptCycle, data$AltObj, col = "blue");
-  dOpt <- subset(data, OptFlag == TRUE);
-  points(dOpt$OptCycle, (dOpt$OptFlag - abs(min(data$BestObj, data$AltObj))), pch = "|");
+  plotOptSteps(data, ...);
 }
-
 
 postscriptObjectives <- function(filename, data, h=8, w=10, ...)
 # Function to generate a .ps of the plot of both the objective function curves,
