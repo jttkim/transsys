@@ -193,6 +193,7 @@ int resolve_identifiers(EXPRESSION_NODE *node, const TRANSSYS *transsys, const L
       return (resolve_simple_identifier(node, transsys));
     }
   case NT_NOT:
+  case NT_ATAN:
     return (resolve_identifiers(node->content.argument[0], transsys, lsys, rule_element));
   case NT_LOGICAL_OR:
   case NT_LOGICAL_AND:
@@ -208,6 +209,8 @@ int resolve_identifiers(EXPRESSION_NODE *node, const TRANSSYS *transsys, const L
   case NT_DIV:
   case NT_RANDOM:
   case NT_GAUSS:
+  case NT_POW:
+  case NT_LOG:
     /* CHECKME: is there a reason for this strange return strategy? */
     return_value = resolve_identifiers(node->content.argument[0], transsys, lsys, rule_element);
     if (resolve_identifiers(node->content.argument[1], transsys, lsys, rule_element) < 0)

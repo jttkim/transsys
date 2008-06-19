@@ -1,0 +1,29 @@
+#!/bin/sh
+
+# script to test whether running the python scripts results in an
+# exit code of 0 (indicating success). These tests are intended to
+# pick up changes in the python modules require changes in the scripts
+# etc.; they are not intended as a thorough test of the scripts.
+
+# $Id$
+# $Revision$
+# $Author$
+# $Date$
+
+
+function runcmd ()
+{
+  cmd=$*
+  echo $cmd
+  if $cmd ; then
+    true
+  else
+    echo exit $?
+    exit 1
+  fi
+}
+
+
+runcmd ../transcheck ../../testdata/defglo.trl defglo_parsetest.trl
+runcmd ../transcheck ../../testdata/check.tra check_parsetest.tra
+

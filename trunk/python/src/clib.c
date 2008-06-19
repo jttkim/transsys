@@ -34,6 +34,9 @@ typedef struct
   PyObject *ExpressionNodeFunction;
   PyObject *ExpressionNodeUniformRandom;
   PyObject *ExpressionNodeGaussianRandom;
+  PyObject *ExpressionNodePower;
+  PyObject *ExpressionNodeLogarithm;
+  PyObject *ExpressionNodeAtan;
   PyObject *PromoterElement;
   PyObject *PromoterElementLink;
   PyObject *PromoterElementConstitutive;
@@ -80,24 +83,27 @@ typedef struct
 
 
 static EXPRESSION_NODETYPE_MAPENTRY expressionNodetypeMap[] = {
-  {NULL, NT_NONE},
-  {NULL, NT_NONE},
-  {NULL, NT_NONE},
-  {NULL, NT_NONE},
-  {NULL, NT_NONE},
-  {NULL, NT_NONE},
-  {NULL, NT_NONE},
-  {NULL, NT_NONE},
-  {NULL, NT_NONE},
-  {NULL, NT_NONE},
-  {NULL, NT_NONE},
-  {NULL, NT_NONE},
-  {NULL, NT_NONE},
-  {NULL, NT_NONE},
-  {NULL, NT_NONE},
-  {NULL, NT_NONE},
-  {NULL, NT_NONE},
-  {NULL, NT_NONE}
+  {NULL, NT_NONE}, /* value */
+  {NULL, NT_NONE}, /* identifier */
+  {NULL, NT_NONE}, /* add */
+  {NULL, NT_NONE}, /* subtract */
+  {NULL, NT_NONE}, /* mult */
+  {NULL, NT_NONE}, /* div */
+  {NULL, NT_NONE}, /* lower */
+  {NULL, NT_NONE}, /* lowerEqual*/
+  {NULL, NT_NONE}, /* greater */
+  {NULL, NT_NONE}, /* greaterEqual */
+  {NULL, NT_NONE}, /* equal */
+  {NULL, NT_NONE}, /* unequal */
+  {NULL, NT_NONE}, /* not */
+  {NULL, NT_NONE}, /* and */
+  {NULL, NT_NONE}, /* or */
+  {NULL, NT_NONE}, /* random */
+  {NULL, NT_NONE}, /* gauss */
+  {NULL, NT_NONE}, /* power */
+  {NULL, NT_NONE}, /* log */
+  {NULL, NT_NONE}, /* atan */
+  {NULL, NT_NONE}  /* end flagged by NULL */
 };
 
 
@@ -163,6 +169,9 @@ static PYTHON_CLASSES pythonClasses = {
   NULL,
   NULL,
   NULL,
+  NULL,
+  NULL,
+  NULL,
   NULL
 };
 
@@ -180,7 +189,7 @@ typedef enum
 static CLIB_MSG_IMPORTANCE message_importance_threshold = CLIB_MSG_WARNING;
 
 
-/* #define REFCOUNTDEBUG */
+#define REFCOUNTDEBUG
 
 /***** reference count monitoring *********************************************/
 
@@ -579,6 +588,9 @@ static void freePythonClasses(void)
   Py_XDECREF(pythonClasses.ExpressionNodeFunction);
   Py_XDECREF(pythonClasses.ExpressionNodeUniformRandom);
   Py_XDECREF(pythonClasses.ExpressionNodeGaussianRandom);
+  Py_XDECREF(pythonClasses.ExpressionNodePower);
+  Py_XDECREF(pythonClasses.ExpressionNodeLogarithm);
+  Py_XDECREF(pythonClasses.ExpressionNodeAtan);
   Py_XDECREF(pythonClasses.PromoterElement);
   Py_XDECREF(pythonClasses.PromoterElementLink);
   Py_XDECREF(pythonClasses.PromoterElementConstitutive);
@@ -627,6 +639,9 @@ static void freePythonClasses(void)
   pythonClasses.ExpressionNodeFunction = NULL;
   pythonClasses.ExpressionNodeUniformRandom = NULL;
   pythonClasses.ExpressionNodeGaussianRandom = NULL;
+  pythonClasses.ExpressionNodePower = NULL;
+  pythonClasses.ExpressionNodeLogarithm = NULL;
+  pythonClasses.ExpressionNodeAtan = NULL;
   pythonClasses.PromoterElement = NULL;
   pythonClasses.PromoterElementLink = NULL;
   pythonClasses.PromoterElementConstitutive = NULL;
@@ -697,6 +712,12 @@ static void initExpressionNodetypeMap(const PYTHON_CLASSES *pc, EXPRESSION_NODET
   map[i++].node_type = NT_RANDOM;
   map[i].pythonClass = pc->ExpressionNodeGaussianRandom;
   map[i++].node_type = NT_GAUSS;
+  map[i].pythonClass = pc->ExpressionNodePower;
+  map[i++].node_type = NT_POW;
+  map[i].pythonClass = pc->ExpressionNodeLogarithm;
+  map[i++].node_type = NT_LOG;
+  map[i].pythonClass = pc->ExpressionNodeAtan;
+  map[i++].node_type = NT_ATAN;
   map[i].pythonClass = NULL;
   map[i++].node_type = NT_NONE;
 }
@@ -837,6 +858,21 @@ static int initPythonClasses(void)
   }
   pythonClasses.ExpressionNodeGaussianRandom = getPythonClass("transsys", "ExpressionNodeGaussianRandom");
   if (pythonClasses.ExpressionNodeGaussianRandom == NULL)
+  {
+    return (-1);
+  }
+  pythonClasses.ExpressionNodePower = getPythonClass("transsys", "ExpressionNodePower");
+  if (pythonClasses.ExpressionNodePower == NULL)
+  {
+    return (-1);
+  }
+  pythonClasses.ExpressionNodeLogarithm = getPythonClass("transsys", "ExpressionNodeLogarithm");
+  if (pythonClasses.ExpressionNodeLogarithm == NULL)
+  {
+    return (-1);
+  }
+  pythonClasses.ExpressionNodeAtan = getPythonClass("transsys", "ExpressionNodeAtan");
+  if (pythonClasses.ExpressionNodeAtan == NULL)
   {
     return (-1);
   }
@@ -1413,12 +1449,32 @@ static EXPRESSION_NODE *extract_expression_binary(PyObject *python_node, EXPR_NO
 }
 
 
+/*
+ * FIXME: this is good enough for unary and binary functions, but will
+ * have to be implemented more properly if functions with higher arities
+ * should be introduced.
+ */
 static EXPRESSION_NODE *extract_expression_function(PyObject *python_node, EXPR_NODE_TYPE node_type)
 {
   PyObject *operand_list, *operand1, *operand2;
-  EXPRESSION_NODE *expression;
-  int list_size;
+  EXPRESSION_NODE *arg, *expression = NULL;
+  int list_size, arity;
 
+  switch (node_type)
+  {
+  case NT_ATAN :
+    arity = 1;
+    break;
+  case NT_RANDOM :
+  case NT_GAUSS :
+  case NT_POW :
+  case NT_LOG :
+    arity = 2;
+    break;
+  default :
+    PyErr_SetString(PyExc_TypeError, "extract_expression_function: could not determine arity");
+    return (NULL);
+  }
   if (!checkClass(python_node, pythonClasses.ExpressionNodeFunction, "extract_expression_function: python_node is not an instance of ExpressionNodeFunction"))
   {
     return (NULL);
@@ -1430,10 +1486,10 @@ static EXPRESSION_NODE *extract_expression_function(PyObject *python_node, EXPR_
     return (NULL);
   }
   list_size = PyList_Size(operand_list);
-  if (list_size != 2)
+  if (list_size != arity)
   {
     Py_DECREF(operand_list);
-    PyErr_SetString(PyExc_TypeError, "extract_expression_function: operand list does not have 2 elements");
+    PyErr_SetString(PyExc_TypeError, "extract_expression_function: incorrect arity");
     return (NULL);
   }
   operand1 = PyList_GetItem(operand_list, 0);
@@ -1444,23 +1500,44 @@ static EXPRESSION_NODE *extract_expression_function(PyObject *python_node, EXPR_
     return (NULL);
   }
   Py_INCREF(operand1);
-  operand2 = PyList_GetItem(operand_list, 1);
-  if (operand2 == NULL)
+  if (arity == 1)
   {
-    clib_message(CLIB_MSG_TRACE, "extract_expression_function: PyList_GetItem failed for index 1\n");
-    Py_DECREF(operand1);
-    Py_DECREF(operand_list);
-    return (NULL);
+    arg = extract_expression(operand1);
+    if (arg == NULL)
+    {
+      clib_message(CLIB_MSG_TRACE, "extract_expression_function: extract_expression failed for unary arg\n");
+      return (NULL);
+    }
+    expression = new_expression_node(node_type, arg);
+    if (expression == NULL)
+    {
+      clib_message(CLIB_MSG_ERROR, "extract_expression_function: new_expression_node failed\n");
+    }
   }
-  Py_INCREF(operand2);
+  else if (arity == 2)
+  {
+    operand2 = PyList_GetItem(operand_list, 1);
+    if (operand2 == NULL)
+    {
+      clib_message(CLIB_MSG_TRACE, "extract_expression_function: PyList_GetItem failed for index 1\n");
+      Py_DECREF(operand1);
+      Py_DECREF(operand_list);
+      return (NULL);
+    }
+    Py_INCREF(operand2);
+    expression = extract_binary_expression(node_type, operand1, operand2);
+    if (expression == NULL)
+    {
+      clib_message(CLIB_MSG_TRACE, "extract_expression_function: extract_binary_expression failed\n");
+    }
+    Py_DECREF(operand2);
+  }
+  else
+  {
+    PyErr_SetString(PyExc_StandardError, "extract_expression_function: cannot handle arity larger than 2");
+  }
   Py_DECREF(operand_list);
-  expression = extract_binary_expression(node_type, operand1, operand2);
   Py_DECREF(operand1);
-  Py_DECREF(operand2);
-  if (expression == NULL)
-  {
-    clib_message(CLIB_MSG_TRACE, "extract_expression_function: extract_binary_expression failed\n");
-  }
   return (expression);
 }
 
@@ -1552,7 +1629,10 @@ static EXPRESSION_NODE *extract_expression(PyObject *python_node)
     return (expression);
   case NT_RANDOM :
   case NT_GAUSS :
-    clib_message(CLIB_MSG_TRACE, "extract_expression: extracting binary (%d)\n", (int) node_type);
+  case NT_POW :
+  case NT_LOG :
+  case NT_ATAN :
+    clib_message(CLIB_MSG_TRACE, "extract_expression: extracting function (type %d)\n", (int) node_type);
     expression = extract_expression_function(python_node, node_type);
     if (expression == NULL)
     {

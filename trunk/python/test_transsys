@@ -30,77 +30,9 @@ import transdecode
 class TestTranssysParser(unittest.TestCase) :
 
   def setUp(self) :
-    self.tp_check = """transsys check
-{
-  factor noparam
-  {
-    decay: 1.0;
-    diffusibility: 1.0;
-  }
-
-  factor simple
-  {
-    decay: 0.1;
-    diffusibility: 0.3;
-  }
-
-  factor complex_expr
-  {
-    decay: ((noparam > 0.2) && (!((gauss((3.0 * simple), complex_expr) <= (simple + 2.1)))));
-    diffusibility: ((complex_expr + noparam) * (simple + 0.4));
-  }
-
-  gene noparam_gene
-  {
-    promoter
-    {
-      constitutive: 1.1;
-    }
-    product
-    {
-      default: noparam;
-    }
-  }
-
-  gene simple_gene
-  {
-    promoter
-    {
-      constitutive: 0.1;
-      noparam: activate(0.1, 1.0);
-    }
-    product
-    {
-      default: simple;
-    }
-  }
-
-  gene complex_gene
-  {
-    promoter
-    {
-      constitutive: ((0.3 * (!((random(simple, (simple + 0.2)) < complex_expr)))) + noparam);
-      simple: activate((complex_expr * 0.01), ((noparam / 0.7) + simple));
-    }
-    product
-    {
-      default: complex_expr;
-    }
-  }
-
-  gene complex_factor_activated
-  {
-    promoter
-    {
-      noparam + simple + complex_expr: activate(0.1, 1.0);
-    }
-    product
-    {
-      default: noparam;
-    }
-  }
-}
-"""
+    f = file('../testdata/check.tra', 'r')
+    self.tp_check = f.read()
+    f.close()
     self.tp_cycler = """transsys cycler
 {
   factor A { decay: 0.1; }
@@ -511,6 +443,12 @@ maxValue: 4.20000000000000018e+00"""
 
   def testSingleTranssys(self) :
     t = self.getTestTranssys()
+#     f = file('check_expect.tra', 'w')
+#     f.write(self.tp_check)
+#     f.close()
+#     f = file('check_parsed.tra', 'w')
+#     f.write(str(t))
+#     f.close()
     self.assertEqual(self.tp_check, str(t))
 
 
@@ -535,8 +473,9 @@ maxValue: 4.20000000000000018e+00"""
     vn = g.getValueNodes()
     v = map(lambda n : n.value, vn)
     self.assertEqual(v, [0.3, 0.2, 0.01, 0.7])
-    factor_vn = [1.0, 0.1, 0.2, 3.0, 2.1, 1.0, 0.3, 0.4]
+    factor_vn = [0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.1, 0.2, 3.0, 2.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.3, 0.4]
     gene_vn = [1.1, 0.1, 0.1, 1.0, 0.3, 0.2, 0.01, 0.7, 0.1, 1.0]
+    gene_vn = [1.1, 0.1, 0.1, 1.0, 1.0, 0.3, 0.2, 0.01, 0.7, 0.1, 1.0, 0.0, 1.0, 10.0, 0.0, 1.0, 2.0, 47.11, 1.0, 2.0]
     vn = t.getFactorValueNodes()
     v = map(lambda n : n.value, vn)
     self.assertEqual(v, factor_vn)
@@ -563,7 +502,9 @@ maxValue: 4.20000000000000018e+00"""
     v = map(lambda n : n.factor.name, identifierNodes)
     self.assertEqual(v, ['noparam', 'simple', 'complex_expr'])
     factor_identifierNodes = ['noparam', 'simple', 'complex_expr', 'simple', 'complex_expr', 'noparam', 'simple']
-    gene_identifierNodes = ['noparam', 'simple', 'simple', 'complex_expr', 'noparam', 'simple', 'complex_expr', 'noparam', 'simple', 'noparam', 'simple', 'complex_expr']
+    # FIXME (??): exptected data built into code (perhaps acceptable for
+    # unit testing??)
+    gene_identifierNodes = ['noparam', 'simple', 'simple', 'complex_expr', 'noparam', 'simple', 'complex_expr', 'noparam', 'simple', 'noparam', 'simple', 'complex_expr', 'x', 'x', 'x']
     identifierNodes = t.getFactorIdentifierNodes()
     v = map(lambda n : n.factor.name, identifierNodes)
     self.assertEqual(v, factor_identifierNodes)

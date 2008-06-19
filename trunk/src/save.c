@@ -160,6 +160,18 @@ static void fprint_expression_tree(FILE *f, const EXPRESSION_NODE *node, const F
   case NT_GAUSS:
     fprint_binary_expression(f, "gauss(", ", ", ")", node->content.argument[0], node->content.argument[1], factor, rule);
     break;
+  case NT_POW:
+    /* fprintf(stderr, "printing pow()\n"); */
+    fprint_binary_expression(f, "pow(", ", ", ")", node->content.argument[0], node->content.argument[1], factor, rule);
+    break;
+  case NT_LOG:
+    fprint_binary_expression(f, "log(", ", ", ")", node->content.argument[0], node->content.argument[1], factor, rule);
+    break;
+  case NT_ATAN:
+    fprintf(f, "atan(");
+    fprint_expression_tree(f, node->content.argument[0], factor, rule);
+    fprintf(f, ")");
+    break;
   default:
     fprintf(stderr, "fprint_expression_tree: unknown expression type %d\n", (int) node->type);
     break;

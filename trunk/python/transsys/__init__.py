@@ -569,6 +569,41 @@ class ExpressionNodeGaussianRandom(ExpressionNodeFunction) :
     return arg1 + arg2 * transsys_instance[0].rng.gauss()
 
 
+class ExpressionNodePower(ExpressionNodeFunction) :
+
+  def __init__(self, op1, op2) :
+    ExpressionNodeFunction.__init__(self, [op1, op2], 'pow')
+
+
+  def evaluate(self, transsys_instance) :
+    arg1 = self.operand[0].evaluate()
+    arg2 = self.operand[1].evaluate()
+    return math.pow(arg1, arg2)
+
+
+class ExpressionNodeLogarithm(ExpressionNodeFunction) :
+
+  def __init__(self, op1, op2) :
+    ExpressionNodeFunction.__init__(self, [op1, op2], 'log')
+
+
+  def evaluate(self, transsys_instance) :
+    arg1 = self.operand[0].evaluate()
+    arg2 = self.operand[1].evaluate()
+    return math.log(arg1, arg2)
+
+
+class ExpressionNodeAtan(ExpressionNodeFunction) :
+
+  def __init__(self, op1) :
+    ExpressionNodeFunction.__init__(self, [op1], 'atan')
+
+
+  def evaluate(self, transsys_instance) :
+    arg1 = self.operand[0].evaluate()
+    return math.atan(arg1)
+
+
 class PromoterElement(object) :
   pass
 
@@ -2834,7 +2869,7 @@ class TranssysProgramScanner(object) :
     self.infile = f
     self.buffer = ''
     self.lineno = 0
-    self.keywords = ['factor', 'gene', 'promoter', 'product', 'constitutive', 'activate', 'repress', 'default', 'gauss', 'random', 'transsys', 'decay', 'diffusibility', 'lsys', 'symbol', 'axiom', 'rule', 'diffusionrange', '-->', 'graphics', 'move', 'sphere', 'cylinder', 'box', 'turn', 'roll', 'bank', 'color', 'push', 'pop', '<=', '>=', '==', '!=', '&&', '||']
+    self.keywords = ['factor', 'gene', 'promoter', 'product', 'constitutive', 'activate', 'repress', 'default', 'gauss', 'random', 'pow', 'log', 'atan', 'transsys', 'decay', 'diffusibility', 'lsys', 'symbol', 'axiom', 'rule', 'diffusionrange', '-->', 'graphics', 'move', 'sphere', 'cylinder', 'box', 'turn', 'roll', 'bank', 'color', 'push', 'pop', '<=', '>=', '==', '!=', '&&', '||']
     self.identifier_re = re.compile('([A-Za-z_][A-Za-z0-9_]*)|([\\[\\]])')
     self.realvalue_re = re.compile('[+-]?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))([Ee][+-]?[0-9]+)?')
     self.next_token = self.get_token()
@@ -2989,6 +3024,30 @@ class TranssysProgramParser(object) :
     return ExpressionNodeUniformRandom(arglist[0], arglist[1])
 
 
+  def parse_power_expr(self, transsys_label_list) :
+    self.expect_token('pow')
+    arglist = self.parse_argument_list(transsys_label_list)
+    if len(arglist) != 2 :
+      raise StandardError, 'line %d: pow() takes 2 parameters, but got %d' % (self.scanner.lineno, len(arglist))
+    return ExpressionNodePower(arglist[0], arglist[1])
+
+
+  def parse_logarithm_expr(self, transsys_label_list) :
+    self.expect_token('log')
+    arglist = self.parse_argument_list(transsys_label_list)
+    if len(arglist) != 2 :
+      raise StandardError, 'line %d: log() takes 2 parameters, but got %d' % (self.scanner.lineno, len(arglist))
+    return ExpressionNodeLogarithm(arglist[0], arglist[1])
+
+
+  def parse_atan_expr(self, transsys_label_list) :
+    self.expect_token('atan')
+    arglist = self.parse_argument_list(transsys_label_list)
+    if len(arglist) != 1 :
+      raise StandardError, 'line %d: atan() takes 1 parameter, but got %d' % (self.scanner.lineno, len(arglist))
+    return ExpressionNodeAtan(arglist[0])
+
+
   def parse_value_expr(self, transsys_label_list) :
     l = self.scanner.lookahead()
     if l == 'realvalue' :
@@ -2999,13 +3058,19 @@ class TranssysProgramParser(object) :
       return self.parse_random_expr(transsys_label_list)
     elif l == 'gauss' :
       return self.parse_gauss_expr(transsys_label_list)
+    elif l == 'pow' :
+      return self.parse_power_expr(transsys_label_list)
+    elif l == 'log' :
+      return self.parse_logarithm_expr(transsys_label_list)
+    elif l == 'atan' :
+      return self.parse_atan_expr(transsys_label_list)
     elif l == '(' :
       self.expect_token('(')
       expr = self.parse_expr(transsys_label_list)
       self.expect_token(')')
       return expr
     else :
-      raise StandardError, 'line %d: got token "%s", but value must be either <realvalue>, <identifier>, "random" or "gauss"' % (self.scanner.lineno, l)
+      raise StandardError, 'line %d: got token "%s", but value must be either <realvalue>, <identifier>, "random", "gauss", "pow", "log", or "atan"' % (self.scanner.lineno, l)
 
 
   def parse_term_expr(self, transsys_label_list) :

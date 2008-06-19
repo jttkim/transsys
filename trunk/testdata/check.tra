@@ -1,0 +1,178 @@
+transsys check
+{
+  factor x
+  {
+    decay: 0.0;
+    diffusibility: 0.0;
+  }
+
+  factor xrandom
+  {
+    decay: 1.0;
+    diffusibility: 0.0;
+  }
+
+  factor xgauss
+  {
+    decay: 1.0;
+    diffusibility: 0.0;
+  }
+
+  factor xpow
+  {
+    decay: 1.0;
+    diffusibility: 0.0;
+  }
+
+  factor xlog
+  {
+    decay: 1.0;
+    diffusibility: 0.0;
+  }
+
+  factor xatan
+  {
+    decay: 1.0;
+    diffusibility: 0.0;
+  }
+
+  factor noparam
+  {
+    decay: 1.0;
+    diffusibility: 1.0;
+  }
+
+  factor simple
+  {
+    decay: 0.1;
+    diffusibility: 0.3;
+  }
+
+  factor complex_expr
+  {
+    decay: ((noparam > 0.2) && (!((gauss((3.0 * simple), complex_expr) <= (simple + 2.1)))));
+    diffusibility: ((complex_expr + noparam) * (simple + 0.4));
+  }
+
+  gene noparam_gene
+  {
+    promoter
+    {
+      constitutive: 1.1;
+    }
+    product
+    {
+      default: noparam;
+    }
+  }
+
+  gene simple_gene
+  {
+    promoter
+    {
+      constitutive: 0.1;
+      noparam: activate(0.1, 1.0);
+    }
+    product
+    {
+      default: simple;
+    }
+  }
+
+  gene xgene
+  {
+    promoter
+    {
+      constitutive: 1.0;
+    }
+    product
+    {
+      default: x;
+    }
+  }
+
+  gene complex_gene
+  {
+    promoter
+    {
+      constitutive: ((0.3 * (!((random(simple, (simple + 0.2)) < complex_expr)))) + noparam);
+      simple: activate((complex_expr * 0.01), ((noparam / 0.7) + simple));
+    }
+    product
+    {
+      default: complex_expr;
+    }
+  }
+
+  gene complex_factor_activated
+  {
+    promoter
+    {
+      noparam + simple + complex_expr: activate(0.1, 1.0);
+    }
+    product
+    {
+      default: noparam;
+    }
+  }
+
+  gene testrandom
+  {
+    promoter
+    {
+      constitutive: random(0.0, 1.0);
+    }
+    product
+    {
+      default: xrandom;
+    }
+  }
+
+  gene testgauss
+  {
+    promoter
+    {
+      constitutive: (10.0 + gauss(0.0, 1.0));
+    }
+    product
+    {
+      default: xgauss;
+    }
+  }
+
+  gene testpow
+  {
+    promoter
+    {
+      constitutive: pow(2.0, x);
+    }
+    product
+    {
+      default: xpow;
+    }
+  }
+
+  gene testlog
+  {
+    promoter
+    {
+      constitutive: (47.11 + log((x + 1.0), 2.0));
+    }
+    product
+    {
+      default: xlog;
+    }
+  }
+
+  gene testatan
+  {
+    promoter
+    {
+      constitutive: atan(x);
+    }
+    product
+    {
+      default: xatan;
+    }
+  }
+}

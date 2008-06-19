@@ -111,9 +111,21 @@ double evaluate_expression(const EXPRESSION_NODE *expr, const TRANSSYS_INSTANCE 
     arg1 = evaluate_expression(expr->content.argument[0], ti_list);
     arg2 = evaluate_expression(expr->content.argument[1], ti_list);
     return (arg1 + arg2 * urandom_gauss());
+  case NT_POW:
+    arg1 = evaluate_expression(expr->content.argument[0], ti_list);
+    arg2 = evaluate_expression(expr->content.argument[1], ti_list);
+    /* FIXME: should check for valid arguments (positive base etc.) */
+    return (pow(arg1, arg2));
+  case NT_LOG:
+    arg1 = evaluate_expression(expr->content.argument[0], ti_list);
+    arg2 = evaluate_expression(expr->content.argument[1], ti_list);
+    /* FIXME: should check for valid arguments */
+    return (log(arg1) / log(arg2));
+  case NT_ATAN:
+    arg1 = evaluate_expression(expr->content.argument[0], ti_list);
+    return (atan(arg1));
   default:
     fprintf(stderr, "evaluate_expression: unknown expression type %d\n", (int) expr->type);
     return (0.0);
   }
 }
-

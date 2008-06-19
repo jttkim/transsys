@@ -43,8 +43,6 @@ constitutive		{ return (CONSTITUTIVE); }
 activate		{ return (ACTIVATE); }
 repress			{ return (REPRESS); }
 default			{ return (DEFAULT); }
-gauss			{ return (GAUSS); }
-random			{ return (RANDOM); }
 transsys		{ return (TRANSSYS_DEF); }
 decay			{ return (DECAY_DEF); }
 diffusibility		{ return (DIFFUSIBILITY_DEF); }
@@ -65,6 +63,11 @@ bank			{ return (BANK); }
 color			{ return (COLOR); }
 push			{ return (PUSH); }
 pop			{ return (POP); }
+pow			{ return (NUMERIC_POW); }
+log			{ return (NUMERIC_LOG); }
+atan			{ return (NUMERIC_ATAN); }
+gauss			{ return (NUMERIC_GAUSS); }
+random			{ return (NUMERIC_RANDOM); }
 \<=			{ return (LOWER_EQUAL); }
 \>=			{ return (GREATER_EQUAL); }
 ==			{ return (EQUAL); }
