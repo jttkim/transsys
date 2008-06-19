@@ -59,7 +59,10 @@ typedef enum
   NT_LOGICAL_AND,
   NT_LOGICAL_OR,
   NT_RANDOM,
-  NT_GAUSS
+  NT_GAUSS,
+  NT_POW,
+  NT_LOG,
+  NT_ATAN
 } EXPR_NODE_TYPE;
 
 typedef enum

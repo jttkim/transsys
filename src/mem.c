@@ -170,6 +170,7 @@ void free_expression_tree(EXPRESSION_NODE *node)
       free(node->content.raw_identifier.transsys_label);
     break;
   case NT_NOT:
+  case NT_ATAN:
     free_expression_tree(node->content.argument[0]);
     free(node->content.argument);
     break;
@@ -187,6 +188,8 @@ void free_expression_tree(EXPRESSION_NODE *node)
   case NT_DIV:
   case NT_RANDOM:
   case NT_GAUSS:
+  case NT_POW:
+  case NT_LOG:
     free_expression_tree(node->content.argument[0]);
     free_expression_tree(node->content.argument[1]);
     free(node->content.argument);
@@ -247,6 +250,7 @@ EXPRESSION_NODE *new_expression_node(EXPR_NODE_TYPE type, ...)
     strcpy(node->content.raw_identifier.factor_name, identifier_name);
     break;
   case NT_NOT:
+  case NT_ATAN:
     node->content.argument = (EXPRESSION_NODE **) malloc(sizeof(EXPRESSION_NODE *));
     if (node->content.argument == NULL)
     {
@@ -269,6 +273,8 @@ EXPRESSION_NODE *new_expression_node(EXPR_NODE_TYPE type, ...)
   case NT_DIV:
   case NT_RANDOM:
   case NT_GAUSS:
+  case NT_POW:
+  case NT_LOG:
     node->content.argument = (EXPRESSION_NODE **) malloc(2 * sizeof(EXPRESSION_NODE *));
     if (node->content.argument == NULL)
     {

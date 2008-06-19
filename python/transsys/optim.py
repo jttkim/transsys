@@ -1392,9 +1392,9 @@ of C{AbstractOptimiser} do not have any use.
 
 This method should only be called from the optimise method, the
 startup of each optimise method should contain something like
-
-    C{self.initialiseParameterTransformer(transsys_program, factor_name_list, gene_name_list)}
-    """
+C{self.initialiseParameterTransformer(transsys_program,
+factor_name_list, gene_name_list)}
+"""
     self.transformer.setTranssysProgram(transsys_program, factor_name_list, gene_name_list)
     if self.randomInitRange is None :
       self.transformer.clipParameters()

@@ -64,5 +64,7 @@ CLEANFILES = *~
 DISTCLEANFILES = trlex.c trbison.h trbison.c
 EXTRA_DIST = trlex.c trbison.h trbison.c
 
+SUBDIRS		= tests
+
 trlex.c : trbison.c
 

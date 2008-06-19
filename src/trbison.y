@@ -133,11 +133,20 @@ void yyerror(const char *s, ...)
   case DEFAULT:
     fprintf(stderr, "    token: DEFAULT:\n");
     break;
-  case RANDOM:
-    fprintf(stderr, "    token: RANDOM:\n");
+  case NUMERIC_RANDOM:
+    fprintf(stderr, "    token: NUMERIC_RANDOM:\n");
     break;
-  case GAUSS:
-    fprintf(stderr, "    token: GAUSS:\n");
+  case NUMERIC_GAUSS:
+    fprintf(stderr, "    token: NUMERIC_GAUSS:\n");
+    break;
+  case NUMERIC_POW:
+    fprintf(stderr, "    token: NUMERIC_POW:\n");
+    break;
+  case NUMERIC_LOG:
+    fprintf(stderr, "    token: NUMERIC_LOG:\n");
+    break;
+  case NUMERIC_ATAN:
+    fprintf(stderr, "    token: NUMERIC_ATAN:\n");
     break;
   case TRANSSYS_DEF:
     fprintf(stderr, "    token: TRANSSYS_DEF:\n");
@@ -331,9 +340,10 @@ static RULE_ELEMENT *complete_rule(const char *name, RULE_ELEMENT *re)
 %left LOGICAL_AND LOGICAL_OR
 %token <real> REALVALUE
 %token <identifier> IDENTIFIER
-%token FACTOR_DEF GENE_DEF PROMOTER_DEF PRODUCT_DEF CONSTITUTIVE ACTIVATE REPRESS DEFAULT RANDOM GAUSS TRANSSYS_DEF DECAY_DEF DIFFUSIBILITY_DEF
+%token FACTOR_DEF GENE_DEF PROMOTER_DEF PRODUCT_DEF CONSTITUTIVE ACTIVATE REPRESS DEFAULT TRANSSYS_DEF DECAY_DEF DIFFUSIBILITY_DEF
 %token LSYS_DEF SYMBOL_DEF RULE_DEF AXIOM_DEF DIFFUSIONRANGE_DEF GRAPHICS_DEF ARROW MOVE COLOR SPHERE CYLINDER BOX TURN ROLL BANK PUSH POP
 %token LOWER_EQUAL GREATER_EQUAL EQUAL UNEQUAL LOGICAL_AND LOGICAL_OR
+%token NUMERIC_RANDOM NUMERIC_GAUSS NUMERIC_POW, NUMERIC_LOG, NUMERIC_ATAN
 
 %type <factor> factor_definition
 %type <gene> gene_definition
@@ -378,12 +388,12 @@ lsys_element
 	;
 
 symbol_definition
-	: SYMBOL_DEF IDENTIFIER ';' { $$ = create_symbol_element($2, NULL, current_transsys); if ($$ == NULL) YYABORT; }
-	| SYMBOL_DEF IDENTIFIER '(' IDENTIFIER ')' ';' { $$ = create_symbol_element($2, $4, current_transsys); if ($$ == NULL) YYABORT; }
-	| SYMBOL_DEF '[' ';' { $$ = create_symbol_element("[", NULL, current_transsys); if ($$ == NULL) YYABORT; }
-	| SYMBOL_DEF '[' '(' IDENTIFIER ')' ';' { $$ = create_symbol_element("[", $4, current_transsys); if ($$ == NULL) YYABORT; }
-	| SYMBOL_DEF ']' ';' { $$ = create_symbol_element("]", NULL, current_transsys); if ($$ == NULL) YYABORT; }
-	| SYMBOL_DEF ']' '(' IDENTIFIER ')' ';' { $$ = create_symbol_element("]", $4, current_transsys); if ($$ == NULL) YYABORT; }
+	: SYMBOL_DEF IDENTIFIER ';' { $$ = create_symbol_element($2, NULL, parsed_transsys); if ($$ == NULL) YYABORT; }
+	| SYMBOL_DEF IDENTIFIER '(' IDENTIFIER ')' ';' { $$ = create_symbol_element($2, $4, parsed_transsys); if ($$ == NULL) YYABORT; }
+	| SYMBOL_DEF '[' ';' { $$ = create_symbol_element("[", NULL, parsed_transsys); if ($$ == NULL) YYABORT; }
+	| SYMBOL_DEF '[' '(' IDENTIFIER ')' ';' { $$ = create_symbol_element("[", $4, parsed_transsys); if ($$ == NULL) YYABORT; }
+	| SYMBOL_DEF ']' ';' { $$ = create_symbol_element("]", NULL, parsed_transsys); if ($$ == NULL) YYABORT; }
+	| SYMBOL_DEF ']' '(' IDENTIFIER ')' ';' { $$ = create_symbol_element("]", $4, parsed_transsys); if ($$ == NULL) YYABORT; }
 	;
 
 axiom_definition
@@ -587,11 +597,15 @@ term
 	| value { $$ = $1; }
 	;
 
+/* should not be called "value", rather a primary */
 value
 	: REALVALUE { $$ = new_expression_node(NT_VALUE, $1); }
 	| '(' expr ')' { $$ = $2; }
-	| RANDOM '(' expr ',' expr ')' { $$ = new_expression_node(NT_RANDOM, $3, $5); }
-	| GAUSS '(' expr ',' expr ')' { $$ = new_expression_node(NT_GAUSS, $3, $5); }
+	| NUMERIC_RANDOM '(' expr ',' expr ')' { $$ = new_expression_node(NT_RANDOM, $3, $5); }
+	| NUMERIC_GAUSS '(' expr ',' expr ')' { $$ = new_expression_node(NT_GAUSS, $3, $5); }
+	| NUMERIC_POW '(' expr ',' expr ')' { $$ = new_expression_node(NT_POW, $3, $5); }
+	| NUMERIC_LOG '(' expr ',' expr ')' { $$ = new_expression_node(NT_LOG, $3, $5); }
+	| NUMERIC_ATAN '(' expr ')' { $$ = new_expression_node(NT_ATAN, $3); }
 	| IDENTIFIER { $$ = new_expression_node(NT_RAW_IDENTIFIER, NULL, $1); }
 	| IDENTIFIER '.' IDENTIFIER { $$ = new_expression_node(NT_RAW_IDENTIFIER,$1, $3); }
 	;
