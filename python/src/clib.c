@@ -189,7 +189,7 @@ typedef enum
 static CLIB_MSG_IMPORTANCE message_importance_threshold = CLIB_MSG_WARNING;
 
 
-#define REFCOUNTDEBUG
+/* #define REFCOUNTDEBUG */
 
 /***** reference count monitoring *********************************************/
 
