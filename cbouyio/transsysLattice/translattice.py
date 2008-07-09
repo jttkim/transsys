@@ -40,7 +40,7 @@ import copy
 import cPickle
 
 import transsys
-
+import transsys.utils
 
 
 class RandomObject(object) :
@@ -49,6 +49,7 @@ class RandomObject(object) :
 
   """
   pass
+
 
 
 class GaussianRNG(RandomObject) :
@@ -99,6 +100,7 @@ class GaussianRNG(RandomObject) :
     return self.rng.gauss(self.mu, self.sigma)
 
 
+
 class UniformRNG(RandomObject):
   """Class of random objects out of a Uniform distribution.
 
@@ -144,6 +146,7 @@ class UniformRNG(RandomObject):
     @rtype: C{float}
     """
     return self.rng.uniform(self.lower, self.upper)
+
 
 
 class ConstantRNG(RandomObject):
@@ -211,10 +214,13 @@ class Parameter(object) :
     """Try to print the parameter's values as best as posible..
 
     """
-    string = ''
-    for k, v in self.__dict__.iteritems() :
-      string = string + '%s: %s ' % (str(k), str(v))
+    string = transsys.utils.dictionary_tablestring(self.__dict__, '%s: %s ')
     return string
+
+#    string = ''
+#    for k, v in self.__dict__.iteritems() :
+#      string = string + '%s: %s ' % (str(k), str(v))
+#    return string
 
 
 
@@ -274,7 +280,6 @@ class UniformParameters(Parameter) :
     @rtype: C{class 'RandomObject'}
     """
     return UniformRNG(rndSeed, self.lower, self.upper)
-
 
 
 
@@ -338,23 +343,23 @@ class SignalTimestep(Parameter) :
 
 
 
-class ControlParameters(object) :
-  """Superclass for control parameters. Implements some common methods for the
-  various control parameters classes.
+#class ControlParameters(object) :
+#  """Superclass for control parameters. Implements some common methods for the
+#  various control parameters classes.
+#
+#  """
+#
+#  def __str__(self) :
+#    """Try to print as best as possible the instance variables of any control
+#    parameter class.
+#    """
+#    string = ''
+#    for ivar, value in self.__dict__.iteritems() :
+#      string = string + '# %s: %s\n' % (str(ivar), str(value))
+#    return string
 
-  """
 
-  def __str__(self) :
-    """Try to print as best as possible the instance variables of any control
-    parameter class.
-    """
-    string = ''
-    for ivar, value in self.__dict__.iteritems() :
-      string = string + '# %s: %s\n' % (str(ivar), str(value))
-    return string
-
-
-class SimulatorControlParameters(ControlParameters) :
+class SimulatorControlParameters(object) :
   """Class to collect and represent the simulator's control parameters.
 
   @ivar latticeSize: The size of the lattice, should be a L{LatticeSize}
@@ -409,6 +414,11 @@ class SimulatorControlParameters(ControlParameters) :
     self.signalTimestep = signalTimestep
     #FIXME: Implement the factor initalisation class.
     self.factorInitialisation = factorInitialisation
+
+
+  def __str__(self) :
+    string = transsys.utils.dictionary_tablestring(self.__dict__)
+    return string
 
 
 

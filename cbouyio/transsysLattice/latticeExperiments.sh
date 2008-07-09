@@ -1,6 +1,5 @@
 #!/bin/sh
 
-
 # $Rev::               $:  Revision of last commit
 # $Author::            $:  Author of last commit
 # $Date$:  Date of last commit
@@ -20,11 +19,12 @@ fi
 # Variable assignment.
 LATTICESIZE=$1
 TIMESTEPS=$2
-SAMPLINGINTERVALS=$TIMESTEPS
-UNI_RANGE=0:14
+SAMPLINGINTERVALS=5
+RNDSEED=8
+UNI_RANGE=0:0.05
 TPNAME=$3
 
-# Assign the sampling interval it it has been specified.
+# Assign the sampling interval if it has been specified.
 if test $4 ;
 then
   SAMPLINGINTERVALS=$4
@@ -49,7 +49,7 @@ fi
 
 
 # Run the basic experiment.
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE -d $SAMPLINGINTERVALS $TPNAME ${BASENAME}_ftable.dat ;
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE -d $SAMPLINGINTERVALS -r $RNDSEED $TPNAME ${BASENAME}_ftable.dat ;
 then
   exit $?
 fi
@@ -67,7 +67,7 @@ then
 fi
 
 # Run the zero controlexperiment.
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE -d $SAMPLINGINTERVALS ${BASENAME}_zeroControl.tra ${BASENAME}_zeroControl_ftable.dat ;
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE -d $SAMPLINGINTERVALS -r $RNDSEED ${BASENAME}_zeroControl.tra ${BASENAME}_zeroControl_ftable.dat ;
 then
   exit $?
 fi
