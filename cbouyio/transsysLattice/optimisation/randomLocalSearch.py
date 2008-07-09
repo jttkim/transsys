@@ -115,7 +115,7 @@ class Circle(translattice.Parameter) :
 
 
 
-class EngineeringParameters(translattice.ControlParameters) :
+class EngineeringParameters(object) :
   """A class to aggregate the control parameters of the engineered transsys
   program.
 
@@ -170,6 +170,14 @@ class EngineeringParameters(translattice.ControlParameters) :
     self.decayB = decayB
     self.diffusibilityA = diffusibilityA
     self.diffusibilityB = diffusibilityB
+
+
+  def __str__(self) :
+    """
+    """
+    s = transsys.utils.dictionary_tablestring(self.__dict__)
+    return s
+
 
 
   def get_lowPoint(self) :
@@ -331,29 +339,36 @@ class TranssysProgramDummy(transsys.TranssysProgram) :
 
 
 
-class OptimisationControlParameters(translattice.ControlParameters) :
+class OptimisationControlParameters(object) :
   """Class to collect and represent the optimisation control parameters.
 
   @ivar cycles: The number of optimisation cycles.
   @type cycles: C{int}
-  @ivar offset: The offset for the perturbation function. The perturbation
-  function takes values from a uniform distribution of the interval [-<offset>,
-  <offset>].
-  @type offset: C{int} of C{float}
+  @ivar perturbationOrder: The order for the perturbation function. The exponent
+  of the perturbation function takes values from a random uiform distribution
+  of the interval [-<perturbationOrder>, <perturbationOrder>].
+  @type perturbationOrder: C{int} of C{float}
   @ivar rndParam: the random number generator parameter for the optimisation
   procedure. The random seed is specified as a <rndSeed> = <optCycle> +
   <rndParam>
   @type rndParam: C{int} or C{float}
   """
 
-  def __init__(self, cycles, offset, rndParam) :
+  def __init__(self, cycles, perturbationOrder, rndParam) :
     """The constructor of the class.
 
     The two parameters comprise the instance variables as well.
     """
     self.cycles = cycles
-    self.offset = offset
+    self.perturbationOrder = perturbationOrder
     self.rndParam = rndParam
+
+
+  def __str__(self) :
+    """
+    """
+    s = transsys.utils.dictionary_tablestring(self.__dict__)
+    return s
 
 
 
@@ -613,8 +628,11 @@ def perturb_value(value, perturbObj) :
   """Return a value perturbed by a random number.
 
   The value is perturbed according to the formula:
-    - FC_perturbed = factor_concentration * exp(random_value)
-    Where the random_value is got from a uniform [-offset, offset] distribution.
+
+  FC_perturbed = factor_concentration * exp(random_value)
+
+  Where the random_value is got from a uniform [-perturbationOrder,
+  perturbationOrder] distribution.
   @param value: A real value.
   @type value: C{float}
   @param perturbObj: An object of an L{translattice.UniformRNG} class
@@ -667,7 +685,7 @@ def optimisation(engineeredCP, simulatorCP, optimiserCP, logObj) :
   @type simulatorCP: C{class 'translattice.SimulatorControlParameters'}
   @param optimiserCP: An 'OptimisationControlParameters' object which contains
   the optimisation procedure control parameters (i.e. the optimisation cycles
-  and the perturbation offset). See L{OptimisationControlParameters}.
+  and the perturbation perturbationOrder). See L{OptimisationControlParameters}.
   @type optimiserCP: C{class 'OptimisationControlParameters'}
   @param logObj: An object to keep logging and print out the optimisation
   results.
@@ -677,7 +695,7 @@ def optimisation(engineeredCP, simulatorCP, optimiserCP, logObj) :
   @rtype: C{None}
   """
   # Get the parameters.
-  perturbOffset = optimiserCP.offset
+  perturbRange = optimiserCP.perturbationOrder
   optimisationCycles = optimiserCP.cycles
   rndSeed = optimiserCP.rndParam
   initialNoise = simulatorCP.initialisationVariables
@@ -692,7 +710,7 @@ def optimisation(engineeredCP, simulatorCP, optimiserCP, logObj) :
     # Set the current random seed.
     rndSeedCurrent = optimiserCP.rndParam + cycle
     # Set the random objects.
-    perturbObj = translattice.UniformRNG(rndSeedCurrent, -perturbOffset, perturbOffset)
+    perturbObj = translattice.UniformRNG(rndSeedCurrent, -perturbRange, perturbRange)
     # Polymorphism will take care of the random object initalisation.
     initialObj = initialNoise.getRNG(rndSeedCurrent)
 
@@ -739,7 +757,7 @@ def tp_optimisation(tp, sCP, oCP, logObj) :
   @type sCP: C{class 'translattice.SimulatorControlParameters'}
   @param oCP: An 'OptimisationControlParameters' object which contains
   the optimisation procedure control parameters (i.e. the optimisation cycles
-  and the perturbation offset). See L{OptimisationControlParameters}.
+  and the perturbation perturbationOrder). See L{OptimisationControlParameters}.
   @type oCP: C{class 'OptimisationControlParameters'}
   @param logObj: An object to keep logging and print out the optimisation
   results.
@@ -749,7 +767,7 @@ def tp_optimisation(tp, sCP, oCP, logObj) :
   @rtype: C{None}
   """
   # Get the parameters.
-  perturbOffset = oCP.offset
+  perturbRange = oCP.perturbationOrder
   optimisationCycles = oCP.cycles
   rndSeed = oCP.rndParam
   initialNoise = sCP.initialisationVariables
@@ -763,8 +781,8 @@ def tp_optimisation(tp, sCP, oCP, logObj) :
     optStep = False
     # Set the current random seed.
     rndSeedCurrent = oCP.rndParam + cycle
-    # Set the random objects.
-    perturbObj = translattice.UniformRNG(rndSeedCurrent, -perturbOffset, perturbOffset)
+    # Set the random object.
+    perturbObj = translattice.UniformRNG(rndSeedCurrent, -perturbRange, perturbRange)
     # Perturbe the transsys program.
     tpAlternative = perturb_transsys(tpBest, perturbObj)
     tpAlternative.name = tpName + 'Alternative_' + str(cycle + 1)
@@ -780,7 +798,7 @@ def tp_optimisation(tp, sCP, oCP, logObj) :
       optStep = True
     # Print the optimisation's log.
     logObj.write_log(cycle + 1, rndSeedCurrent, optStep, objectiveAlternative, objectiveBest, tpAlternative, tpBest)
-    # Change the control parameters (the random local search)
+    # Alter the transsys programs (the random local search)
     if objectiveAlternative.objective > objectiveBest.objective :
       tpBest = copy.deepcopy(tpAlternative)
 
