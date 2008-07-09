@@ -76,8 +76,7 @@ class BimodalitiesCollection(object) :
       factorExpression = lattice.get_factor_expression_list(factorName)
       if len(factorExpression) < 4 :
         raise StandardError, 'Bimodality calculation does not make sense for such a small data set.'
-      # iterate over set... set is a non reduntant set of the factorExpression
-      # list.
+      # iterate over a set.
       for thres in set(factorExpression) :
         # Actual calculation of the bimodality score.
         bm = bimodality(factorExpression, thres)
@@ -124,6 +123,8 @@ def bimodality(data, threshold):
   mu2 = statlib.stats.lmean(subset2)
   sigma1 = statlib.stats.lstdev(subset1)
   sigma2 = statlib.stats.lstdev(subset2)
+  if (sigma1 + sigma2) == 0 :
+    return 1e300
   bimodality = float(abs(mu1 - mu2)) / float(sigma1 + sigma2)
   return bimodality
 

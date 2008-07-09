@@ -116,9 +116,9 @@ class TestRandomWalkOptimisation(unittest.TestCase) :
 # latticeSize: width: 8 height: 8 
 # samplingInterval: 1
 # timesteps: 200
-# rndParam: 8
 # cycles: 3
-# offset: 0.1
+# perturbationOrder: 0.1
+# rndParam: 8
 # decayA: 0.01
 # decayB: 0.01
 # lowPoint: y: 1.0 x: 1.0 
@@ -179,7 +179,7 @@ class TestRandomWalkOptimisation(unittest.TestCase) :
 # timesteps: 200
 # rndParam: 8
 # cycles: 3
-# offset: 0.1
+# perturbationOrder: 0.1
 transsys patternFormationAlternative_1
 // RNG Seed: 8
 {
@@ -438,7 +438,7 @@ transsys patternFormationCurrentBest_3
 # timesteps: 200
 # rndParam: 8
 # cycles: 3
-# offset: 0.1
+# perturbationOrder: 0.1
 OptCycle	RNGSeed	OptFlag	AltObj	AltLatBM	AltCtrlBM	BestObj	BestLatBM	BestCtrlBM	Average_A	Stddev_A	Entropy_A	Min_A	Max_A	Average_I	Stddev_I	Entropy_I	Min_I	Max_I
 1	8	FALSE	-122762530.548074	4.383187	122762534.931261	-19881108.210644	4.354596	19881112.565241	6.831964	0.000000	6.000000	6.831964	6.831964	27.954163	0.000000	6.000000	27.954163	27.954163
 2	9	TRUE	-0.016728	4.344895	4.361624	-22171529.595831	3.889497	22171533.485328	6.831964	0.000000	6.000000	6.831964	6.831964	27.954163	0.000000	6.000000	27.954163	27.954163
@@ -455,7 +455,7 @@ OptCycle	RNGSeed	OptFlag	AltObj	AltLatBM	AltCtrlBM	BestObj	BestLatBM	BestCtrlBM	
 # timesteps: 200
 # rndParam: 8
 # cycles: 3
-# offset: 0.1
+# perturbationOrder: 0.1
 transsys tpAlternative_1
 // RNG Seed: 8
 {
@@ -708,7 +708,7 @@ transsys currentBest_3
 # timesteps: 200
 # rndParam: 8
 # cycles: 3
-# offset: 0.1
+# perturbationOrder: 0.1
 OptCycle	RNGSeed	OptFlag	AltObj	AltLatBM	AltCtrlBM	BestObj	BestLatBM	BestCtrlBM	AltLowX	AltLowY	AltHighX	AltHighY	AltCircX	AltCircY	AltRadius	BestLowX	BestLowY	BestHighX	BestHighY	BestCircX	BestCircY	BestRadius	LatBest_muA	LatBest_stdevA	LatBest_muB	LatBest_stdevB
 1	8	FALSE	13.578473	17.165756	3.587282	20.842919	22.859965	2.017046	0.946808	1.096868	8.351914	14.585395	9.203853	9.507427	2.209957	1.000000	1.000000	9.000000	14.000000	10.000000	10.000000	2.000000	2.058714	1.689446	2.364080	1.604426
 2	9	FALSE	11.658916	16.866671	5.207754	19.877446	23.785885	3.908439	0.992629	0.974981	8.372332	15.064933	9.060027	10.005566	2.165837	1.000000	1.000000	9.000000	14.000000	10.000000	10.000000	2.000000	2.298679	2.061963	2.695479	1.976469
@@ -737,7 +737,7 @@ OptCycle	RNGSeed	OptFlag	AltObj	AltLatBM	AltCtrlBM	BestObj	BestLatBM	BestCtrlBM	
   def testPerturbation(self) :
     """Test weather the perturbation function produces the expected perturbed transsys program.
     """
-    perturbObj = translattice.UniformRNG(self.optimisationParameters.rndParam, -self.optimisationParameters.offset, self.optimisationParameters.offset)
+    perturbObj = translattice.UniformRNG(self.optimisationParameters.rndParam, -self.optimisationParameters.perturbationOrder, self.optimisationParameters.perturbationOrder)
     perturbedEngParameters = self.engParameters.perturb_eng_parameters(perturbObj)
     tpDummyPerturb = randomLocalSearch.TranssysProgramDummy('engineeredPerturbed', perturbedEngParameters)
     self.assertEqual(self.dummyPerturbExpect, str(tpDummyPerturb))
