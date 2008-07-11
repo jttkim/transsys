@@ -71,6 +71,7 @@ def usage() :
            -u: Number:Number   The range (a, b) of the borders of a uniform
                                distribution (should be in the format
                                'number:number').
+           -w: flag            Flag for the well stirred reactor experiment.
            -x: Number:Integer  Timestep signal switch,
                                (FactorConcentration:Timestep) All factors will
                                get the defined concentration at the defined
@@ -99,10 +100,11 @@ gaussVariables   = None  # Variables (mean, standard deviation) of the gaussian
 summaryFile      = None  # Filename of the summary statistics file.(-p)
 transsysFactors  = False # Factor names switch.(-f, --factors) 
 pickleFile       = None  # Pickle file name (-q).
+stirWell         = False # The well stir reactor flag.
 
 
 ## Command line parsing.
-optlist, args = getopt.getopt(sys.argv[1:], 'd:fg:hn:p:q:r:s:t:u:x:', ['help', 'factors'])
+optlist, args = getopt.getopt(sys.argv[1:], 'd:fg:hn:p:q:r:s:t:u:wx:', ['help', 'factors'])
 
 for opt, par in optlist :
   if opt in ('-h', '--help') :
@@ -150,6 +152,8 @@ for opt, par in optlist :
         initialFactorDict[el.split(':')[0]] = float(el.split(':')[1])
       else :
         raise StandardError, "Error in initial factor concentrations parsing. Check the syntax of the -s option or give -h,--help for more info."
+  if opt in ("-w") :
+    stirWell = True
 
 
 #print optlist
@@ -221,7 +225,7 @@ if initialFactorDict :
 # Produce the timeseries.
 # Before each invocation set the clib random seed.
 transsys.clib.srandom(randomSeed)
-transsysLatticeTimeseries = translattice.TranssysLatticeTimeseries(transInstanceLattice, noTimesteps, samplingInterval, signalTimestep)
+transsysLatticeTimeseries = translattice.TranssysLatticeTimeseries(transInstanceLattice, noTimesteps, samplingInterval, signalTimestep, stirWell)
 
 # Print the factor table to the output file.
 # First write the comments and the header.

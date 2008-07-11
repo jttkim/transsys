@@ -494,6 +494,14 @@ class TranssysInstanceCoordinated(transsys.TranssysInstance):
     return tsCoordinated
 
 
+  def set_coordinates(self, x, y) :
+    """Set the coordinates of a TranssysInstanceCoordinated instance to the
+    specified values.
+    """
+    self.x = x
+    self.y = y
+
+
 
 class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
   """The central class of the simulator, represents a 2D lattice of
@@ -702,7 +710,7 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
     """
     # Method is not needed anymore it has implemented in a higher lever (i.e.
     # the TranssysInstanceCollection class)
-    raise StandardError, 'This method is obsolete should not be called anymore. Try the equivalent method of the superclass'
+    raise StandardError, 'This method is obsolete should not be called anymore. Try the equivalent method of the superclass transsys instance collection'
 #    factorExpression = []
 #    factorIndex = self.transsysProgram.find_factor_index(factorName)
 #    for ti in self.transsys_instance_list() :
@@ -786,6 +794,32 @@ class TranssysInstanceLattice(transsys.TranssysInstanceCollection):
         self.lattice[i][j].timestep = timesteps
 
 
+  def well_stirred_lattice(self) :
+    """Randomly rearrange the cells of a lattice on site.
+
+    This method is an implementation of the well stirred reactor system. By
+    random rearrangment of the cells on the lattice, simulates a well stirred
+    reactor experiment. The method serves as a control experiment to study the
+    effects of spatial organisation.
+    @rtype: C{'None'}
+    """
+
+    newTIL = self.transsys_instance_list()
+    random.shuffle(newTIL)
+    # Check if shuffled and original transsys instance list have the same
+    # length.
+    if len(newTIL) != len(self.transsys_instance_list()) :
+      raise StandardError, 'Shuffled and original transsys instance lists different. Something has gone wrong with the shuffling'
+    for i in xrange(len(self.lattice)) :
+      for j in xrange(len(self.lattice[i])) :
+        self.lattice[i][j] = newTIL.pop()
+        self.lattice[i][j].set_coordinates(i + 1, j + 1)
+    # Check that the sheffled list is epmpty after the completion of the
+    # computations.
+    if newTIL != [] :
+      raise StandardError, 'Shuffled list is not empty, something went wrong with the positioning.'
+
+
   def timestep_factor_concentration(self, signalC):
     """Set all the factor concentrations on the lattice to signal.
 
@@ -861,7 +895,7 @@ class TranssysLatticeTimeseries(object):
   """
 
 
-  def __init__(self, transsysLattice, timesteps, samplingInterval = 1, timestepSignal = None):
+  def __init__(self, transsysLattice, timesteps, samplingInterval = 1, timestepSignal = None, wellStirred = False):
     """Constructor of the class.
 
     @param transsysLattice: A transsys instance lattice object.
@@ -873,17 +907,20 @@ class TranssysLatticeTimeseries(object):
     @type samplingInterval: C{int}
     @param timestepSignal: The signal to alter factor concentrations on a
     specific timestep
-    type timestepSignal: C{int}:C{float}
+    @type timestepSignal: C{int}:C{float}
+    @param wellStirred: Specifies whether there is going to be a well stirred
+    reaction experiment or not.
+    @type wellStirred: C{bool}
     """
 #    self.factorTable = factor_table(fileObject)
     self.transsysLatticeName = transsysLattice.name
     self.timesteps = timesteps
     self.samplingInterval = samplingInterval
-    self.latticeTimeseries = self.transsys_lattice_timeseries(transsysLattice, timesteps, samplingInterval, timestepSignal)
+    self.latticeTimeseries = self.transsys_lattice_timeseries(transsysLattice, timesteps, samplingInterval, timestepSignal, wellStirred)
 #    self.maxFactorConcentration = self.max_factor_concentration()
 
 
-  def transsys_lattice_timeseries(self, transsysLattice, timesteps, samplingInterval, timestepSignal=None):
+  def transsys_lattice_timeseries(self, transsysLattice, timesteps, samplingInterval, timestepSignal, wellStirred):
     """Keep all the L{TranssysInstanceLattice} instances in a list.
 
     Return a timeseries (list) of C{TranssysInstanceLattice} objects for all
@@ -891,7 +928,7 @@ class TranssysLatticeTimeseries(object):
 
     @param transsysLattice: A transsys lattice.
     @type transsysLattice: C{class 'TranssysInstanceLattice'}
-    @param timesteps; The number of timesteps of the simulator.
+    @param timersteps; The number of timesteps of the simulator.
     @type timesteps: C{int}
     @param samplingInterval: The interbval between sampling.
     @type samplingInterval: C{int}
@@ -902,6 +939,9 @@ class TranssysLatticeTimeseries(object):
     @return: A list with all the C{TranssysInstanceLattice} instances of the
     simulator.
     @rtype: C{list} of C{TranssysInstanceLattice} objects
+    @param wellStirred: Specifies whether there is going to be a well stirred
+    reaction experiment or not.
+    @type wellStirred: C{bool}
     """
     latticeTimeseries = []
     # Iterate for timestep + 1 to include the initial (zero) timestep. 
@@ -914,6 +954,9 @@ class TranssysLatticeTimeseries(object):
       if i % samplingInterval == 0 :
         latticeTimeseries.append(copy.deepcopy(transsysLattice))
       transsysLattice.update_function(i)
+      # Stir well if it is specified.
+      if wellStirred :
+        transsysLattice.well_stirred_lattice()
     return latticeTimeseries
 
 

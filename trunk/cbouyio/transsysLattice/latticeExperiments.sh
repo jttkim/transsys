@@ -21,7 +21,7 @@ LATTICESIZE=$1
 TIMESTEPS=$2
 SAMPLINGINTERVALS=5
 RNDSEED=8
-UNI_RANGE=0:0.05
+UNI_RANGE=0:0.5
 TPNAME=$3
 
 # Assign the sampling interval if it has been specified.
@@ -73,7 +73,18 @@ then
 fi
 
 # Append to the .R source file.
-echo "lframeZero <- readTransLattice("\""${BASENAME}_zeroControl_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.R
+echo "lframeCtrl <- readTransLattice("\""${BASENAME}_zeroControl_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.R
+
+
+
+# Run the well strired experiment.
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE -d $SAMPLINGINTERVALS -r $RNDSEED -w $TPNAME ${BASENAME}_wellStirred.dat ;
+then
+  exit $?
+fi
+
+# Append the well stirred results to the .R source file.
+echo "lframeWSR <- readTransLattice("\""${BASENAME}_wellStirred.dat"\"")" | cat >> ${BASENAME}_Rsource.R
 
 
 # SOME OTHER CONTROLS TO BE TESTED LATER
