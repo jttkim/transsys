@@ -117,14 +117,21 @@ def bimodality(data, threshold):
     else :
       subset2.append(e)
   # Check the length of the subsets.
-  if len(subset1) <= 1 or len(subset2) <= 1 :
+  n1 = len(subset1)
+  n2 = len(subset2)
+  if n1 <= 1 or n2 <= 1 :
     return 0
   mu1 = statlib.stats.lmean(subset1)
   mu2 = statlib.stats.lmean(subset2)
-  sigma1 = statlib.stats.lstdev(subset1)
-  sigma2 = statlib.stats.lstdev(subset2)
-  if (sigma1 + sigma2) == 0 :
+#  sigma1 = statlib.stats.lstdev(subset1)
+#  sigma2 = statlib.stats.lstdev(subset2)
+  var1 = statlib.stats.var(subset1)
+  var2 = statlib.stats.var(subset2)
+#  if (sigma1 + sigma2) == 0 or (var1 + var2) == 0 :
+  if (var1 + var2) == 0 :
     return 1e300
-  bimodality = float(abs(mu1 - mu2)) / float(sigma1 + sigma2)
-  return bimodality
+#  bimodality = float(abs(mu1 - mu2)) / float(sigma1 + sigma2)
+  bimodalityTtest = float(abs(mu1 - mu2)) / float(math.sqrt(var1/float(n1) + var2/float(n2)))
+#  return bimodality
+  return bimodalityTtest
 
