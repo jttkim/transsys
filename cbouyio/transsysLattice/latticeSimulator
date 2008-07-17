@@ -32,7 +32,7 @@ __version__ = '$Id$'
 
 import getopt
 import sys
-import re
+#import re
 
 import transsys.clib
 import translattice
@@ -52,6 +52,8 @@ def usage() :
            -n: IntegerxInteger The size (width, heght) of the lattice, is
                                mandatory parameter. (should be of the form
                                'integer x integer')
+           -o: Flag            Flag for the zero diffusibility (individual
+                               cells) control experiment.
            -p: String          Print in the specified file the summary
                                statistics of the simulation. (string)
                                (Default: Print the factor table in the outfile)
@@ -71,7 +73,8 @@ def usage() :
            -u: Number:Number   The range (a, b) of the borders of a uniform
                                distribution (should be in the format
                                'number:number').
-           -w: flag            Flag for the well stirred reactor experiment.
+           -w: Flag            Flag for the well stirred reactor control
+                               experiment.
            -x: Number:Integer  Timestep signal switch,
                                (FactorConcentration:Timestep) All factors will
                                get the defined concentration at the defined
@@ -84,27 +87,30 @@ def usage() :
 
 
 ####### Simulator's Parameter Initialization #################################
-latticeSize      = None  # Dimension of the lattice.(-n ixj)
-noTimesteps      = None  # Number of simulation timesteps.(-t)
-randomSeed       = 1     # Random number generator seed.(-r)
-samplingInterval = 1     # The sampling interval. (-d)
-initialFactorDict= None  # Factor concentration dictonary of the signal at the
-                         # initial timestep. (-s)
-signalTimestep   = None  # "signal" introduction at timestep.(-x)
-unifRange        = None  # Border range (lower, upper) of the random uniform
-                         # initialisation of the lattice factor concentrations.
-                         # (-u)
-gaussVariables   = None  # Variables (mean, standard deviation) of the gaussian
-                         # random initialisation of the lattice factor
-                         # concentration values. (-b)
-summaryFile      = None  # Filename of the summary statistics file.(-p)
-transsysFactors  = False # Factor names switch.(-f, --factors) 
-pickleFile       = None  # Pickle file name (-q).
-stirWell         = False # The well stir reactor flag.
+latticeSize       = None  # Dimension of the lattice.(-n ixj)
+noTimesteps       = None  # Number of simulation timesteps.(-t)
+randomSeed        = 1     # Random number generator seed.(-r)
+samplingInterval  = 1     # The sampling interval. (-d)
+initialFactorDict = None  # Factor concentration dictonary of the signal at the
+                          # initial timestep. (-s)
+signalTimestep    = None  # "signal" introduction at timestep.(-x)
+unifRange         = None  # Border range (lower, upper) of the random uniform
+                          # initialisation of the lattice factor concentrations.
+                          # (-u)
+gaussVariables    = None  # Variables (mean, standard deviation) of the gaussian
+                          # random initialisation of the lattice factor
+                          # concentration values. (-b)
+summaryFile       = None  # Filename of the summary statistics file.(-p)
+transsysFactors   = False # Factor names switch.(-f, --factors) 
+pickleFile        = None  # Pickle file name (-q).
+zeroControl       = False # The collection of individual cells control. Sets
+                          # diffusibilities to zero effectively unstructuring
+                          # the lattice. (-o)
+stirWell          = False # The well stir reactor flag. (-w)
 
 
 ## Command line parsing.
-optlist, args = getopt.getopt(sys.argv[1:], 'd:fg:hn:p:q:r:s:t:u:wx:', ['help', 'factors'])
+optlist, args = getopt.getopt(sys.argv[1:], 'd:fg:hn:op:q:r:s:t:u:wx:', ['help', 'factors'])
 
 for opt, par in optlist :
   if opt in ('-h', '--help') :
@@ -154,6 +160,8 @@ for opt, par in optlist :
         raise StandardError, "Error in initial factor concentrations parsing. Check the syntax of the -s option or give -h,--help for more info."
   if opt in ("-w") :
     stirWell = True
+  if opt in ("-o") :
+    zeroControl = True
 
 
 #print optlist
@@ -168,6 +176,20 @@ if not transsysFactors :
     raise StandardError, '-t option mandatory. Specify number of timesteps or give -h, --help for more information.'
   if unifRange and gaussVariables :
     raise StandardError, 'Initialisation of the lattice can only take values from either uniform of Gauss distribution but not from both.'
+  elif unifRange and not gaussVariables :
+    latticeIntialisation = unifRange
+  elif gaussVariables and not unifRange :
+    latticeIntialisation = gaussVariables
+  else :
+    latticeIntialisation = None
+  if zeroControl and stirWell :
+    raise StandardError, 'Error with the control experiment parameters. Either one of the well stirred reactor or the the individual collection of cell flag should be on.'
+  elif zeroControl and not stirWell :
+    controlExp = translattice.ControlExperimentParameter('icc')
+  elif stirWell and not zeroControl :
+    controlExp = translattice.ControlExperimentParameter('wsr')
+  else :
+    controlExp = None
 else :
   if len(optlist) > 1 :
     raise StandardError, '--factors option only for printing factors, cannot used for a proper program running.'
@@ -210,6 +232,9 @@ if transsysFactors :
 # Instantiate the lattice of transsys programs.
 transInstanceLattice = translattice.TranssysInstanceLattice(transsysProgram, latticeSize)
 
+# Initialise the simulator control parameters class.
+scp = translattice.SimulatorControlParameters(latticeSize, noTimesteps, latticeIntialisation, initialFactorDict, signalTimestep, controlExp, randomSeed, samplingInterval)
+
 # Initialise the factor concentrations on the lattice.
 if unifRange :
   rndObj = translattice.UniformRNG(randomSeed, unifRange.lower, unifRange.upper)
@@ -218,19 +243,17 @@ elif gaussVariables :
   rndObj = translattice.GaussianRNG(randomSeed, gaussVariables.mean, gaussVariables.stddev)
   transInstanceLattice.perturb_lattice(rndObj)
 
-# Introduce a signal by specifing a factor and the desired concentration.
+# Initialise factor concentrations by specifing a factor and the desired
+# concentration.
 if initialFactorDict :
   transInstanceLattice.signal_factor_concentration(initialFactorDict)
 
-# Produce the timeseries.
+# Generate the timeseries.
 # Before each invocation set the clib random seed.
 transsys.clib.srandom(randomSeed)
-transsysLatticeTimeseries = translattice.TranssysLatticeTimeseries(transInstanceLattice, noTimesteps, samplingInterval, signalTimestep, stirWell)
+transsysLatticeTimeseries = translattice.TranssysLatticeTimeseries(transInstanceLattice, scp)
 
 # Print the factor table to the output file.
-# First write the comments and the header.
-transInstanceLattice.write_table_header(outfile, randomSeed)
-# Then write the whole stuff.
 transsysLatticeTimeseries.write_factor_table(outfile)
 
 # Print the summary statistics to a user specified file.
