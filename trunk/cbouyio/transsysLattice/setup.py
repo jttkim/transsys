@@ -11,9 +11,9 @@ setup(name='translattice',
   description='A python module for 2D structure simulation of transsys programs',
   #FIXME The discription should be changed after the introduction of the
   # optimisation modules.
-  long_description='The setup apart from the python module translattice.py , installs several scripts, -in the <prefix>/bin directory. These scripts are essential for conducting simulation studies and they include: the latticeSimulator script (run the simulator according to the user specified control parameters) and the alterTranssysDiffusibility (produce the "control" transsys programs). All the experiments can be conducted automatically with the latticeExperinents.sh shell shell script (it is not part of the install).',
+  long_description='The setup apart from the python module translattice.py, installs anoe more script, -in the <prefix>/bin directory. These scripts are facilitating a range of simulation and control experiments, they include: The latticeSimulator python script which runs the simulator according to the user specified control parameters. Flags on this script run the two control experiments these are the well stirred reactor and the unstructured collection of cells. All the experiments can be conducted together with the same control parameters by the latticeExperinents.sh shell script which is not part of this installation. The installer also includes the modules required from the optimisation experiments. And installs at the <prefix>/bin the runOptimiser which conducts optimisation experiments.',
   py_modules=['translattice', 'randomLocalSearch', 'bimodalities'],
-  scripts=['latticeSimulator', 'optimisation/runOptimiser', '../scripts/alterTranssysDiffusibility'],
+  scripts=['latticeSimulator', 'optimisation/runOptimiser'],
   author='Costas Bouyioukos',
   author_email='konsb@cmp.uea.ac.uk',
   classifiers=[
