@@ -42,3 +42,4 @@ epydoc-html : pythonsetup-build
 	if test \! -d doc/html ; then mkdir doc/html ; fi
 	epydoc -v --html -o doc/html `find build -name transsys`
 
+# checking after subversion update...
