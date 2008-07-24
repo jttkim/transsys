@@ -40,5 +40,5 @@ pythonsetup-build : setup.py transsys
 epydoc-html : pythonsetup-build
 	if test \! -d doc ; then mkdir doc ; fi
 	if test \! -d doc/html ; then mkdir doc/html ; fi
-	epydoc --html -o doc/html `find build -name transsys`
+	epydoc -v --html -o doc/html `find build -name transsys`
 
