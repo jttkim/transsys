@@ -320,8 +320,10 @@ Notice that this is not a proper correlation. This function is used
 as a similarity score of gene expression profiles by Eisen et.al.,
 and it is provided only as a means to implement their approach.
 
-@param x, y: vectors
-@type x, y: C{list} of numeric
+@param x: vector
+@type x: iterable of numeric
+@param y: vector
+@type y: iterable of numeric
 @return: cosine of angle of x and y
 @rtype: C{float}
 """
@@ -342,8 +344,10 @@ and it is provided only as a means to implement their approach.
 def correlation_coefficient(x, y) :
   """Compute the Pearson correlation coefficient of C{x} and C{y}.
 
-@param x, y: vectors
-@type x, y: C{list} of numeric
+@param x: vector
+@type x: iterable of numeric
+@param y: vector
+@type y: iterable of numeric
 @return: Pearson correlation coefficient
 @rtype: C{float}
 """
