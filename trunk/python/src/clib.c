@@ -1335,7 +1335,7 @@ static EXPRESSION_NODE *extract_expression_value(PyObject *python_node)
   expression = new_expression_node(NT_VALUE, v);
   if (expression == NULL)
   {
-    clib_message(CLIB_MSG_TRACE, "extract_expression_value: new_expression_node failed\n");
+    clib_message(CLIB_MSG_ERROR, "extract_expression_value: new_expression_node failed\n");
   }
   return (expression);
 }

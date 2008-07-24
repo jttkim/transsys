@@ -114,7 +114,7 @@ LDFLAGS="$LDFLAGS $X_EXTRA_LIBS $X_PRE_LIBS $X_LIBS"
 # hard code glut and OpenGL libs.
 # somehow, $X_LIBS apparently is not configured correctly on IRIX 6.5,
 # so we hard code the X libs too.
-
+# FIXME: make this into --disable etc. options, or configure automatically
 LIBS="$LIBS -lglut -lGLU -lGL -lXt -lXext -lXmu -lX11 -lpthread -lm"
 ]
 

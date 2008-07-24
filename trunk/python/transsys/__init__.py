@@ -2061,6 +2061,8 @@ one.
 
 
   # FIXME: lsys_lines, lsys_symbol are obsolete
+  # FIXME: when invoked by a TranssysInstance subclass instance, should return instances of that
+  #     subclass
   def time_series(self, num_timesteps, sampling_period = 1, lsys_lines = None, lsys_symbol = None) :
     if lsys_lines is not None or lsys_symbol is not None :
       raise StandardError, 'lsys_lines and lsys_symbol are no longer supported -- try using time_series_old'
