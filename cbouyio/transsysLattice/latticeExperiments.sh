@@ -19,9 +19,9 @@ fi
 # Variable assignment.
 LATTICESIZE=$1
 TIMESTEPS=$2
-SAMPLINGINTERVALS=5
-RNDSEED=8
-UNI_RANGE=0:0.5
+SAMPLINGINTERVALS=2
+RNDSEED=1
+UNI_RANGE=0:0.1
 TPNAME=$3
 
 # Assign the sampling interval if it has been specified.
@@ -49,42 +49,46 @@ fi
 
 
 # Run the basic experiment.
+echo "Runing the lattice experiment..."
 if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE -d $SAMPLINGINTERVALS -r $RNDSEED $TPNAME ${BASENAME}_ftable.dat ;
 then
   exit $?
+  echo "Error on the run of the lattice experiment..."
 fi
+
 
 # Generate the .R source file.
 echo "source("\""~/devel/transsys/trunk/cbouyio/transsysLattice/translattice.r"\"")" | cat > ${BASENAME}_Rsource.R
 echo "lframe <- readTransLattice("\""${BASENAME}_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.R
+echo "Lattice experiment finish succefully!"
 
 
 
-# Generate the zero control tp.
-if ! alterTranssysDiffusibility -d 0.0 $TPNAME ${BASENAME}_zeroControl.tra ;
+# Run the zero diffusibility control experiment.
+echo "Runing the individual collection of cells control experiment..."
+if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE -d $SAMPLINGINTERVALS -r $RNDSEED -o ${BASENAME}.tra ${BASENAME}_zeroControl.dat ;
 then
   exit $?
-fi
-
-# Run the zero controlexperiment.
-if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE -d $SAMPLINGINTERVALS -r $RNDSEED ${BASENAME}_zeroControl.tra ${BASENAME}_zeroControl_ftable.dat ;
-then
-  exit $?
+  echo "Error on the run of the individual collection of cells control experiment..."
 fi
 
 # Append to the .R source file.
-echo "lframeCtrl <- readTransLattice("\""${BASENAME}_zeroControl_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.R
+echo "lframeCtrl <- readTransLattice("\""${BASENAME}_zeroControl.dat"\"")" | cat >> ${BASENAME}_Rsource.R
+echo "Individual collection of cells experiment finish succefully!"
 
 
 
 # Run the well strired experiment.
+echo "Runing the well stirred reactor control experiment..."
 if ! latticeSimulator -n $LATTICESIZE -t $TIMESTEPS -u $UNI_RANGE -d $SAMPLINGINTERVALS -r $RNDSEED -w $TPNAME ${BASENAME}_wellStirred.dat ;
 then
   exit $?
+  echo "Error on the run of the well stirred reactor control experiment..."
 fi
 
 # Append the well stirred results to the .R source file.
 echo "lframeWSR <- readTransLattice("\""${BASENAME}_wellStirred.dat"\"")" | cat >> ${BASENAME}_Rsource.R
+echo "Well stirred reactor experiment finish succefully!"
 
 
 # SOME OTHER CONTROLS TO BE TESTED LATER
@@ -114,6 +118,6 @@ echo "lframeWSR <- readTransLattice("\""${BASENAME}_wellStirred.dat"\"")" | cat 
 #echo "lframeHomogenControl <- readTransLattice("\""${BASENAME}_homogenControl_ftable.dat"\"")" | cat >> ${BASENAME}_Rsource.R
 #
 
-# Remove the generated transsys programs.
-rm -rf ${BASENAME}_zeroControl.tra    # ${BASENAME}_maxControl.tra
+## Remove the generated transsys programs.
+#rm -rf ${BASENAME}_zeroControl.tra    # ${BASENAME}_maxControl.tra
 

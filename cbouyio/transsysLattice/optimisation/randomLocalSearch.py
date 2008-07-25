@@ -526,17 +526,17 @@ class OptimisationObjective(object) :
   @type lattice: C{class 'translattice.TranssysInstanceLattice'}
   """
 
-  def __init__(self, tp, latticeSize, timesteps, initialNoise, rndSeed) :
+  def __init__(self, tp, sCP) :
     """The constructor of the class.
 
     """
     # The lattice lattice simulation experiment.
-    self.lattice = self.run_lattice(tp, latticeSize, timesteps, initialNoise, rndSeed)
+    self.lattice = self.run_lattice(tp, sCP)
     # Construct the lattice bimodalities object.
     self.latticeBimodalities = bimodalities.BimodalitiesCollection(self.lattice)
     # The control simulation experiment.
-    zeroTP = set_transsys_diffusibilities(tp, 0)
-    contolLattice = self.run_lattice(zeroTP, latticeSize, timesteps, initialNoise, rndSeed)
+    zeroTP = set_transsys_diffusibilities(tp, 0.0)
+    contolLattice = self.run_lattice(zeroTP, sCP)
     # Construct the control experiment bimodalities object.
     self.controlBimodalities = bimodalities.BimodalitiesCollection(contolLattice)
     # Calculate the objective.
@@ -544,35 +544,28 @@ class OptimisationObjective(object) :
 
 
 
-  def run_lattice(self, tp, latticeSize, timesteps, initialNoise, rndSeed) :
+  def run_lattice(self, tp, sCP) :
     """Method to conduct the lattice experiment.
 
     The method curries out the lattice simulation experiment with the specified
     parameters.
     @param tp: The transsys program.
     @type tp: C{class 'transsys.TranssyProgram'}
-    @param latticeSize: The parameter holding the size of the lattice.
-    @type latticeSize: C{class 'translattice.LatticeSize'}
-    @param timesteps: The number of timesteps for the simulator.
-    @type timesteps: C{int}
-    @param initialNoise: An UniformParameters object which holds the
-    initialisation parameters for the lattice.
-    @type initialNoise: C{class 'translattice.UniformParameters'}
-    @param rndSeed: The random number generator seed.
-    @type rndSeed: C{int}
+    @param sCP: The simulator control parameters.
+    @type sCP: C{class 'translattice.SimulatorControlParameters'}
     @return: A lattice after running the simulator for the specified number of
     timesteps.
     @rtype: C{class 'translattice.TranssysInstanceLattice'}
     """
     # Construct the initialisation object.
-    initialiseObj = initialNoise.getRNG(rndSeed)
+    initialiseObj = sCP.initialisationVariables.getRNG(sCP.randomSeed)
     # Instantiate a transsys lattice.
-    transLat = translattice.TranssysInstanceLattice(tp, latticeSize, timesteps)
+    transLat = translattice.TranssysInstanceLattice(tp, sCP.latticeSize, sCP.timesteps)
     transLat.perturb_lattice(initialiseObj)
     # Set always the same random seed for the clib.
     transsys.clib.srandom(initialiseObj.rndSeed)
     # Run the time-series.
-    transTS = translattice.TranssysLatticeTimeseries(transLat, timesteps, timesteps)
+    transTS = translattice.TranssysLatticeTimeseries(transLat, sCP)
     # Get the equilibration lattice (i.e. the last timestep)
     lattice = transTS.latticeTimeseries.pop()
     return lattice
@@ -580,7 +573,7 @@ class OptimisationObjective(object) :
 
 
 def set_transsys_diffusibilities(transsysProgram, diffusionLimit) :
-  """Assign a diffusibility expression of each factor of atranssys program.
+  """Assign a diffusibility expression of each factor of a transsys program.
 
   The diffusibility is calculated as a random number from the interval [0,
   diffusionLimit).
@@ -597,13 +590,12 @@ def set_transsys_diffusibilities(transsysProgram, diffusionLimit) :
   @return: A copy of the transsysProgram with zero diffusibilities.
   @rtype: C{class 'transsys.TranssysProgram'}
   """
-  if diffusionLimit == 0 :
+  if diffusionLimit == 0.0 :
     zeroTP = copy.deepcopy(transsysProgram)
     for diffusion in zeroTP.getDiffusibilityValueNodes() :
-      diffusion.value = 0
+      diffusion.value = 0.0
     return zeroTP
   else :
-    diffList = []
     rng = translattice.UniformRNG(1, 0, diffusionLimit)
     for diffusion in transsysProgram.getDiffusibilityValueNodes() :
       diffusion.value = rng.random_value()
@@ -697,10 +689,7 @@ def optimisation(engineeredCP, simulatorCP, optimiserCP, logObj) :
   # Get the parameters.
   perturbRange = optimiserCP.perturbationOrder
   optimisationCycles = optimiserCP.cycles
-  rndSeed = optimiserCP.rndParam
-  initialNoise = simulatorCP.initialisationVariables
-  latticeSize = simulatorCP.latticeSize
-  timesteps = simulatorCP.timesteps
+  rndParam = optimiserCP.rndParam
   engBest = engineeredCP
 
   # Basic optimisation loop.
@@ -708,12 +697,9 @@ def optimisation(engineeredCP, simulatorCP, optimiserCP, logObj) :
     # Boolean to check whether an optimisation step is succsefull or not.
     optStep = False
     # Set the current random seed.
-    rndSeedCurrent = optimiserCP.rndParam + cycle
+    rndSeedCurrent = rndParam + cycle
     # Set the random objects.
     perturbObj = translattice.UniformRNG(rndSeedCurrent, -perturbRange, perturbRange)
-    # Polymorphism will take care of the random object initalisation.
-    initialObj = initialNoise.getRNG(rndSeedCurrent)
-
     # Perturb the engineered control parameters. (here is the actual
     # implementation of the random local search)
     engPAlternative = engBest.perturb_eng_parameters(perturbObj)
@@ -722,11 +708,12 @@ def optimisation(engineeredCP, simulatorCP, optimiserCP, logObj) :
     tpAlternative.comments = ['RNG Seed: %i' % rndSeedCurrent]
     tpBest = TranssysProgramDummy('currentBest_' + str(cycle + 1), engBest)
     tpBest.comments = ['RNG Seed: %i' % rndSeedCurrent]
-
+    # Set the current random seed.
+    simulatorCP.randomSeed = rndSeedCurrent
     # Calculate the objectives of both the best and the alternative transsys
     # programs, with the same initial conditions.
-    objectiveBest = OptimisationObjective(tpBest, latticeSize, timesteps, initialNoise, rndSeedCurrent)
-    objectiveAlternative = OptimisationObjective(tpAlternative, latticeSize, timesteps, initialNoise, rndSeedCurrent)
+    objectiveBest = OptimisationObjective(tpBest, simulatorCP)
+    objectiveAlternative = OptimisationObjective(tpAlternative, simulatorCP)
 
     # If an optimisation step occurs.
     if objectiveAlternative.objective > objectiveBest.objective :
@@ -769,10 +756,10 @@ def tp_optimisation(tp, sCP, oCP, logObj) :
   # Get the parameters.
   perturbRange = oCP.perturbationOrder
   optimisationCycles = oCP.cycles
-  rndSeed = oCP.rndParam
-  initialNoise = sCP.initialisationVariables
-  latticeSize = sCP.latticeSize
-  timesteps = sCP.timesteps
+  rndParam = oCP.rndParam
+#  initialNoise = sCP.initialisationVariables
+#  latticeSize = sCP.latticeSize
+#  timesteps = sCP.timesteps
   tpBest = tp
   tpName = tpBest.name
   # Basic optimisation loop.
@@ -780,7 +767,7 @@ def tp_optimisation(tp, sCP, oCP, logObj) :
     # Boolean to check whether an optimisation step is succsefull or not.
     optStep = False
     # Set the current random seed.
-    rndSeedCurrent = oCP.rndParam + cycle
+    rndSeedCurrent = rndParam + cycle
     # Set the random object.
     perturbObj = translattice.UniformRNG(rndSeedCurrent, -perturbRange, perturbRange)
     # Perturbe the transsys program.
@@ -789,10 +776,12 @@ def tp_optimisation(tp, sCP, oCP, logObj) :
     tpAlternative.comments = ['RNG Seed: %i' % rndSeedCurrent]
     tpBest.name = tpName + 'CurrentBest_' + str(cycle + 1)
     tpBest.comments = ['RNG Seed: %i' % rndSeedCurrent]
+    # Set the current random seed.
+    sCP.randomSeed = rndSeedCurrent
     # Calculate the objectives of both the best and the alternative transsys
     # programs, with the same initial conditions.
-    objectiveBest = OptimisationObjective(tpBest, latticeSize, timesteps, initialNoise, rndSeedCurrent)
-    objectiveAlternative = OptimisationObjective(tpAlternative, latticeSize, timesteps, initialNoise, rndSeedCurrent)
+    objectiveBest = OptimisationObjective(tpBest, sCP)
+    objectiveAlternative = OptimisationObjective(tpAlternative, sCP)
     # If an optimisation step occurs.
     if objectiveAlternative.objective > objectiveBest.objective :
       optStep = True
