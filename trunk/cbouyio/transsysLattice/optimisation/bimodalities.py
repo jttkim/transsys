@@ -26,9 +26,9 @@ thresholds and the partial bimodality scores.
 # Version Information.
 __version__ = "$Id$"
 
-import sys
+
 import math
-import statlib.stats
+
 
 
 class BimodalitiesCollection(object) :
@@ -44,7 +44,6 @@ class BimodalitiesCollection(object) :
   (values).
   @type bimodalities:  A C{dict} of <factor><bimodalities> key/value pairs.
   """
-
 
   def __init__(self, transsysLattice) :
     """The constructor
@@ -97,41 +96,70 @@ def bimodality(data, threshold):
 
   First the data set is partitioned in two subsets S1 and S2 (for threshold t
   then S1 = {x_i, if x_i <= t} and S2 = {x_i, if x_i > t}).
-  Then, bimodality is calculated as the quotient of the distance between the
-  means of each subset over the sum of the standard deviations.
-  Returns zero if all the elements are equal and also zero if any subset
+  #Then, bimodality is calculated as the quotient of the distance between the
+  #means of each subset over the sum of the standard deviations of each subset.
+  UPDATED: Bimodality score is now (after rev 305) calculated as the absolute
+  t-test score value. That is the difference of the means of the two subsets
+  divided with the standard error of the difference (SE) (source:
+  http://www.socialresearchmethods.net/kb/stat_t.php) the SE is given as the
+  square root of the sum of Var_1/n_1 + Var_2/n_2, where Var_ is the unbiased
+  variance of each subset and n_ the size of this subset.
+  The t-test statistic can be negative (depending on which mean is greater),
+  here we are interested in the absolute value of this statistic.
+
+  *Returns zero if all the elements are equal and also zero if any subset
   is smaller than one.
+
+  *Returns a very big number (currently 1e300, the bigest number that
+  can be represented in python in most of the platforms) if the sum of
+  the variances is equal to zero.
+
   @param data: A one dimentional data set.
   @type data: C{list}
   @param threshold: A scalar variable.
   @type threshold: Numeric
-  @return: The bimodality.
+  @return: The bimodality for the given threshold.
   @rtype: C{float}
   """
   subset1 = []
   subset2 = []
+  n1 = 0
+  n2 = 0
   # Partition the data.
   for e in data :
     if e <= threshold :
       subset1.append(e)
+      n1 = n1 + 1
     else :
       subset2.append(e)
+      n2 = n2 + 1
   # Check the length of the subsets.
-  n1 = len(subset1)
-  n2 = len(subset2)
   if n1 <= 1 or n2 <= 1 :
     return 0
-  mu1 = statlib.stats.lmean(subset1)
-  mu2 = statlib.stats.lmean(subset2)
-#  sigma1 = statlib.stats.lstdev(subset1)
-#  sigma2 = statlib.stats.lstdev(subset2)
-  var1 = statlib.stats.var(subset1)
-  var2 = statlib.stats.var(subset2)
-#  if (sigma1 + sigma2) == 0 or (var1 + var2) == 0 :
+  (mu1, var1) = mean_variance(subset1)
+  (mu2, var2) = mean_variance(subset2)
   if (var1 + var2) == 0 :
     return 1e300
-#  bimodality = float(abs(mu1 - mu2)) / float(sigma1 + sigma2)
-  bimodalityTtest = float(abs(mu1 - mu2)) / float(math.sqrt(var1/float(n1) + var2/float(n2)))
-#  return bimodality
-  return bimodalityTtest
+  # This is a t-test bimodality score.
+  bimodality = float(abs(mu1 - mu2)) / float(math.sqrt(var1/float(n1) + var2/float(n2)))
+  return bimodality
+
+
+
+def mean_variance(data) :
+  """Calculates the standard deviation of a one dimentional data (a list)
+
+  @parm data : The input data
+  @type data : C{list}
+  @return : The unbiased standard deviation (N-1)
+  @rtype : C{float}
+  """
+  n = len(data)
+  if n <= 1 :
+    raise StandardError, 'Data length too sort to calculate mean and variance.'
+  mean = float(sum(data)) / float(n)
+  ss = 0
+  for value in data :
+    ss = ss + ((value - mean) ** 2)
+  return mean, ss / (n - 1)
 
