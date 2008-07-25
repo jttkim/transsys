@@ -1,5 +1,12 @@
-# Table of coordinated (x, y) factor concentrations (Header file)
-# random seed: 1 
+# controlExp: None
+# randomSeed: 1
+# initialisationVariables: None
+# factorInitialisation: None
+# signalTimestep: timestep: 0 signal: 10.0 
+# latticeSize: width: 10 height: 10 
+# samplingInterval: 1
+# timesteps: 100
+# Table of coordinated (x, y) factor concentration levels (Header file)
 timestep x y DECAYTEST_factor
 0 1 1 1.00000000000000000e+01
 0 1 2 1.00000000000000000e+01
