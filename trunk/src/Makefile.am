@@ -56,6 +56,7 @@ transscatter_SOURCES = transscatter.c
 ltrcheck_SOURCES = ltrcheck.c
 ltransps_SOURCES = ltransps.c
 ltransgl_SOURCES = ltransgl.c
+#New line conditional compilation of ltransgl
 LDADD = libtrans.a
 
 AM_CFLAGS = -Wall -pedantic -g
