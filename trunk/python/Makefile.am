@@ -10,7 +10,10 @@ EXTRA_DIST	= setup.py transsys src
 SUBDIRS		= scripts
 
 # TESTS		= test_transsys
-
+# kludge to avoid stalling on systems that don't have epydoc
+if HAVE_EPYDOC
+EPYDOC_HTML	= epydoc-html
+endif
 
 install-exec-local : pythonsetup-install
 
@@ -29,7 +32,7 @@ clean-local : setup.py
 	cd $(<D) ; python setup.py clean
 	rm -rf build doc test
 
-all-local : pythonsetup-build epydoc-html
+all-local : pythonsetup-build $(EPYDOC_HTML)
 
 pythonsetup-build : setup.py transsys
 	cd $(<D) ; python setup.py build

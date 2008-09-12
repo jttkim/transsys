@@ -798,16 +798,36 @@ aspec, amax, rspec and rmax nodes.
 
   savefile_magic = 'TranssysTypedParameterTransformer'
 
-  
-  def __init__(self, decayTransformation = TransformationFunction(), diffusibilityTransformation = TransformationFunction(), constitutiveTransformation = TransformationFunction(), aspecTransformation = TransformationFunction(), amaxTransformation = TransformationFunction(), rspecTransformation = TransformationFunction(), rmaxTransformation = TransformationFunction()) :
+  def __init__(self, decayTransformation = None, diffusibilityTransformation = None, constitutiveTransformation = None, aspecTransformation = None, amaxTransformation = None, rspecTransformation = None, rmaxTransformation = None) :
     super(TranssysTypedParameterTransformer, self).__init__()
-    self.decayTransformation = decayTransformation
-    self.diffusibilityTransformation = diffusibilityTransformation
-    self.constitutiveTransformation = constitutiveTransformation
-    self.aspecTransformation = aspecTransformation
-    self.amaxTransformation = amaxTransformation
-    self.rspecTransformation = rspecTransformation
-    self.rmaxTransformation = rmaxTransformation
+    if decayTransformation is None :
+      self.decayTransformation = TransformationFunction()
+    else :
+      self.decayTransformation = decayTransformation
+    if diffusibilityTransformation is None :
+      self.diffusibilityTransformation = TransformationFunction()
+    else :
+      self.diffusibilityTransformation = diffusibilityTransformation
+    if constitutiveTransformation is None :
+      self.constitutiveTransformation = TransformationFunction()
+    else :
+      self.constitutiveTransformation = constitutiveTransformation
+    if aspecTransformation is None :
+      self.aspecTransformation = TransformationFunction()
+    else :
+      self.aspecTransformation = aspecTransformation
+    if amaxTransformation is None :
+      self.amaxTransformation = TransformationFunction()
+    else :
+      self.amaxTransformation = amaxTransformation
+    if rspecTransformation is None :
+      self.rspecTransformation = TransformationFunction()
+    else :
+      self.rspecTransformation = rspecTransformation
+    if rmaxTransformation is None :
+      self.rmaxTransformation = TransformationFunction()
+    else :
+      self.rmaxTransformation = rmaxTransformation
     self.decay_nodes = None
     self.diffusibility_nodes = None
     self.constitutive_nodes = None

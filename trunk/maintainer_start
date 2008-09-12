@@ -9,12 +9,24 @@
 
 # these are site dependent, so get rid of them -- will be replaced
 # by -a flag to automake
-rm -f config.guess config.sub depcomp install-sh missing mkinstalldirs
 
-aclocal
-autoconf
-autoheader
-automake -a
+function do_run ()
+{
+  echo $*
+  if $* ; then
+    true
+  else
+    exit 1
+  fi
+}
+
+
+rm -f config.guess config.sub depcomp install-sh missing mkinstalldirs aclocal.m4
+
+do_run aclocal -I m4
+do_run autoconf
+do_run autoheader
+do_run automake -a
 
 # this should become a --with-memdebug thing perhaps...
 # CFLAGS="-DMEMDEBUG -I${HOME}/include" LDFLAGS="-L${HOME}/lib" LIBS=-lmemdebug sandconf

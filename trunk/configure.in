@@ -44,39 +44,17 @@ dnl Revision 1.1  2001/04/04 11:11:42  kim
 dnl Initial addition of files previously not CVS managed
 dnl
 
+
+dnl 1. Boilerplate
+
 AC_INIT(src/transcheck.c)
 AM_CONFIG_HEADER(config.h)
 AM_INIT_AUTOMAKE(transsys,current)
 
 AC_CANONICAL_HOST
 
-AC_PROG_CC
-AC_PROG_CXX
 
-dnl AC_COMPILE_WARNINGS
-AC_PROG_INSTALL
-AC_PROG_RANLIB
-AM_PROG_LEX
-
-# somehow, on IRIX 6.5, LEXLIB is empty. This hack tries
-# to fix this for $LEX == flex
-[
-if test "x$LEXLIB" = "x" ; then
-  echo "LEXLIB empty -- searching for it"
-  if "$LEX" = flex ; then
-    if test -f /usr/local/lib/libfl ; then
-      LEXLIB=-lfl
-    fi
-  fi
-fi
-]
-
-AC_PROG_YACC
-AC_PATH_X
-AC_PATH_XTRA
-
-dnl this doesn't work because AC_HELP_STRING is missing...??
-dnl MDL_HAVE_OPENGL
+dnl 2. Options
 
 AC_ARG_WITH([pythonprefix],
   [AC_HELP_STRING([--with-pythonprefix],
@@ -102,24 +80,76 @@ AC_ARG_WITH([pythonhome],
      python_scheme=prefix
    fi])
 
-AC_HEADER_STDC
+dnl 3. Programs
+
+AC_PROG_CC
+AC_PROG_CXX
+
+dnl AC_COMPILE_WARNINGS
+AC_PROG_INSTALL
+AC_PROG_RANLIB
+AM_PROG_LEX
+
+# somehow, on IRIX 6.5, LEXLIB is empty. This hack tries
+# to fix this for $LEX == flex
+[
+if test "x$LEXLIB" = "x" ; then
+  echo "LEXLIB empty -- searching for it"
+  if "$LEX" = flex ; then
+    if test -f /usr/local/lib/libfl ; then
+      LEXLIB=-lfl
+    fi
+  fi
+fi
+]
+
+AC_PROG_YACC
 
 AC_CHECK_PROG(python_program,python,yes,no)
 AC_CHECK_PROG(r_program,R,yes,no)
-AC_CHECK_LIB(fl, main)
+AC_CHECK_PROG(epydoc_program,epydoc,yes,no)
 
-LDFLAGS="$LDFLAGS $X_EXTRA_LIBS $X_PRE_LIBS $X_LIBS"
+dnl 4. Libraries
+
+AC_CHECK_LIB(fl, main)
+AC_SEARCH_LIBS([sqrt], [m])
+AC_PATH_XTRA
+
+dnl this doesn't work because AC_HELP_STRING is missing...??
+MDL_HAVE_OPENGL
+
+
+dnl 5. Headers
+
+AC_HEADER_STDC
+
+
+dnl 6. Typedefs
+
+
+dnl 7. Functions
+
+
+dnl 8. Setting flags etc. and generate output
 
 [
-# hard code glut and OpenGL libs.
-# somehow, $X_LIBS apparently is not configured correctly on IRIX 6.5,
-# so we hard code the X libs too.
-# FIXME: make this into --disable etc. options, or configure automatically
-LIBS="$LIBS -lglut -lGLU -lGL -lXt -lXext -lXmu -lX11 -lpthread -lm"
+LDFLAGS="-fPIC $LDFLAGS $X_EXTRA_LIBS $X_PRE_LIBS $X_LIBS"
+CFLAGS="-fPIC $CFLAGS"
 ]
 
+dnl [
+dnl # hard code glut and OpenGL libs.
+dnl # somehow, $X_LIBS apparently is not configured correctly on IRIX 6.5,
+dnl # so we hard code the X libs too.
+dnl # FIXME: make this into --disable etc. options, or configure automatically
+dnl LIBS="$LIBS -lglut -lGLU -lGL -lXt -lXext -lXmu -lX11 -lpthread -lm"
+dnl ]
+
 [
-CFLAGS="$CFLAGS $X_CFLAGS"
+if test "x$have_glut" = "xyes" ; then
+  CFLAGS="$GL_CFLAGS $CFLAGS"
+  LIBS="$GL_LIBS $LIBS"
+fi
 YFLAGS="-d -t -v"
 ]
 
@@ -144,15 +174,23 @@ AC_SUBST(python_prefix)
 AC_SUBST(python_program)
 AC_SUBST(r_program)
 
+AM_CONDITIONAL(HAVE_GLUT, test "$have_glut" = "yes")
+AM_CONDITIONAL(HAVE_EPYDOC, test "$epydoc_program" = "yes")
+
 AC_OUTPUT(Makefile doc/Makefile src/Makefile src/tests/Makefile toolbox/Makefile python/Makefile python/scripts/Makefile)
 AC_MSG_RESULT([
 transsys successfully configured for ${host}
 
   prefix:        ${prefix}
+  CFLAGS:        ${CFLAGS}
+  LDFLAGS:       ${LDFLAGS}
+  LIBS:          ${LIBS}
 
   python:        ${python_program}
+  epydoc:        ${epydoc_program}
   R:             ${r_program}
   python_scheme: ${python_scheme}
   python_prefix: ${python_prefix}
+  have_glut:     ${have_glut}
 ])
 
