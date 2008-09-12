@@ -30,6 +30,8 @@
 # Initial addition of files previously not CVS managed
 #
 
+ACLOCAL_AMFLAGS = -I m4
+
 AM_CFLAGS = -Wall -pedantic
 
 EXTRA_DIST = BUGS toolbox/transsys testdata

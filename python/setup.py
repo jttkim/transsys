@@ -23,7 +23,8 @@ clib = distutils.core.Extension('transsys.clib',
                                 include_dirs = incdirs,
                                 library_dirs = libdirs,
                                 libraries = libs,
-                                extra_compile_args = ['-Wall', '-pedantic', '-Wno-long-long']
+                                extra_compile_args = ['-Wall', '-pedantic', '-Wno-long-long', '-fPIC'],
+				extra_link_args = ['-fPIC']
                                 )
 
 distutils.core.setup(name = 'transsys',
