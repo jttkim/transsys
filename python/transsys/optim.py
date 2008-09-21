@@ -1730,8 +1730,9 @@ criterion is reached:
       let C{stepsize = stepsize * stepsize_shrink} until improvement
       occurs or C{stepsize} falls below C{termination_stepsize}.
 
-  4. Terminate if C{stepsize} has fallen below C{termination_stepsize} or if
-      the improvement attained was below C{termination_improvement},
+  4. Terminate if C{stepsize} has fallen below C{termination_stepsize}, if
+      the improvement attained was below C{termination_improvement}, or if
+      the gradient is flat (i.e. all components are 0),
       otherwise start next cycle.
 
 @ivar initial_stepsize: distance initially stepped in gradient
@@ -1880,6 +1881,7 @@ beginning of a valid save file.
     current_obj = objective_function(tp).fitness
     numEvaluations = 1
     stepsize = self.initial_stepsize
+    # FIXME: this is some kludge, should use a proper NA representation
     old_gradient = [1.0 / math.sqrt(float(len(current_values)))] * len(current_values)
     iteration = 0
     optimisation_log = [GradientOptimisationRecord(current_obj, stepsize, numEvaluations, old_gradient)]
