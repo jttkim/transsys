@@ -906,7 +906,118 @@ timestep: 99
 }
 """
     self.assertEqual(tp_expect, str(tp))
-    
+
+
+  def testGradientOptimiser(self) :
+    # FIXME: copied from
+    f = open('test.tra', 'w')
+    f.write("""transsys single5
+{
+  factor f1 { decay: 0.1; diffusibility: 0.0; }
+
+  gene g1
+  {
+    promoter
+    {
+      constitutive: 1.0;
+    }
+    product
+    {
+      default: f1;
+    }
+  }
+}
+
+""")
+    f.close()
+    tp = transsys.TranssysProgramParser(open('test.tra', 'r')).parse()
+    os.unlink('test.tra')
+    ti = transsys.TranssysInstance(tp)
+    ts = ti.time_series(100)
+    f = file('testseries.txt', 'w')
+    for fi in xrange(len(tp.factor_list)) :
+      factor = tp.factor_list[fi]
+      f.write('%s:' % factor.name)
+      for ti1 in ts :
+        f.write(' %1.17e' % ti1.factor_concentration[fi])
+      f.write('\n')
+    f.close()
+    f = file('testgrad.txt', 'w')
+    f.write("""GradientOptimiser-0.1
+initial_stepsize: 1.0
+delta: 1e-3
+stepsize_shrink: 0.5
+termination_stepsize: 1e-5
+termination_objective: None
+termination_iteration: None
+termination_numEvaluations: 100000
+termination_improvement: None
+stepsize_max: 1.0e6
+eliminateFlatComponents: False
+ParameterTransformer
+""")
+    f.close()
+    f = file('testgrad.txt', 'r')
+    optimiser = transsys.optim.parse_optimiser(f)
+    f.close()
+    # optimiser.verbose = 1
+    optimiser.randomInitRange = 1.0
+    os.unlink('testgrad.txt')
+    f = file('testtransf.txt', 'w')
+    f.write("""TranssysTypedParameterTransformer
+decayTransformation
+ArctanFunction
+minValue: 0.0
+maxValue: 1.0
+diffusibilityTransformation
+ArctanFunction
+minValue: 0.0
+maxValue: 1.0
+constitutiveTransformation
+ArctanFunction
+minValue: 0.0
+maxValue: 10.0
+aspecTransformation
+ArctanFunction
+minValue: 0.01
+maxValue: 10.0
+amaxTransformation
+ArctanFunction
+minValue: 0.0
+maxValue: 100.0
+rspecTransformation
+ArctanFunction
+minValue: 0.01
+maxValue: 10.0
+rmaxTransformation
+ArctanFunction
+minValue: 0.0
+maxValue: 100.0
+""")
+    f.close()
+    f = open('testtransf.txt', 'r')
+    optimiser.transformer = transsys.optim.parse_parameter_transformer(f)
+    f.close()
+    os.unlink('testtransf.txt')
+    f = file('testseries.txt', 'r')
+    objective = transsys.optim.ExpressionSeriesSquareSumObjective(f)
+    f.close()
+    os.unlink('testseries.txt')
+    optResult = optimiser.optimise(tp, objective)
+    tpValueNodes = tp.getValueNodes()
+    tp_opt = optResult.optimised_transsys_program
+    # print str(tp_opt)
+    optTpValueNodes = tp_opt.getValueNodes()
+    maxValueDiff = 0.0
+    for i in xrange(len(tpValueNodes)) :
+      d = abs(tpValueNodes[i].value - optTpValueNodes[i].value)
+      if maxValueDiff < d :
+        maxValueDiff = d
+    # print maxValueDiff
+    # print optResult.objectiveOptimum
+    self.assert_(optResult.objectiveOptimum.fitness < 1e-5, 'excessive objective function value')
+    self.assert_(abs(tp.factor_list[0].decay_expression.value - tp_opt.factor_list[0].decay_expression.value) < 1e-4, 'excessive deviation of decay values')
+    self.assert_(abs(tp.gene_list[0].promoter[0].expression.value - tp_opt.gene_list[0].promoter[0].expression.value) < 1e-4, 'excessive deviation of constitutive values')
     
 
 suite = unittest.TestSuite()

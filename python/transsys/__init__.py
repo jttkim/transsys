@@ -240,7 +240,7 @@ Both parameters may be C{None} to specify an open-ended interval.
 
 
 class ExpressionNodeIdentifier(ExpressionNode) :
-  """Node representing an identifier, i.e. a factor, possibly qualified by a
+  """Node representing an identifier, i.eE{.} a factor, possibly qualified by a
 transsys label.
 
 Qualification by a transsys label occurs within L-transsys contexts.

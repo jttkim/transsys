@@ -62,6 +62,11 @@ class Interval(object) :
 
 
 def active_and_inactive_set(rule, instance_series, factor_index) :
+  """Extract the set concentrations of a factor in instances that activated
+a rule (the active set), and the complement set (the inactive set).
+
+This method is rather specific to L-systems optimisation and should
+perhaps not be in this module."""
   active_set = []
   inactive_set = []
   for tsi in instance_series :
@@ -170,13 +175,14 @@ not activating rule."""
 class FitnessResult(object) :
   """Base class for results of objective (or fitness) functions.
 
-Calling objective functions should return instances of this class
-or one of its subclasses. Optimisers use the C{fitness} instance
+Calling objective functions (subclasses of
+L{AbstractObjectiveFunction}) should return instances of this class or
+one of its subclasses. Optimisers use the C{fitness} instance
 variable. Subclasses may introduce further instance variables to
 describe the result achieved, break it down to individual components
 of the transsys program etc.
 
-@ivar fitness: the fitness value, i.e. the value computed by the
+@ivar fitness: the fitness value, i.eI{.} the value computed by the
   objective function.
 """
   def __init__(self, fitness) :
@@ -247,6 +253,11 @@ def flat_symbol_instance_list(lstring_list, transsys_program = None) :
 
 
 def disparity_fitness(lsys_program, transsys_program, factor_names, num_timesteps, disparity) :
+  """Objective function quantifying disparity of expression levels
+between instances that activate and that do not activate rules.
+
+This should be rewritten as a proper L{AbstractObjectiveFunction} subclass.
+  """
   if len(transsys_program.factor_list) == 0 :
     return 1.0
   fitness = 0.0
@@ -298,6 +309,7 @@ class Mutator(object) :
 
 
 def hillclimb(objective_function, decoder, initial_dnaseq, num_generations, mutator) :
+  """Experimental function for sequence encoding."""
   dnaseq = initial_dnaseq
   fitness = objective_function(decoder.decode_transsys('implant', dnaseq)).fitness
   for g in xrange(num_generations) :
@@ -314,6 +326,10 @@ def hillclimb(objective_function, decoder, initial_dnaseq, num_generations, muta
 
 # moving to utils
 def get_value_nodes(transsys_program, gene_name_list, factor_name_list) :
+  """Get value expression nodes from a transsys program.
+
+@deprecated: use methods of L{TranssysProgram}.
+  """
   value_expression_list = []
   if factor_name_list is None :
     value_expression_list.extend(transsys_program.getFactorValueNodes())
@@ -333,6 +349,10 @@ def get_value_nodes(transsys_program, gene_name_list, factor_name_list) :
 
 # moving to utils
 def randomise_transsys_values(transsys_program, random_function, gene_name_list = None, factor_name_list = None) :
+  """Randomise values in value expressions.
+
+@deprecated: This functionality is now integrated into the optimising framework.
+"""
   value_expression_list = get_value_nodes(transsys_program, gene_name_list, factor_name_list)
   for n in value_expression_list :
     n.value = random_function()
@@ -692,6 +712,9 @@ affected by the design change.
   def __init__(self) :
     self.transsys_program = None
     self.target_node_list = None
+    self.factor_name_list = None
+    self.gene_name_list = None
+    self.target_node_list = None
 
 
   def __str__(self) :
@@ -794,6 +817,27 @@ class TranssysTypedParameterTransformer(ParameterTransformer) :
   """
 Parameter transformer differentiating decay, diffusibility, constitutive,
 aspec, amax, rspec and rmax nodes.
+
+This class is intended for transsys programs with constant values
+(i.e. L{ExpressionNodeValue} instances) for decay, diffusibility,
+constitutive, aspec, amax, rspec and rmax. Use with transsys programs
+that do not have this standard, basic structure has undefined effects
+and may be disabled in the future.
+
+@ivar decayTransformation: transformation function for decay values.
+@type decayTransformation: L{TransformationFunction}
+@ivar diffusibilityTransformation: transformation function for diffusibility values.
+@type diffusibilityTransformation: L{TransformationFunction}
+@ivar constitutiveTransformation: transformation function for constitutive values.
+@type constitutiveTransformation: L{TransformationFunction}
+@ivar aspecTransformation: transformation function for aspec values.
+@type aspecTransformation: L{TransformationFunction}
+@ivar amaxTransformation: transformation function for amax values.
+@type amaxTransformation: L{TransformationFunction}
+@ivar rspecTransformation: transformation function for rspec values.
+@type rspecTransformation: L{TransformationFunction}
+@ivar rmaxTransformation: transformation function for rmax values.
+@type rmaxTransformation: L{TransformationFunction}
 """
 
   savefile_magic = 'TranssysTypedParameterTransformer'
@@ -857,7 +901,11 @@ aspec, amax, rspec and rmax nodes.
 
 
   def setAllTransformations(self, transformation) :
-    """Set all transformations to C{transformation}."""
+    """Set all transformations to C{transformation}.
+
+@param transformation: the transformation function to use
+@type transformation: L{TransformationFunction}
+"""
     self.decayTransformation = transformation
     self.diffusibilityTransformation = transformation
     self.constitutiveTransformation = transformation
@@ -869,7 +917,9 @@ aspec, amax, rspec and rmax nodes.
 
 
   def setConstrainedTransformations(self) :
-    """Configure transformer to be equivalent to the abandoned C{ConstrainedTransformer}."""
+    """Configure transformer to be equivalent to the abandoned C{ConstrainedTransformer}.
+@deprecated: assemble transformers manually, by assigning to instance variables.
+"""
     self.decayTransformation = SigmoidFunction()
     self.diffusibilityTransformation = SigmoidFunction()
     self.constitutiveTransformation = ExponentialFunction()
@@ -881,7 +931,11 @@ aspec, amax, rspec and rmax nodes.
 
 
   def parse_variables(self, f) :
-    """Parse instance variables from file C{f}."""
+    """Parse instance variables from file C{f}.
+
+@param f: the file to read from
+@type f: a C{file} object (file object emulators should generally work too)
+"""
     l = f.readline().strip()
     if l != 'decayTransformation' :
       raise StandardError, 'expected "decauTransformation", got "%s"' % l
@@ -1023,6 +1077,14 @@ by C{getParameters}.
 
 
 def parse_parameter_transformer(f) :
+  """Read a parameter transformer from a file.
+
+This function uses the "magic" first line to determine what subtype
+of L{ParameterTransformer} is specified.
+
+@return: the parameter transformer
+@rtype: L{ParameterTransformer}
+"""
   l = f.readline()
   if l == '' :
     return None
