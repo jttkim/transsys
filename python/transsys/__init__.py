@@ -1286,6 +1286,26 @@ gene names and factor names can be altered without changing the network."""
     return TranssysProgram(self.name, factor_list, gene_list, False)
 
 
+  def get_knockout_copy(self, gene_name) :
+    """Construct a copy of this transsys program with the specified gene
+deleted (knocket out).
+
+Notice that this method does not modify the instance on which
+it is invoked. This is not a mutator method.
+
+@param gene_name: the name of the gene to be knocked out
+@type gene_name: C{String}
+@return: the transsys program with the gene knocked out
+@rtype: L{TranssysProgram}
+"""
+    tp_knockout = copy.deepcopy(self)
+    gene_index = tp_knockout.find_gene_index(gene_name)
+    if gene_index == 1 :
+      raise StandardError, 'no gene "%s" to be knocked out' % gene_name
+    del tp_knockout[gene_index]
+    return tp_knockout
+
+
   def getDecayValueNodes(self) :
     """Get all constant value nodes pertaining to decay attributes in factors."""
     valueNodes = []
