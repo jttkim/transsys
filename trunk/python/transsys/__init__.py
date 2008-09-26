@@ -1300,9 +1300,9 @@ it is invoked. This is not a mutator method.
 """
     tp_knockout = copy.deepcopy(self)
     gene_index = tp_knockout.find_gene_index(gene_name)
-    if gene_index == 1 :
+    if gene_index == -1 :
       raise StandardError, 'no gene "%s" to be knocked out' % gene_name
-    del tp_knockout[gene_index]
+    del tp_knockout.gene_list[gene_index]
     return tp_knockout
 
 
