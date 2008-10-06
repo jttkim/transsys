@@ -177,7 +177,7 @@ AC_SUBST(r_program)
 AM_CONDITIONAL(HAVE_GLUT, test "$have_glut" = "yes")
 AM_CONDITIONAL(HAVE_EPYDOC, test "$epydoc_program" = "yes")
 
-AC_OUTPUT(Makefile doc/Makefile src/Makefile src/tests/Makefile toolbox/Makefile python/Makefile python/scripts/Makefile)
+AC_OUTPUT(Makefile doc/Makefile src/Makefile src/tests/Makefile toolbox/Makefile testdata/Makefile python/Makefile python/transsys/Makefile python/src/Makefile python/scripts/Makefile)
 AC_MSG_RESULT([
 transsys successfully configured for ${host}
 

@@ -2014,11 +2014,16 @@ class TranssysInstance(object) :
 
 
   def get_factor_concentration(self, factor) :
-    """FIXME: to be done
+    """Get the concentration of a named factor.
+
+@param factor: the name of the factor
+@type factor: C{String}
+@return: the concentration of the factor
+@rtype: C{float}
 """
     factor_index = self.transsys_program.find_factor_index(factor)
     if factor_index == -1 :
-      raise StandardError, 'factor "%s" not in transsys program "%s"' % (factor, transsys_program.name)
+      raise StandardError, 'factor "%s" not in transsys program "%s"' % (factor, self.transsys_program.name)
     return self.factor_concentration[factor_index]
 
 
