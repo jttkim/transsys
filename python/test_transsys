@@ -526,12 +526,18 @@ maxValue: 4.20000000000000018e+00"""
     ts = ti.time_series(100)
     for i in xrange(100) :
       self.assertEqual(i, ts[i].timestep)
-    ti99 = """transsys instance of cycler
+    ti99_x86_32 = """transsys instance of cycler
 timestep: 99
   A: 4.16143791406925470e-05
   R: 4.06464135795106454e-03
 """
-    self.assertEqual(ti99, str(ts[99]))
+    ti99_x86_64 = """transsys instance of cycler
+timestep: 99
+  A: 4.16143791406926554e-05
+  R: 4.06464135795107668e-03
+"""
+    ti99 = str(ts[99])
+    self.assert_(ti99 == ti99_x86_32 or ti99 == ti99_x86_64)
 
 
   def testLsys(self) :
@@ -943,7 +949,7 @@ timestep: 99
       f.write('\n')
     f.close()
     f = file('testgrad.txt', 'w')
-    f.write("""GradientOptimiser-0.1
+    f.write("""GradientOptimiser-0.1.1
 initial_stepsize: 1.0
 delta: 1e-3
 stepsize_shrink: 0.5
@@ -952,6 +958,7 @@ termination_objective: None
 termination_iteration: None
 termination_numEvaluations: 100000
 termination_improvement: None
+termination_relative_improvement: None
 stepsize_max: 1.0e6
 eliminateFlatComponents: False
 ParameterTransformer

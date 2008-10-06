@@ -1792,10 +1792,12 @@ criterion is reached:
       let C{stepsize = stepsize * stepsize_shrink} until improvement
       occurs or C{stepsize} falls below C{termination_stepsize}.
 
-  4. Terminate if C{stepsize} has fallen below C{termination_stepsize}, if
-      the improvement attained was below C{termination_improvement}, or if
-      the gradient is flat (i.e. all components are 0),
-      otherwise start next cycle.
+  4. Terminate if C{stepsize} has fallen below
+      C{termination_stepsize}, if the improvement attained was below
+      C{termination_improvement} or the relative improvement fell
+      below the C{termination_relative_improvement} threshold, or if
+      the gradient is flat (i.e. all components are 0), otherwise
+      start next cycle.
 
 @ivar initial_stepsize: distance initially stepped in gradient
   direction. Subject to subsequent adaptation
@@ -1812,6 +1814,8 @@ criterion is reached:
   objective function evaluations reaches or exceeds this
 @ivar termination_improvement: optimisation terminates if improvement
   drops below this threshold.
+@ivar termination_relative_improvement: optimisation terminates if
+  relative improvement drops below this threshold.
 @ivar stepsize_max: maximal stepsize, adaptation will not make
   stepsize exceed this limit
 @ivar transformer: parameter transformer
@@ -1824,9 +1828,9 @@ criterion is reached:
 @ivar verbose: controls verbosity.
 """
 
-  savefile_magic = 'GradientOptimiser-0.1'
+  savefile_magic = 'GradientOptimiser-0.1.1'
 
-  def __init__(self, initial_stepsize = 1.0, delta = 1.0e-6, stepsize_shrink = 0.5, termination_stepsize = 1.0e-30, termination_objective = None, termination_iteration = None, termination_numEvaluations = None, termination_improvement = 0.0, stepsize_max = 1.0e30, rng = None, transformer = None, randomInitRange = None, verbose = 0) :
+  def __init__(self, initial_stepsize = 1.0, delta = 1.0e-6, stepsize_shrink = 0.5, termination_stepsize = 1.0e-30, termination_objective = None, termination_iteration = None, termination_numEvaluations = None, termination_improvement = None, termination_relative_improvement = None, stepsize_max = 1.0e30, rng = None, transformer = None, randomInitRange = None, verbose = 0) :
     """
 @param initial_stepsize: distance initially stepped in gradient
   direction. Subject to subsequent adaptation
@@ -1843,6 +1847,8 @@ criterion is reached:
   objective function evaluations reaches or exceeds this
 @param termination_improvement: optimisation terminates if improvement
   drops below this threshold.
+@param termination_relative_improvement: optimisation terminates if relative
+  improvement drops below this threshold.
 @param stepsize_max: maximal stepsize, adaptation will not make
   stepsize exceed this limit
 @param transformer: parameter transformer
@@ -1856,6 +1862,7 @@ criterion is reached:
     self.termination_iteration = termination_iteration
     self.termination_numEvaluations = termination_numEvaluations
     self.termination_improvement = termination_improvement
+    self.termination_improvement = termination_relative_improvement
     self.stepsize_max = stepsize_max
     self.eliminateFlatComponents = False
 
@@ -1877,6 +1884,7 @@ beginning of a valid save file.
     self.termination_iteration = transsys.utils.parse_int(f, 'termination_iteration', allowNone = True)
     self.termination_numEvaluations = transsys.utils.parse_int(f, 'termination_numEvaluations', allowNone = True)
     self.termination_improvement = transsys.utils.parse_float(f, 'termination_improvement', allowNone = True)
+    self.termination_relative_improvement = transsys.utils.parse_float(f, 'termination_relative_improvement', allowNone = True)
     self.stepsize_max = transsys.utils.parse_float(f, 'stepsize_max')
     self.eliminateFlatComponents = transsys.utils.parse_boolean(f, 'eliminateFlatComponents')
     self.transformer = parse_parameter_transformer(f)
@@ -1892,6 +1900,7 @@ beginning of a valid save file.
     s = s + '%s\n' % transsys.utils.name_value_pair(self.termination_iteration, 'termination_iteration')
     s = s + '%s\n' % transsys.utils.name_value_pair(self.termination_numEvaluations, 'termination_numEvaluations')
     s = s + '%s\n' % transsys.utils.name_value_pair(self.termination_improvement, 'termination_improvement')
+    s = s + '%s\n' % transsys.utils.name_value_pair(self.termination_relative_improvement, 'termination_relative_improvement')
     s = s + '%s\n' % transsys.utils.name_value_pair(self.stepsize_max, 'stepsize_max')
     s = s + '%s\n' % transsys.utils.name_value_pair(self.eliminateFlatComponents, 'eliminateFlatComponents')
     s = s + '%s\n' % str(self.transformer)
@@ -1919,6 +1928,12 @@ beginning of a valid save file.
       if improvement <= self.termination_improvement :
         if self.verbose :
           sys.stderr.write('GradientOptimiser: terminating because improvement %f <= %f\n' % (improvement, self.termination_improvement))
+        return True
+    if self.termination_relative_improvement is not None and improvement is not None :
+      relative_improvement = improvement / objective
+      if relative_improvement <= self.termination_relative_improvement :
+        if self.verbose :
+          sys.stderr.write('GradientOptimiser: terminating because relative improvement %f <= %f\n' % (relative_improvement, self.termination_relative_improvement))
         return True
     if self.termination_iteration is not None :
       if iteration >= self.termination_iteration :

@@ -5,9 +5,9 @@
 
 CLEANFILES	= transsys/*.pyc transsys/*.pyo
 DISTCLEANFILES	= 
-EXTRA_DIST	= setup.py transsys src
+EXTRA_DIST	= setup.py test_transsys
 
-SUBDIRS		= scripts
+SUBDIRS		= scripts transsys src
 
 # TESTS		= test_transsys
 # kludge to avoid stalling on systems that don't have epydoc
