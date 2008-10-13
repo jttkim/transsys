@@ -143,6 +143,8 @@ import utils
 
 
 transsys_revision = '$Revision$'
+if transsys_revision != clib.transsys_revision :
+  raise StandardError, 'transsys module revision %s does not match transsys.clib module revision %s' % (transsys_revision, clib.transsys_revision)
 
 
 def dot_attribute_string(d) :

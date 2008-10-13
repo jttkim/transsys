@@ -3741,5 +3741,5 @@ PyMODINIT_FUNC initclib(void)
   PyObject *clib_module;
   clib_module = Py_InitModule("transsys.clib", clib_methods);
   /* FIXME: should not ignore return value */
-  PyModule_AddStringConstant(clib_module, "revision", "$Revision$");
+  PyModule_AddStringConstant(clib_module, "transsys_revision", "$Revision$");
 }
