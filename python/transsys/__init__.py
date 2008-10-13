@@ -142,6 +142,9 @@ import utils
 # __all__ = ['clib']
 
 
+transsys_revision = '$Revision$'
+
+
 def dot_attribute_string(d) :
   """Produce an attribute list in the dot language
 """
