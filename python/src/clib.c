@@ -3738,5 +3738,8 @@ static PyMethodDef clib_methods[] = {
 
 PyMODINIT_FUNC initclib(void)
 {
-  (void) Py_InitModule("transsys.clib", clib_methods);
+  PyObject *clib_module;
+  clib_module = Py_InitModule("transsys.clib", clib_methods);
+  /* FIXME: should not ignore return value */
+  PyModule_AddStringConstant(clib_module, "revision", "$Revision");
 }
