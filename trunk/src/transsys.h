@@ -246,5 +246,7 @@ extern char *yyin_name;
 extern TRANSSYS *parsed_transsys;
 extern LSYS *parsed_lsys;
 
+extern const char transsys_revision[];
+
 #endif /* TRANSSYS_H */
 
