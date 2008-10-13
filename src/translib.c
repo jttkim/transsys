@@ -1,2 +1,2 @@
-const char transsys_revision[] = "$Revision";
+const char transsys_revision[] = "$Revision$";
 
