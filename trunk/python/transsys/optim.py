@@ -2031,7 +2031,10 @@ beginning of a valid save file.
         if not new_obj2 < new_obj :
           self.transformer.setParameters(new_values)
       else :
-        while new_obj >= current_obj and stepsize > self.termination_stepsize :
+        while new_obj >= current_obj :
+          # FIXME: this ought to be done in the terminationCondition method -- this is just a quick fix to prevent infinite looping
+          if (self.termination_stepsize is not None and stepsize < self.termination_stepsize ) or stepsize == 0.0 :
+            break
           stepsize = stepsize * self.stepsize_shrink
           if self.verbose :
             sys.stderr.write('  %g: obj: current = %g, new = %g, d = %g\n' % (stepsize, current_obj, new_obj, current_obj - new_obj))
