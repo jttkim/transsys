@@ -1919,6 +1919,11 @@ beginning of a valid save file.
         if self.verbose :
           sys.stderr.write('GradientOptimiser: terminating because stepsize %f <= %f\n' % (stepsize, self.termination_stepsize))
         return True
+    else :
+      if stepsize == 0.0 :
+        if self.verbose :
+          sys.stderr.write('GradientOptimiser: terminating because stepsize == 0.0 (implicit termination criterion)\n')
+        return True
     if self.termination_objective is not None :
       if objective <= self.termination_objective :
         if self.verbose :
@@ -2031,7 +2036,7 @@ beginning of a valid save file.
         if not new_obj2 < new_obj :
           self.transformer.setParameters(new_values)
       else :
-        while new_obj >= current_obj :
+        while new_obj > current_obj :
           # FIXME: this ought to be done in the terminationCondition method -- this is just a quick fix to prevent infinite looping
           if (self.termination_stepsize is not None and stepsize < self.termination_stepsize ) or stepsize == 0.0 :
             break
