@@ -2032,6 +2032,20 @@ class TranssysInstance(object) :
     return self.factor_concentration[factor_index]
 
 
+  def set_factor_concentration(self, factor, concentration) :
+    """Set the concentration of the named factor.
+
+@param factor: the name of the factor
+@type factor: C{String}
+@param concentration: the concentration of the factor
+@type concentration: C{float}
+"""
+    factor_index = self.transsys_program.find_factor_index(factor)
+    if factor_index == -1 :
+      raise StandardError, 'factor "%s" not in transsys program "%s"' % (factor, self.transsys_program.name)
+    self.factor_concentration[factor_index] = concentration
+
+
   def clone(self) :
     """Clones this transsys instance.
 The state (factor concentrations, time step etc.) is copied, but for the
