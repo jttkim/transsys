@@ -141,10 +141,11 @@ import utils
 # general use
 # __all__ = ['clib']
 
-
-transsys_revision = '$Revision$'
-if transsys_revision != clib.transsys_revision :
-  raise StandardError, 'transsys module revision %s does not match transsys.clib module revision %s' % (transsys_revision, clib.transsys_revision)
+# compatibility check based on manually managed version names.
+# (unfortunately subversion does not provide anything suitable for this).
+required_clib_api_version = '350'
+if clib.clib_api_version != required_clib_api_version :
+  raise StandardError, 'transsys module requires clib API version %s but actual API version is %s' % (required_clib_api_version, clib.clib_api_version)
 
 
 def dot_attribute_string(d) :

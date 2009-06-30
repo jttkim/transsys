@@ -8,10 +8,15 @@
 #include <transsys.h>
 
 /*
+ * The API version must be changed manually each time the API is
+ * changed.
+ */
+static char clib_api_version[] = "350";
+
+/*
  * Struct to contain pointers to Python classes that directly correspond
  * to C level classes.
  */
-
 typedef struct
 {
   int initialised;
@@ -3742,5 +3747,7 @@ PyMODINIT_FUNC initclib(void)
   PyObject *clib_module;
   clib_module = Py_InitModule("transsys.clib", clib_methods);
   /* FIXME: should not ignore return value */
-  PyModule_AddStringConstant(clib_module, "transsys_revision", "$Revision$");
+  PyModule_AddStringConstant(clib_module, "clib_api_version", clib_api_version);
 }
+
+/* don't forget to change the clib_api_version */
