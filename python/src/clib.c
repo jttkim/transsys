@@ -11,6 +11,7 @@
  * Struct to contain pointers to Python classes that directly correspond
  * to C level classes.
  */
+
 typedef struct
 {
   int initialised;
