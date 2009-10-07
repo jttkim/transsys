@@ -1862,7 +1862,7 @@ criterion is reached:
     self.termination_iteration = termination_iteration
     self.termination_numEvaluations = termination_numEvaluations
     self.termination_improvement = termination_improvement
-    self.termination_improvement = termination_relative_improvement
+    self.termination_relative_improvement = termination_relative_improvement
     self.stepsize_max = stepsize_max
     self.eliminateFlatComponents = False
 
