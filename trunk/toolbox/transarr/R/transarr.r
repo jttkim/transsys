@@ -57,7 +57,7 @@
 #
 
 
-library(mva)
+# library(mva)
 
 
 # compute parenthesized string representation of cluster tree
