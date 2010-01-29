@@ -1447,7 +1447,7 @@ class AbstractOptimiser(object) :
 @ivar transformer: parameter transformer
 @ivar randomInitRange: if not C{None}, parameters in transformed space
   will be initialised with uniform random values from
-  [-\C{randomInitRange}, +C{randomInitRange}[
+  [-C{randomInitRange}, +C{randomInitRange}[
 @ivar verbose: controls verbosity (of optimisation process)
   """
 
@@ -1456,6 +1456,18 @@ class AbstractOptimiser(object) :
 
 This constructor is to be invoked from subclass constructors. Instances
 of C{AbstractOptimiser} do not have any use.
+
+If the C{rng} parameter is C{None} (the default), the constructor initialises
+the C{rng} instance variable to C{random.Random(1)}.
+
+@param rng: random number generator (see C{rng} instance variable)
+@type rng: C{random.Random}
+@param transformer: parameter transformer (see C{transformer} instance variable)
+@type transformer: C{ParameterTransformer}
+@param randomInitRange: range for initialising parameters (see C{randomInitRange} instance variable)
+@type randomInitRange: C{float}
+@param verbose: verbosity level
+@type verbose: C{int}
 """
     if rng is None :
       self.rng = random.Random(1)
@@ -1467,6 +1479,27 @@ of C{AbstractOptimiser} do not have any use.
       self.transformer = transformer
     self.randomInitRange = randomInitRange
     self.verbose = verbose
+
+
+  def setRandomNumberGenerator(self, rng) :
+    """Set the random number generator.
+
+@param rng: the random number generator to be used.
+@type rng: C{random.Random}
+"""
+    self.rng = rng
+
+
+  def setRandomNumberSeed(self, rndseed) :
+    """Set a new random number generator with the specified seed.
+
+This is a convenience method equivalent to calling
+C{setRandomNumberGenerator(random.Random(1))}.
+
+@param rndseed: the random seed
+@type rndseed: C{int}
+"""
+    self.rng = random.Random(rndseed)
 
 
   def initialiseParameterTransformer(self, transsys_program, factor_name_list, gene_name_list) :
