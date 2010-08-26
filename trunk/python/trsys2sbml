@@ -1,0 +1,174 @@
+#!/usr/bin/env python
+
+import sys
+import getopt
+
+import libsbml
+
+import transsys
+
+
+class IdSequence(object) :
+  
+  def __init__(self, prefix, start_value = 0) :
+    self.prefix = prefix
+    self.value = start_value
+  
+  
+  def next_id(self) :
+    s = '%s%d' % (self.prefix, self.value)
+    self.value = self.value + 1
+    return s
+
+  
+def get_min_expression_string(x, y) :
+  # return 'lt(%s, %s) * %s + leq(%s, %s) * %s' % (x, y, x, y, x, y)
+  return 'piecewise(%s, lt(%s, %s), %s)' % (x, x, y, y)
+
+def get_max_expression_string(x, y) :
+  # return 'gt(%s, %s) * %s + geq(%s, %s) * %s' % (x, y, x, y, x, y)
+  return 'piecewise(%s, gt(%s, %s), %s)' % (x, x, y, y)
+
+
+def get_mm_expression_string(promoter_element) :
+  factor_expr = promoter_element.factor_list[0].name
+  for factor in promoter_element.factor_list[1:] :
+    factor_expr = get_min_expression_string(factor_expr, factor.name)
+  s = '(%s * (%s) / (%s + (%s)))' % (str(promoter_element.expression2), factor_expr, str(promoter_element.expression1), factor_expr)
+  return s
+
+
+def make_sbml_document(transsys_instance) :
+  sbml_document = libsbml.SBMLDocument()
+  model = sbml_document.createModel()
+  id_sequence = IdSequence('noname')
+  c = model.createCompartment()
+  compartment_id = 'theCompartment'
+  c.setId(compartment_id)
+  # FIXME: should really set size to some kind of NA value. Set to 1 because 0 gives undefined concentrations
+  c.setSize(1)
+  for factor in transsys_instance.transsys_program.factor_list :
+    s = model.createSpecies()
+    s.appendAnnotation(libsbml.XMLNode('transsys:factor'))
+    s.setId(factor.name)
+    s.setCompartment(compartment_id)
+    s.setHasOnlySubstanceUnits(True)
+    s.setInitialAmount(transsys_instance.get_factor_concentration(factor.name))
+    r = model.createReaction()
+    r.setId(id_sequence.next_id())
+    r.appendAnnotation(libsbml.XMLNode('transsys:factordecay'))
+    r.setReversible(False)
+    reactant = r.createReactant()
+    reactant.setId('%s_decay' % factor.name)
+    reactant.setSpecies(factor.name)
+    kinetic_law_string = '%s * (%s)' % (factor.name, str(factor.decay_expression))
+    kinetic_law_string = get_max_expression_string('0', kinetic_law_string)
+    kinetic_law_string = get_min_expression_string('1', kinetic_law_string)
+    kl = r.createKineticLaw()
+    kl.setFormula(kinetic_law_string)
+  for gene in transsys_instance.transsys_program.gene_list :
+    r = model.createReaction()
+    # FIXME: annotation should use XML namespace (SBML spec 3.2.4)
+    r.appendAnnotation(libsbml.XMLNode('transsys:gene'))
+    r.setReversible(False)
+    # r.setSBOTerm(4711)
+    r.setId(gene.name)
+    kinetic_law_string = ''
+    kinetic_law_glue = ''
+    for promoter_element in gene.promoter :
+      if isinstance(promoter_element, transsys.PromoterElementConstitutive) :
+        kinetic_law_string = '%s%s%s' % (kinetic_law_string, kinetic_law_glue, str(promoter_element.expression))
+      elif isinstance(promoter_element, transsys.PromoterElementActivate) :
+        for factor in promoter_element.factor_list :
+          msr = r.createModifier()
+          msr.setId(id_sequence.next_id())
+          msr.setSpecies(factor.name)
+          msr.appendAnnotation(libsbml.XMLNode('transsys:activate'))
+        # FIXME: this doesn't work for multiple factors binding to this promoter element
+        kinetic_law_string = '%s%s%s' % (kinetic_law_string, kinetic_law_glue, get_mm_expression_string(promoter_element))
+      elif isinstance(promoter_element, transsys.PromoterElementRepress) :
+        for factor in promoter_element.factor_list :
+          msr = r.createModifier()
+          msr.setId(id_sequence.next_id())
+          msr.setSpecies(factor.name)
+          msr.appendAnnotation(libsbml.XMLNode('transsys:repress'))
+        # FIXME: this doesn't work for multiple factors binding to this promoter element
+        kinetic_law_string = '%s - %s' % (kinetic_law_string, get_mm_expression_string(promoter_element))
+      else :
+        raise StandardError, 'promoter element cannot be converted to SBML'
+      kinetic_law_glue = ' + '
+    kinetic_law_string = get_max_expression_string('0', kinetic_law_string)
+    sys.stderr.write('%s\n' % kinetic_law_string)
+    kl = r.createKineticLaw()
+    # kl.appendAnnotation(libsbml.XMLNode(kinetic_law_string))
+    kl.setFormula(kinetic_law_string)
+    psr = r.createProduct()
+    psr.setId(id_sequence.next_id())
+    psr.setSpecies(gene.product.name)
+  sys.stderr.write('validation: %d\n' % sbml_document.checkConsistency())
+  return sbml_document
+  
+  
+def xml_export(f, transsys_instance) :
+  sbml_document = make_sbml_document(transsys_instance)
+  w = libsbml.SBMLWriter()
+  f.write(w.writeToString(sbml_document))
+
+  
+def xml_export_raw(f, transsys_program) :
+  sbo_factor_id = '000factor'
+  sbo_gene_id = '001gene'
+  sbo_activator_id = 'SBO:0000021'
+  sbo_inhibitor_id = 'SBO:0000020'
+  compartment_name = 'x'
+  f.write('<listOfCompartments>\n')
+  f.write('<compartment id="%s"/>\n' % compartment_name)
+  f.write('</listOfCompartments>\n')
+  f.write('<listOfParameters>\n')
+  # can we use this to place instance (nucleus) information here?
+  f.write('</listOfParameters>\n')
+  f.write('<listOfSpecies>\n')
+  for factor in transsys_program.factor_list :
+    f.write('<species id="%s" name="%s" compartment="%s" sboTerm="%s" initialAmount="?" hasOnlySubstanceUnits="true"/>\n' % (factor.name, factor.name, compartment_name, sbo_factor_id))
+  f.write('</listOfSpecies>\n')
+  # genes as reactions
+  f.write('<listOfReactions>\n')
+  species_ref_id = 0
+  for gene in transsys_program.gene_list :
+    f.write('<reaction id="%s" reversible="false" sbo="%s">\n' % (gene.name, sbo_gene_id))
+    f.write('<listOfProducts>\n')
+    f.write('<speciesReference id="_%d" species="%s"/>\n' % (species_ref_id, gene.product.name))
+    species_ref_id = species_ref_id + 1
+    f.write('</listOfProducts>\n')
+    if len(gene.regulating_factors()) > 0 :
+      f.write('<listOfModifiers>\n')
+      for factor in gene.regulating_factors() :
+        f.write('<modifierSpeciesReference id="_%d" species="%s" sboTerm="%s"/>\n' % (species_ref_id, factor.name, sbo_activator_id))
+        species_ref_id = species_ref_id + 1
+      f.write('</listOfModifiers>\n')
+    f.write('<kineticLaw>\n')
+    f.write('</kineticLaw>\n')
+    f.write('</reaction>\n')
+  f.write('</listOfReactions>\n')
+
+  
+options, args = getopt.getopt(sys.argv[1:], 'h')
+for opt, par in options :
+  if opt == '-h' :
+    print 'options:'
+    print '-h: print this help and exit'
+    sys.exit()
+  else :
+    raise StandardError, 'unhandled option "%s"' % opt
+if len(args) > 0 :
+  infile = open(args[0], 'r')
+else :
+  infile = sys.stdin
+if len(args) > 1 :
+  outfile = open(args[1], 'w')
+else :
+  outfile = sys.stdout
+p = transsys.TranssysProgramParser(infile)
+transsys_program = p.parse()
+transsys_instance = transsys.TranssysInstance(transsys_program)
+xml_export(outfile, transsys_instance)
