@@ -1215,6 +1215,7 @@ this instance itself.
 
 
   def find_gene_index(self, g_name) :
+    # FIXME: negative indexes to indicate that there's no such gene, consider using None instead
     """Find the index of gene C{g_name}.
 
 @return: the index of gene C{g_name}, or -1 if no gene with that name
