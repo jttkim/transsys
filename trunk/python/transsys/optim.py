@@ -1968,6 +1968,9 @@ beginning of a valid save file.
           sys.stderr.write('GradientOptimiser: terminating because improvement %f <= %f\n' % (improvement, self.termination_improvement))
         return True
     if self.termination_relative_improvement is not None and improvement is not None :
+      # FIXME: just a patch, not a solution, relative improvement will be numerically unstable around objective = 0.0 anyway
+      if objective == 0.0 :
+        raise StandardError, 'relative improvement diverges because objective is 0.0 (consider setting termination_objective)'
       relative_improvement = improvement / objective
       if relative_improvement <= self.termination_relative_improvement :
         if self.verbose :
