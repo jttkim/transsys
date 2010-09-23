@@ -2043,8 +2043,11 @@ beginning of a valid save file.
       self.transformer.setParameters(v)
       new_obj = objective_function(tp).fitness
       numEvaluations = numEvaluations + 1
+      # 2010-09-23: moved line below out of if new_obj < current_obj block
+      # new_values can otherwise end up unassigned in else branch (or even worse, may carry over values from previous iteration...)
+      # FIXME: code is rather unmaintainable and thus prone to such problems, needs modularisation
+      new_values = v[:]
       if new_obj < current_obj :
-        new_values = v[:]
         stepsize2 = stepsize / self.stepsize_shrink
         v = []
         for i in xrange(len(current_values)) :
