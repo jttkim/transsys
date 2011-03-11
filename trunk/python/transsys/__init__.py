@@ -1831,13 +1831,13 @@ class ProductionElement(object) :
     tl = ''
     if self.template_label is not None :
       tl = 'transsys %s: ' % self.template_label
-    as = ''
+    astr = ''
     glue = ''
     for a in self.assignments :
-      as = as + glue + str(a)
+      astr = astr + glue + str(a)
       glue = ', '
-    if tl != '' or as != '' :
-      return '%s(%s%s)' % (self.symbol.name, tl, as)
+    if tl != '' or astr != '' :
+      return '%s(%s%s)' % (self.symbol.name, tl, astr)
     else :
       return self.symbol.name
 
