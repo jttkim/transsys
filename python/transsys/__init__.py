@@ -148,9 +148,23 @@ if clib.clib_api_version != required_clib_api_version :
   raise StandardError, 'transsys module requires clib API version %s but actual API version is %s' % (required_clib_api_version, clib.clib_api_version)
 
 
-def dot_attribute_string(d) :
-  """Produce an attribute list in the dot language
+def dot_attribute_string(attribute_dict, classattribute_dict = None) :
+  """Produce an attribute list in the dot language.
+
+The two dictionaries are merged so that the entries of C{attribute_dict} supersede
+those in @C{classattribute_dict}.
+
+@param attribute_dict: dictionary of attributes specific to this node or edge
+@type attribute_dict: dictionary string -> string
+@param classattribute_dict: dictionary of attributes for this class of elements (factors, genes, activating or repressing interactions, factor effects, etc.)
+@type classattribute_dict: dictionary string -> string
 """
+  if classattribute_dict is None :
+    d = {}
+  else :
+    d = copy.deepcopy(classattribute_dict)
+  for k in attribute_dict.keys() :
+    d[k] = attribute_dict[k]
   s = ''
   glue = ''
   for k in d.keys() :
@@ -611,8 +625,15 @@ class ExpressionNodeAtan(ExpressionNodeFunction) :
 
 
 class PromoterElement(object) :
-  pass
 
+  def find_identified_factor_list(self) :
+    """Find the list of factors that occur as identifier in expressions associated with this promoter element.
+
+    The list is unique, i.e. each factor occurs only once.
+    Notice that this method requires a resolved instance.
+"""
+    raise StandardError, 'abstract method called'
+  
 
 class PromoterElementConstitutive(PromoterElement) :
 
@@ -648,6 +669,14 @@ complex identifiers."""
     return self.expression.getIdentifierNodes()
 
 
+  def find_identified_factor_list(self) :
+    factor_list = []
+    for factor in map(lambda idnode: idnode.factor, self.getIdentifierNodes()) :
+      if factor not in factor_list :
+        factor_list.append(factor)
+    return factor_list
+  
+
   def canonicalise(self) :
     """Does nothing.
 
@@ -658,15 +687,10 @@ to constitutive are therefore currently not canonicalised away.
 Negative constitutive expression is a bit of a hack, though, and
 should be used sparingly and avoided where possible.
 """
+    pass
     # if isinstance(self.expression, ExpressionNodeValue) :
     #  self.expression.clip(0.0, None)
-    
 
-  def write_dot_edge(self, f, target_name, dot_parameters, transsys) :
-    # FIXME: constitutive expression of genes should probably be indicated
-    # by node shape / border or the like...
-    pass
-  
 
 class PromoterElementLink(PromoterElement) :
 
@@ -749,6 +773,14 @@ any identifier nodes that may appear in the parameters to the link element."""
     return identifierNodes
 
 
+  def find_identified_factor_list(self) :
+    factor_list = []
+    for factor in map(lambda idnode: idnode.factor, self.expression1.getIdentifierNodes() + self.expression2.getIdentifierNodes()) :
+      if factor not in factor_list :
+        factor_list.append(factor)
+    return factor_list
+
+
   def canonicalise(self) :
     """Clip the spec parameter to non-negative if it is a constant.
 
@@ -766,7 +798,9 @@ negative max constants to their antagonistic counterparts.
     #   self.expression2.clip(0.0, None)
 
 
-  def write_dot_edge(self, f, target_name, display_factors, arrowhead, transsys) :
+  # FIXME: shouldn't really override write_dot_edge, as parameters are different!!
+
+  def write_dot_edge(self, f, target_name, display_factors, attribute_dict, classattribute_dict, transsys) :
 
     def factor_name(f) :
       if type(f) is types.StringType :
@@ -776,16 +810,12 @@ negative max constants to their antagonistic counterparts.
 
     if display_factors :
       for factor in self.factor_list :
-        f.write('  %s -> %s' % (factor_name(factor), target_name))
-        f.write(' [arrowhead="%s"' % arrowhead)
-        f.write(' %s];\n' % dot_attribute_string(self.dot_attributes))
+        f.write('  %s -> %s [%s];\n' % (factor_name(factor), target_name, dot_attribute_string(attribute_dict, classattribute_dict)))
     else :
       for factor in self.factor_list :
         gene_list = transsys.encoding_gene_list(factor_name(factor))
         for gene in gene_list :
-          f.write('  %s -> %s' % (gene.name, target_name))
-          f.write(' [arrowhead="%s"' % arrowhead)
-          f.write(' %s];\n' % dot_attribute_string(self.dot_attributes))
+          f.write('  %s -> %s [%s];\n' % (gene.name, target_name, dot_attribute_string(attribute_dict, classattribute_dict)))
 
 
 # FIXME: there should be a "Michaelis-Menten" parent class for
@@ -803,7 +833,7 @@ class PromoterElementActivate(PromoterElementLink) :
 
 
   def write_dot_edge(self, f, target_name, dot_parameters, transsys) :
-    PromoterElementLink.write_dot_edge(self, f, target_name, dot_parameters.display_factors, dot_parameters.activate_arrowhead, transsys)
+    PromoterElementLink.write_dot_edge(self, f, target_name, dot_parameters.display_factors, {}, dot_parameters.activate_attributes, transsys)
 
 
 class PromoterElementRepress(PromoterElementLink) :
@@ -817,7 +847,7 @@ class PromoterElementRepress(PromoterElementLink) :
 
 
   def write_dot_edge(self, f, target_name, dot_parameters, transsys) :
-    PromoterElementLink.write_dot_edge(self, f, target_name, dot_parameters.display_factors, dot_parameters.repress_arrowhead, transsys)
+    PromoterElementLink.write_dot_edge(self, f, target_name, dot_parameters.display_factors, {}, dot_parameters.repress_attributes, transsys)
 
 
 class Factor(object) :
@@ -902,8 +932,18 @@ class Factor(object) :
   def write_dot_node(self, f, dot_parameters, transsys) :
     f.write('  %s' % self.name)
     if len(self.dot_attributes) > 0 :
-      f.write(' [%s]' % dot_attribute_string(self.dot_attributes))
+      f.write(' [%s]' % dot_attribute_string(self.dot_attributes, dot_parameters.factor_attributes))
     f.write(';\n')
+
+
+  def write_dot_edges(self, f, dot_parameters, transsys) :
+    if dot_parameters.display_factorexprs :
+      effecting_factor_list = []
+      for x in self.getIdentifierNodes() :
+        if x.factor not in effecting_factor_list :
+          effecting_factor_list.append(x.factor)
+      for ef in effecting_factor_list :
+        f.write('  %s -> %s [%s];\n' % (ef.name, self.name, dot_attribute_string({}, dot_parameters.factorexpr_attributes)))
 
 
   def canonicalise(self) :
@@ -1057,17 +1097,27 @@ promoter elements (activate, repress) of this gene."""
     return identifierNodes
 
 
+  # consider indicating constitutive expression e.g. by node style?
   def write_dot_node(self, f, dot_parameters, transsys) :
     f.write('  %s' % self.name)
     if len(self.dot_attributes) > 0 :
-      f.write(' [%s]' % dot_attribute_string(self.dot_attributes))
+      f.write(' [%s]' % dot_attribute_string(self.dot_attributes, dot_parameters.gene_attributes))
     f.write(';\n')
 
 
   def write_dot_edges(self, f, dot_parameters, transsys) :
     """write edges directed towards this gene"""
-    for p in self.promoter :
-      p.write_dot_edge(f, self.name, dot_parameters, transsys)
+    for pe in self.promoter :
+      if isinstance(pe, PromoterElementLink) :
+        pe.write_dot_edge(f, self.name, dot_parameters, transsys)
+    if dot_parameters.display_factorexprs :
+      factor_list = []
+      for pe in self.promoter :
+        for factor in pe.find_identified_factor_list() :
+          if factor not in factor_list :
+            factor_list.append(factor)
+      for factor in factor_list :
+        f.write('%s -> %s [%s];\n' % (factor.name, self.name, dot_attribute_string({}, dot_parameters.factorexpr_attributes)))
 
 
   def regulating_factors(self) :
@@ -1444,17 +1494,30 @@ genes in this transsys program."""
     if dot_parameters.display_factors :
       for factor in self.factor_list :
         factor.write_dot_node(f, dot_parameters, self)
+    for factor in self.factor_list :
+      factor.write_dot_edges(f, dot_parameters, self)
     for gene in self.gene_list :
       # print 'write_dot: edges for gene "%s"' % gene.name
       gene.write_dot_edges(f, dot_parameters, self)
+    if dot_parameters.display_factors and dot_parameters.display_genes and dot_parameters.cluster :
+      for gene in self.gene_list :
+        f.write('  subgraph cluster_%s\n' % gene.name)
+        f.write('  {\n')
+        f.write('    %s\n' % gene.name)
+        f.write('    %s\n' % gene.product_name())
+        f.write('  }\n')
     f.write('}\n')
 
 
-  def dot_positions_circle(self, x0, y0, radius) :
+  def dot_positions_circle(self, x0, y0, gene_radius, factor_radius) :
     """Set the dot language coordinates of genes to arrange them in a circle."""
     for i in xrange(len(self.gene_list)) :
       angle = 2.0 * math.pi * i / len(self.gene_list)
-      self.gene_list[i].dot_attributes['pos'] = '%f,%f!' % (x0 + radius * math.cos(angle), y0 + radius * math.sin(angle))
+      gene = self.gene_list[i]
+      gene.dot_attributes['pos'] = '%f,%f!' % (x0 + gene_radius * math.cos(angle), y0 + gene_radius * math.sin(angle))
+      factor = gene.product
+      factor.dot_attributes['pos'] = '%f,%f!' % (x0 + factor_radius * math.cos(angle), y0 + factor_radius * math.sin(angle))
+
 
 
   def regulated_genes(self, factor) :
@@ -2469,9 +2532,13 @@ class DotParameters(object) :
   def __init__(self) :
     self.display_genes = 1
     self.display_factors = 1
-    self.activate_arrowhead = 'normal'
-    self.repress_arrowhead = 'tee'
-
+    self.cluster = 0
+    self.display_factorexprs = 0
+    self.gene_attributes = {}
+    self.factor_attributes = {}
+    self.activate_attributes = {}
+    self.repress_attributes = {}
+    self.factorexpr_attributes = {}
 
 
 class CyclicSequence(object) :
