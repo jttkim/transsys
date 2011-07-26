@@ -930,10 +930,7 @@ class Factor(object) :
 
 
   def write_dot_node(self, f, dot_parameters, transsys) :
-    f.write('  %s' % self.name)
-    if len(self.dot_attributes) > 0 :
-      f.write(' [%s]' % dot_attribute_string(self.dot_attributes, dot_parameters.factor_attributes))
-    f.write(';\n')
+    f.write('  %s [%s];\n' % (self.name, dot_attribute_string(self.dot_attributes, dot_parameters.factor_attributes)))
 
 
   def write_dot_edges(self, f, dot_parameters, transsys) :
