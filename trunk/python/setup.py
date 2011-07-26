@@ -33,5 +33,5 @@ distutils.core.setup(name = 'transsys',
                      author = "Jan T. Kim",
                      author_email = "jtk@cmp.uea.ac.uk",
                      packages = ['transsys'],
-		     scripts = ['trsys2sbml'],
+		     scripts = ['trsys2sbml', 'trsystool'],
                      ext_modules = [clib])
