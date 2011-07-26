@@ -1,0 +1,74 @@
+#!/usr/bin/env python
+
+import sys
+import getopt
+
+import transsys
+
+
+def dot(argv) :
+  dp = transsys.DotParameters()
+  dp.factor_attributes = {'shape': 'hexagon'}
+  dp.gene_attributes = {}
+  dp.factorexpr_attributes = {'color': 'blue', 'arrowhead': 'dot'}
+  dp.activate_attributes = {'arrowhead': 'normal'}
+  dp.repress_attributes = {'arrowhead': 'tee'}
+  dp.display_factors = 0
+  dp.cluster = 0
+  dotpos = None
+  gene_radius = 5.0
+  factor_radius = 4.0
+  options, args = getopt.getopt(argv, 'r:p:cfxh')
+  for opt, par in options :
+    if opt == '-h' :
+      print '-p [circle]: specify method for placement (currently only "circle")'
+      print '-r <radius>: specify radius for gene and factor circular placement, separated by comma'
+      print '-c: cluster genes with factors they encode'
+      print '-f: display factors'
+      print '-x: show factors occurring in mathematical expressions as edges'
+      sys.exit()
+    elif opt == '-p' :
+      dotpos = par
+    elif opt == '-r' :
+      rlist = par.split(',')
+      gene_radius = float(rlist[0])
+      if len(rlist) > 1 :
+        factor_radius = float(rlist[1])
+    elif opt == '-f' :
+      dp.display_factors = 1
+    elif opt == '-x' :
+      dp.display_factorexprs = 1
+    elif opt == '-c' :
+      dp.cluster = 1
+    else :
+      raise StandardError, 'unknown option "%s"' % opt
+  if len(args) > 0 :
+    infile = open(args[0], 'r')
+  else :
+    infile = sys.stdin
+  if len(args) > 1 :
+    outfile = open(args[1], 'w')
+  else :
+    outfile = sys.stdout
+  p = transsys.TranssysProgramParser(infile)
+  tp = p.parse()
+  if dotpos is None :
+    pass
+  elif dotpos == 'circle' :
+    x0 = max(gene_radius, factor_radius)
+    y0 = x0
+    tp.dot_positions_circle(x0, y0, gene_radius, factor_radius)
+  else :
+    raise StandardError, 'dot position "%s" not known / supported' % dotpos
+  tp.write_dot(outfile, dp)
+
+
+if len(sys.argv) < 2 :
+  print 'usage: %s <command> [options]'
+  sys.exit()
+cmd = sys.argv[1]
+argv = sys.argv[2:]
+if cmd == 'dot' :
+  dot(argv)
+else :
+  raise StandardError, 'command %s not known' % cmd
