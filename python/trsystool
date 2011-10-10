@@ -21,6 +21,7 @@ def dot(argv) :
   options, args = getopt.getopt(argv, 'r:p:cfxh')
   for opt, par in options :
     if opt == '-h' :
+      print 'dot: create a representation of a transsys program in the dot language (see www.graphviz.org)'
       print '-p [circle]: specify method for placement (currently only "circle")'
       print '-r <radius>: specify radius for gene and factor circular placement, separated by comma'
       print '-c: cluster genes with factors they encode'
@@ -63,6 +64,61 @@ def dot(argv) :
   tp.write_dot(outfile, dp)
 
 
+def deletelinks(argv) :
+  options, args = getopt.getopt(argv, 'h')
+  for opt, par in options :
+    if opt == '-h' :
+      print 'deletelinks: delete link elements (activate, repress) from a transsys program'
+      sys.exit()
+    else :
+      raise StandardError, 'unknown option "%s"' % opt
+  if len(args) > 0 :
+    infile = open(args[0], 'r')
+  else :
+    infile = sys.stdin
+  if len(args) > 1 :
+    outfile = open(args[1], 'w')
+  else :
+    outfile = sys.stdout
+  p = transsys.TranssysProgramParser(infile)
+  tp = p.parse()
+  for gene in tp.gene_list :
+    i = 0
+    while i < len(gene.promoter) :
+      if isinstance(gene.promoter[i], transsys.PromoterElementLink) :
+        del gene.promoter[i]
+      else :
+        i = i + 1
+  outfile.write(str(tp))
+  
+
+def constitutiveonly(argv) :
+  constitutive = 1.0
+  options, args = getopt.getopt(argv, 'c:h')
+  for opt, par in options :
+    if opt == '-h' :
+      print 'constitutiveonly: replace promoters with just one constitutive element'
+      sys.exit()
+    elif opt == '-c' :
+      constitutive = float(par)
+    else :
+      raise StandardError, 'unknown option "%s"' % opt
+  if len(args) > 0 :
+    infile = open(args[0], 'r')
+  else :
+    infile = sys.stdin
+  if len(args) > 1 :
+    outfile = open(args[1], 'w')
+  else :
+    outfile = sys.stdout
+  p = transsys.TranssysProgramParser(infile)
+  tp = p.parse()
+  for gene in tp.gene_list :
+    gene.promoter = [transsys.PromoterElementConstitutive(transsys.ExpressionNodeValue(constitutive))]
+  outfile.write(str(tp))
+  
+
+
 if len(sys.argv) < 2 :
   print 'usage: %s <command> [options]'
   sys.exit()
@@ -70,5 +126,9 @@ cmd = sys.argv[1]
 argv = sys.argv[2:]
 if cmd == 'dot' :
   dot(argv)
+elif cmd == 'constitutiveonly' :
+  constitutiveonly(argv)
+elif cmd == 'deletelinks' :
+  deletelinks(argv)
 else :
   raise StandardError, 'command %s not known' % cmd
