@@ -633,7 +633,7 @@ class PromoterElement(object) :
     Notice that this method requires a resolved instance.
 """
     raise StandardError, 'abstract method called'
-  
+
 
 class PromoterElementConstitutive(PromoterElement) :
 
@@ -675,7 +675,7 @@ complex identifiers."""
       if factor not in factor_list :
         factor_list.append(factor)
     return factor_list
-  
+
 
   def canonicalise(self) :
     """Does nothing.
@@ -764,7 +764,7 @@ class PromoterElementLink(PromoterElement) :
 The list includes the factors mentioned in activate and repress as well as
 any identifier nodes that may appear in the parameters to the link element."""
     identifierNodes = []
-    
+
     for factor in self.factor_list :
       if not isinstance(factor, Factor) :
         raise StandardError, 'PromoterElementLink::getIdentifierNodes: non-Factor in factor_list (unresolved transsys?)'
@@ -859,6 +859,8 @@ class Factor(object) :
 @type decay_expression: C{ExpressionNode} subclass
 @ivar diffusibility_expression: expression to compute the factor's diffusibility
 @type diffusibility_expression: C{ExpressionNode} subclass
+@ivar synthesis_expression: expression to compute the factor's synthesis
+@type synthesis_expression: C{ExpressionNode} subclass
 @ivar comments: comments pertaining to the factor
 @type comments: C{list} of C{string}s
 @ivar dot_attributes: attributes for rendering the factor in the dot (graphviz)
@@ -866,14 +868,17 @@ class Factor(object) :
 @type dot_attributes: C{dictionary}, keys are attribute names, values are
   attribute values
 """
-  def __init__(self, name, decay_expr, diffusibility_expr, dot_attrs = None) :
+  def __init__(self, name, decay_expr, diffusibility_expr, synthesis_expr, dot_attrs = None) :
     if not isinstance(decay_expr, ExpressionNode) :
       raise StandardError, 'Factor::__init__: bad decay_expr type'
     if not isinstance(diffusibility_expr, ExpressionNode) :
       raise StandardError, 'Factor::__init__: bad diffusibility_expr type'
+    if not isinstance(synthesis_expr, ExpressionNode) :
+      raise StandardError, 'Factor::__init__: bad synthesis_expr type'
     self.name = name
     self.decay_expression = decay_expr
     self.diffusibility_expression = diffusibility_expr
+    self.synthesis_expression = synthesis_expr
     self.comments = []
     if dot_attrs is None :
       self.dot_attributes = {}
@@ -886,8 +891,9 @@ class Factor(object) :
   {
 %s    decay: %s;
     diffusibility: %s;
+    synthesis: %s;
   }
-""" % (self.name, _comment_lines(self.comments, '    '), str(self.decay_expression), str(self.diffusibility_expression))
+""" % (self.name, _comment_lines(self.comments, '    '), str(self.decay_expression), str(self.diffusibility_expression), str(self.synthesis_expression))
 
 
   def resolve(self, tp) :
@@ -1644,7 +1650,7 @@ class GraphicsPrimitiveTurn(GraphicsPrimitive) :
 
   def __str__(self) :
     return 'turn(%s);' % str(self.expression)
-    
+
 
   def dissociate_transsys(self) :
     self.expression = self.expression.unresolved_copy()
@@ -1662,7 +1668,7 @@ class GraphicsPrimitiveRoll(GraphicsPrimitive) :
 
   def __str__(self) :
     return 'roll(%s);' % str(self.expression)
-    
+
 
   def dissociate_transsys(self) :
     self.expression = self.expression.unresolved_copy()
@@ -1836,7 +1842,7 @@ class Symbol(object) :
       s = s + '      %s\n' % str(g)
     s = s + '    }\n'
     return s
-      
+
 
 
 class Assignment(object) :
@@ -2324,7 +2330,7 @@ are required, the instances should be cloned.
     for i in instance_list :
       expression_list.append(i.get_factor_concentration(factor))
     return expression_list
-    
+
 
   def write_table_header(self, f) :
     """Write a header for a table of records describing the instances in this
@@ -2962,7 +2968,11 @@ This function does not create any multilinks."""
     flist = []
     glist = []
     for i in xrange(self.num_genes()) :
-      flist.append(Factor(factor_name(i), next_expression(self.decay), next_expression(self.diffusibility)))
+      decay_expr = next_expression(self.decay)
+      diffusibility_expr = next_expression(self.diffusibility)
+      # FIXME: synthesis expression always 0, to maintain backwards compatibility
+      synthesis_expr = ExpressionNodeValue(0.0)
+      flist.append(Factor(factor_name(i), decay_expr, diffusibility_expr, synthesis_expr))
       promoter = []
       promoter.append(PromoterElementConstitutive(next_expression(self.constitutive)))
       for t in linklist[i] :
@@ -2984,7 +2994,7 @@ class TranssysProgramScanner(object) :
     self.infile = f
     self.buffer = ''
     self.lineno = 0
-    self.keywords = ['factor', 'gene', 'promoter', 'product', 'constitutive', 'activate', 'repress', 'default', 'gauss', 'random', 'pow', 'log', 'atan', 'transsys', 'decay', 'diffusibility', 'lsys', 'symbol', 'axiom', 'rule', 'diffusionrange', '-->', 'graphics', 'move', 'sphere', 'cylinder', 'box', 'turn', 'roll', 'bank', 'color', 'push', 'pop', '<=', '>=', '==', '!=', '&&', '||']
+    self.keywords = ['factor', 'gene', 'promoter', 'product', 'constitutive', 'activate', 'repress', 'default', 'gauss', 'random', 'pow', 'log', 'atan', 'transsys', 'decay', 'diffusibility', 'synthesis', 'lsys', 'symbol', 'axiom', 'rule', 'diffusionrange', '-->', 'graphics', 'move', 'sphere', 'cylinder', 'box', 'turn', 'roll', 'bank', 'color', 'push', 'pop', '<=', '>=', '==', '!=', '&&', '||']
     self.identifier_re = re.compile('([A-Za-z_][A-Za-z0-9_]*)|([\\[\\]])')
     self.realvalue_re = re.compile('[+-]?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))([Ee][+-]?[0-9]+)?')
     self.next_token = self.get_token()
@@ -3347,6 +3357,7 @@ class TranssysProgramParser(object) :
     self.expect_token('{')
     decay_expr = ExpressionNodeValue(1.0)
     diffusibility_expr = ExpressionNodeValue(1.0)
+    synthesis_expr = ExpressionNodeValue(0.0)
     while 1 :
       l = self.scanner.lookahead()
       if l == 'decay' :
@@ -3357,12 +3368,16 @@ class TranssysProgramParser(object) :
         self.expect_token('diffusibility')
         self.expect_token(':')
         diffusibility_expr = self.parse_expr([])
+      elif l == 'synthesis' :
+        self.expect_token('synthesis')
+        self.expect_token(':')
+        synthesis_expr = self.parse_expr([])
       if self.scanner.lookahead() == ';' :
         self.expect_token(';')
       else :
         break
     self.expect_token('}')
-    return Factor(factor_name, decay_expr, diffusibility_expr)
+    return Factor(factor_name, decay_expr, diffusibility_expr, synthesis_expr)
 
 
   def parse_gene_definition(self) :
@@ -3468,7 +3483,7 @@ class TranssysProgramParser(object) :
       template_label = None
     assignments = self.parse_assignment_list(transsys, transsys_label_list)
     return template_label, assignments
-      
+
 
   def parse_production_element(self, symbol_dict, transsys_label_list) :
     symbol_name = self.expect_token('identifier')

@@ -92,7 +92,7 @@ extern INTEGER_ARRAY *extend_integer_array(INTEGER_ARRAY *ia, int v);
 extern EXPRESSION_NODE *new_expression_node(EXPR_NODE_TYPE type, ...);
 extern void free_promoter_list(PROMOTER_ELEMENT *alist);
 extern PROMOTER_ELEMENT *new_promoter_element(PROMOTERELEMENT_TYPE type, int num_binding_factors, int *factors, EXPRESSION_NODE *expr1, EXPRESSION_NODE *expr2);
-extern FACTOR_ELEMENT *new_factor_element(const char *name, EXPRESSION_NODE *decay_expression, EXPRESSION_NODE *diffusibility_expression);
+extern FACTOR_ELEMENT *new_factor_element(const char *name, EXPRESSION_NODE *decay_expression, EXPRESSION_NODE *diffusibility_expression, EXPRESSION_NODE *synthesis_expression);
 extern GENE_ELEMENT *new_gene_element(const char *name, PROMOTER_ELEMENT *promoter_list, int product_index);
 extern void free_expression_tree(EXPRESSION_NODE *node);
 extern void free_transsys_list(TRANSSYS *tr);
@@ -181,8 +181,8 @@ extern void fprint_transsys_instance_values(FILE *f, const TRANSSYS_INSTANCE *ti
 extern void fprint_cell(FILE *f, const CELL *cell);
 extern void fprint_symbol_instance(FILE *f, const SYMBOL_INSTANCE *si);
 extern void fprint_symbol_instance_list(FILE *f, const SYMBOL_INSTANCE *si, const char *sep);
-extern void fprint_lsys_string(FILE *f, const LSYS_STRING *lstr, const char *sep); 
-extern void fprint_lsys_string_contact_graph(FILE *f, const LSYS_STRING *lstr); 
+extern void fprint_lsys_string(FILE *f, const LSYS_STRING *lstr, const char *sep);
+extern void fprint_lsys_string_contact_graph(FILE *f, const LSYS_STRING *lstr);
 extern double evaluate_expression(const EXPRESSION_NODE *expr, const TRANSSYS_INSTANCE **ti_list);
 
 extern int process_expression(TRANSSYS_INSTANCE *ti);
@@ -204,6 +204,7 @@ extern void add_factor_definition(TRANSSYS *ts, FACTOR_ELEMENT *fe);
 extern void add_gene_definition(TRANSSYS *ts, GENE_ELEMENT *ge);
 extern void add_factordef_decay(EXPRESSION_NODE *decay_expression, FACTOR_ELEMENT *fe);
 extern void add_factordef_diffusibility(EXPRESSION_NODE *diffusibility_expression, FACTOR_ELEMENT *fe);
+extern void add_factordef_synthesis(EXPRESSION_NODE *synthesis_expression, FACTOR_ELEMENT *fe);
 extern PROMOTER_ELEMENT *extend_promoter_list(PROMOTER_ELEMENT *alist, PROMOTER_ELEMENT *a);
 extern int find_factor_index(const TRANSSYS *ts, const char *name);
 extern int find_lhs_symbol_index(const RULE_ELEMENT *re, const char *transsys_label);

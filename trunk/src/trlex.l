@@ -46,6 +46,7 @@ default			{ return (DEFAULT); }
 transsys		{ return (TRANSSYS_DEF); }
 decay			{ return (DECAY_DEF); }
 diffusibility		{ return (DIFFUSIBILITY_DEF); }
+synthesis		{ return (SYNTHESIS_DEF); }
 diffusionrange		{ return (DIFFUSIONRANGE_DEF); }
 lsys			{ return (LSYS_DEF); }
 symbol			{ return (SYMBOL_DEF); }
@@ -169,6 +170,9 @@ int main(int argc, char *argv[])
       break;
     case DIFFUSIBILITY_DEF:
       printf_token("<DIFFUSIBILITY_DEF> ");
+      break;
+    case SYNTHESIS_DEF:
+      printf_token("<SYNTHESIS_DEF> ");
       break;
     case TRANSSYS_DEF:
       printf_token("<TRANSSYS_DEF> ");

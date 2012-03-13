@@ -389,11 +389,21 @@ PROMOTER_ELEMENT *new_promoter_element(PROMOTERELEMENT_TYPE type, int num_bindin
 static void free_factor_components(FACTOR_ELEMENT *fe)
 {
   if (fe->diffusibility_expression)
+  {
     free_expression_tree(fe->diffusibility_expression);
+  }
   if (fe->decay_expression)
+  {
     free_expression_tree(fe->decay_expression);
+  }
+  if (fe->synthesis_expression)
+  {
+    free_expression_tree(fe->synthesis_expression);
+  }
   if (fe->num_producing_genes)
+  {
     free(fe->gene_index);
+  }
 }
 
 
@@ -411,7 +421,7 @@ static void free_factor_list(FACTOR_ELEMENT *flist)
 }
 
 
-FACTOR_ELEMENT *new_factor_element(const char *name, EXPRESSION_NODE *decay_expression, EXPRESSION_NODE *diffusibility_expression)
+FACTOR_ELEMENT *new_factor_element(const char *name, EXPRESSION_NODE *decay_expression, EXPRESSION_NODE *diffusibility_expression, EXPRESSION_NODE *synthesis_expression)
 {
   FACTOR_ELEMENT *fe;
 
@@ -422,10 +432,11 @@ FACTOR_ELEMENT *new_factor_element(const char *name, EXPRESSION_NODE *decay_expr
   fe->index = NO_INDEX;
   fe->num_producing_genes = 0;
   fe->gene_index = NULL;
-  fe->diffusibility_expression = diffusibility_expression;
   strncpy(fe->name, name, IDENTIFIER_MAX);
   fe->name[IDENTIFIER_MAX - 1] = '\0';
   fe->decay_expression = decay_expression;
+  fe->diffusibility_expression = diffusibility_expression;
+  fe->synthesis_expression = synthesis_expression;
   return (fe);
 }
 

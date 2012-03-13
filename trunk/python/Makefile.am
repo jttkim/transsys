@@ -5,7 +5,7 @@
 
 CLEANFILES	= transsys/*.pyc transsys/*.pyo
 DISTCLEANFILES	= 
-EXTRA_DIST	= setup.py test_transsys
+EXTRA_DIST	= setup.py test_transsys trsys2sbml trsystool
 
 SUBDIRS		= scripts transsys src
 

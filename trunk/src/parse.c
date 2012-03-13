@@ -52,6 +52,13 @@ void add_factordef_diffusibility(EXPRESSION_NODE *diffusibility_expression, FACT
 }
 
 
+void add_factordef_synthesis(EXPRESSION_NODE *synthesis_expression, FACTOR_ELEMENT *fe)
+{
+  free_expression_tree(fe->synthesis_expression);
+  fe->synthesis_expression = synthesis_expression;
+}
+
+
 PROMOTER_ELEMENT *extend_promoter_list(PROMOTER_ELEMENT *alist, PROMOTER_ELEMENT *a)
 {
   PROMOTER_ELEMENT *a1;
