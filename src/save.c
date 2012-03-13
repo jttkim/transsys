@@ -248,6 +248,9 @@ static void fprint_factor(FILE *f, int indent_depth, const FACTOR_ELEMENT *facto
   fprint_indented(f, indent_depth + 2, "diffusibility: ");
   fprint_expression_tree(f, factor->diffusibility_expression, factor_array, NULL);
   fprintf(f, ";\n");
+  fprint_indented(f, indent_depth + 2, "synthesis: ");
+  fprint_expression_tree(f, factor->synthesis_expression, factor_array, NULL);
+  fprintf(f, ";\n");
   fprint_indented(f, indent_depth, "}\n");
 }
 

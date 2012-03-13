@@ -56,7 +56,7 @@ int process_expression(TRANSSYS_INSTANCE *ti)
 {
   double *nc;
   int i;
-  double d, a, r, cmin, km, max, f_inc;
+  double d, s, a, r, cmin, km, max, f_inc;
   PROMOTER_ELEMENT *ae;
   const TRANSSYS_INSTANCE *const_ti = ti;
 
@@ -84,7 +84,12 @@ int process_expression(TRANSSYS_INSTANCE *ti)
     {
       d = 1.0;
     }
-    ti->new_concentration[i] = ti->factor_concentration[i] * (1.0 - d);
+    s = evaluate_expression(ti->transsys->factor_list[i].synthesis_expression, &const_ti);
+    if (s < 0.0)
+    {
+      s = 0.0;
+    }
+    ti->new_concentration[i] = ti->factor_concentration[i] * (1.0 - d) + s;
     /* fprintf(stderr, "new_concentration[%d] is now %e\n", i, ti->new_concentration[i]); */
     /* fprintf(stderr, "before decay: [%s] = %g, after decay: [%s] = %g\n", ti->transsys->factor_list[i].name, ti->factor_concentration[i], ti->transsys->factor_list[i].name, ti->new_concentration[i]); */
   }

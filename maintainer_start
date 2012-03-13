@@ -10,7 +10,7 @@
 # these are site dependent, so get rid of them -- will be replaced
 # by -a flag to automake
 
-function do_run ()
+do_run ()
 {
   echo $*
   if $* ; then

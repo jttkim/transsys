@@ -1686,7 +1686,7 @@ static EXPRESSION_NODE *getExpressionString(PyObject *o, char *attr)
 
 static FACTOR_ELEMENT *extract_factor(PyObject *python_factor)
 {
-  EXPRESSION_NODE *decay_expression = NULL, *diffusibility_expression = NULL;
+  EXPRESSION_NODE *decay_expression = NULL, *diffusibility_expression = NULL, *synthesis_expression = NULL;
   FACTOR_ELEMENT *factor = NULL;
   const char *name;
 
@@ -1710,20 +1710,31 @@ static FACTOR_ELEMENT *extract_factor(PyObject *python_factor)
     free_expression_tree(decay_expression);
     return (NULL);
   }
-  clib_message(CLIB_MSG_TRACE, "returning factor\n");
+  clib_message(CLIB_MSG_TRACE, "extract_factor: got diffusibility\n");
+  synthesis_expression = getExpressionString(python_factor, "synthesis_expression");
+  if (synthesis_expression == NULL)
+  {
+    clib_message(CLIB_MSG_ERROR, "extract_factor: synthesis expression extraction failed\n");
+    free_expression_tree(decay_expression);
+    free_expression_tree(diffusibility_expression);
+    return (NULL);
+  }
+  clib_message(CLIB_MSG_TRACE, "extract_factor: got synthesis\n");
   name = getStringAttribute(python_factor, "name");
   if (name == NULL)
   {
     clib_message(CLIB_MSG_ERROR, "extract_factor: getStringAttribute failed for \"name\"\n");
     free_expression_tree(decay_expression);
     free_expression_tree(diffusibility_expression);
+    free_expression_tree(synthesis_expression);
     return (NULL);
   }
-  factor = new_factor_element(name, decay_expression, diffusibility_expression);
+  factor = new_factor_element(name, decay_expression, diffusibility_expression, synthesis_expression);
   if (factor == NULL)
   {
     PyErr_SetString(PyExc_MemoryError, "extract_factor: new_factor_element failed");
   }
+  clib_message(CLIB_MSG_TRACE, "returning factor\n");
   return (factor);
 }
 
@@ -3285,7 +3296,7 @@ static PyObject *clib_timeseries(PyObject *self, PyObject *args)
   }
   python_int = PyTuple_GetItem(args, 1);
   if (python_int == NULL)
-  {    
+  {
     clib_message(CLIB_MSG_TRACE, "clib_timeseries: PyTuple_GetItem failed for index 1 (num_timesteps)\n");
     refcountDebug_report("clib_timeseries returning exception", 0);
     return (NULL);

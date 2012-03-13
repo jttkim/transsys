@@ -162,6 +162,7 @@ typedef struct tag_factor
   int *gene_index;
   EXPRESSION_NODE *diffusibility_expression;
   EXPRESSION_NODE *decay_expression;
+  EXPRESSION_NODE *synthesis_expression;
   char name[IDENTIFIER_MAX];
 } FACTOR_ELEMENT;
 
@@ -189,7 +190,7 @@ typedef struct tag_transsys_instance
 {
   const TRANSSYS *transsys;
   double *factor_concentration, *new_concentration;
-} TRANSSYS_INSTANCE;  
+} TRANSSYS_INSTANCE;
 
 typedef struct tag_cell
 {
