@@ -915,9 +915,14 @@ class Factor(object) :
     return self.diffusibility_expression.getValueNodes()
 
 
+  def getSynthesisValueNodes(self) :
+    """get all constant value expression nodes in the diffusiblility expression."""
+    return self.synthesis_expression.getValueNodes()
+
+
   def getValueNodes(self) :
     """get all constant value expression nodes controlling the factor's behaviour."""
-    return self.getDecayValueNodes() + self.getDiffusibilityValueNodes()
+    return self.getDecayValueNodes() + self.getDiffusibilityValueNodes() + self.getSynthesisValueNodes()
 
 
   def getDecayIdentifierNodes(self) :
@@ -930,9 +935,14 @@ class Factor(object) :
     return self.diffusibility_expression.getIdentifierNodes()
 
 
+  def getSynthesisIdentifierNodes(self) :
+    """get all identifier expression nodes in the diffusiblility expression."""
+    return self.synthesis_expression.getIdentifierNodes()
+
+
   def getIdentifierNodes(self) :
     """get all identifier expression nodes controlling the factor's behaviour."""
-    return self.getDecayIdentifierNodes() + self.getDiffusibilityIdentifierNodes()
+    return self.getDecayIdentifierNodes() + self.getDiffusibilityIdentifierNodes() + self.getSynthesisIdentifierNodes()
 
 
   def write_dot_node(self, f, dot_parameters, transsys) :
@@ -1382,7 +1392,15 @@ it is invoked. This is not a mutator method.
     return valueNodes
 
 
-  def getFactorValueNodes(self, decayNodes = True, diffusibilityNodes = True) :
+  def getSynthesisValueNodes(self) :
+    """Get all constant value nodes pertaining to synthesis attributes in factors."""
+    valueNodes = []
+    for factor in self.factor_list :
+      valueNodes = valueNodes + factor.getSynthesisValueNodes()
+    return valueNodes
+
+
+  def getFactorValueNodes(self, decayNodes = True, diffusibilityNodes = True, synthesisNodes = True) :
     """Get all constant value nodes pertaining to factors
 in this transsys program."""
     valueNodes = []
@@ -1390,6 +1408,8 @@ in this transsys program."""
       valueNodes = valueNodes + self.getDecayValueNodes()
     if diffusibilityNodes :
       valueNodes = valueNodes + self.getDiffusibilityValueNodes()
+    if synthesisNodes :
+      valueNodes = valueNodes + self.getSynthesisValueNodes()
     return valueNodes
 
 
@@ -2615,7 +2635,13 @@ reasonable generate_program() method.
 Usage of this class: Instantiate with a random seed.
 Set the member variables by direct assignment as you
 see fit. Finally, call generate_program() to pull out endless
-variations of transsys programs..."""
+variations of transsys programs...
+
+FIXME: support for synthesis expressions is currently not provided.
+Synthesis expressions will be generated, but the generator is fixed
+to always generate 0.0 values. This is to maintain backwards compatibility
+with existing parameter transformer files.
+"""
 
   savefile_magic = 'RandomTranssysParameters-1.1'
 
@@ -2630,6 +2656,7 @@ variations of transsys programs..."""
     self.vmax_repression = CyclicSequence([0.0])
     self.decay = CyclicSequence([0.0])
     self.diffusibility = CyclicSequence([0.0])
+    self.synthesis = CyclicSequence([0.0])
 
 
   def __str__(self) :
@@ -2642,7 +2669,10 @@ not completely represented; the RNG state as well as the current value positions
 in the CyclicSequence instances are lost. Reproducible transsys generation
 after parsing a saved file should work if __str__() is used before generating
 any programs, and if no fancy tricks with CyclicSequence instances are
-played."""
+played.
+
+FIXME: no support yet for synthesis expressions, to maintain backwards compatibility.
+"""
     s = 'topology: %s\n' % self.topology
     if self.topology == 'random_nk' :
       s = s + 'n: %d\n' % self.n
@@ -2668,6 +2698,8 @@ played."""
     s = s + 'vmax_repression: %s\n' % str(self.vmax_repression)
     s = s + 'decay: %s\n' % str(self.decay)
     s = s + 'diffusibility: %s\n' % str(self.diffusibility)
+    # FIXME: synthesis should go here -- uncomment line below ehen ready...
+    # s = s + 'synthesis: %s\n' % str(self.synthesis)
     s = s + 'rndseed: %d\n' % self.rndseed
     return s
 
@@ -2762,6 +2794,8 @@ so it's best to require explicit specification of all parameters."""
     self.vmax_repression = parse_cyclicseq(f, 'vmax_repression')
     self.decay = parse_cyclicseq(f, 'decay')
     self.diffusibility = parse_cyclicseq(f, 'diffusibility')
+    # FIXME: synthesis should be parsed in here -- uncomment line below when ready...
+    # self.synthesis = parse_cyclicseq(f, 'synthesis')
     rndseed = utils.parse_int(f, 'rndseed')
     self.set_seed(rndseed)
     line = f.readline()
@@ -2825,6 +2859,13 @@ so it's best to require explicit specification of all parameters."""
       self.diffusibility = CyclicSequence(v)
     else :
       self.diffusibility = CyclicSequence([v])
+
+
+  def set_synthesis(self, v) :
+    if type(v) is types.ListType :
+      self.synthesis = CyclicSequence(v)
+    else :
+      self.synthesis = CyclicSequence([v])
 
 
   def check_linklist(self) :
@@ -2970,8 +3011,8 @@ This function does not create any multilinks."""
     for i in xrange(self.num_genes()) :
       decay_expr = next_expression(self.decay)
       diffusibility_expr = next_expression(self.diffusibility)
-      # FIXME: synthesis expression always 0, to maintain backwards compatibility
-      synthesis_expr = ExpressionNodeValue(0.0)
+      # FIXME: line below is ok, but self.synthesis can currently only be set through setter method, cannot be parsed
+      synthesis_expr = next_expression(self.synthesis)
       flist.append(Factor(factor_name(i), decay_expr, diffusibility_expr, synthesis_expr))
       promoter = []
       promoter.append(PromoterElementConstitutive(next_expression(self.constitutive)))
