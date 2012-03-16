@@ -815,19 +815,21 @@ it should be overridden by subclasses.
 
 class TranssysTypedParameterTransformer(ParameterTransformer) :
   """
-Parameter transformer differentiating decay, diffusibility, constitutive,
+Parameter transformer differentiating decay, diffusibility, synthesis, constitutive,
 aspec, amax, rspec and rmax nodes.
 
 This class is intended for transsys programs with constant values
 (i.e. L{ExpressionNodeValue} instances) for decay, diffusibility,
-constitutive, aspec, amax, rspec and rmax. Use with transsys programs
-that do not have this standard, basic structure has undefined effects
-and may be disabled in the future.
+synthesis, constitutive, aspec, amax, rspec and rmax. Use with transsys
+programs that do not have this standard, basic structure has undefined
+effects and may be disabled in the future.
 
 @ivar decayTransformation: transformation function for decay values.
 @type decayTransformation: L{TransformationFunction}
 @ivar diffusibilityTransformation: transformation function for diffusibility values.
 @type diffusibilityTransformation: L{TransformationFunction}
+@ivar synthesisTransformation: transformation function for synthesis values.
+@type synthesisTransformation: L{TransformationFunction}
 @ivar constitutiveTransformation: transformation function for constitutive values.
 @type constitutiveTransformation: L{TransformationFunction}
 @ivar aspecTransformation: transformation function for aspec values.
@@ -840,9 +842,12 @@ and may be disabled in the future.
 @type rmaxTransformation: L{TransformationFunction}
 """
 
-  savefile_magic = 'TranssysTypedParameterTransformer'
+  # version history:
+  # TranssysTypedParameterTransformer: initial version (aka 1.0)
+  # TranssysTypedParameterTransformer-1.1: added synthesistransformation
+  savefile_magic = 'TranssysTypedParameterTransformer-1.1'
 
-  def __init__(self, decayTransformation = None, diffusibilityTransformation = None, constitutiveTransformation = None, aspecTransformation = None, amaxTransformation = None, rspecTransformation = None, rmaxTransformation = None) :
+  def __init__(self, decayTransformation = None, diffusibilityTransformation = None, synthesisTransformation = None, constitutiveTransformation = None, aspecTransformation = None, amaxTransformation = None, rspecTransformation = None, rmaxTransformation = None) :
     super(TranssysTypedParameterTransformer, self).__init__()
     if decayTransformation is None :
       self.decayTransformation = TransformationFunction()
@@ -852,6 +857,10 @@ and may be disabled in the future.
       self.diffusibilityTransformation = TransformationFunction()
     else :
       self.diffusibilityTransformation = diffusibilityTransformation
+    if synthesisTransformation is None :
+      self.synthesisTransformation = TransformationFunction()
+    else :
+      self.synthesisTransformation = synthesisTransformation
     if constitutiveTransformation is None :
       self.constitutiveTransformation = TransformationFunction()
     else :
@@ -874,6 +883,7 @@ and may be disabled in the future.
       self.rmaxTransformation = rmaxTransformation
     self.decay_nodes = None
     self.diffusibility_nodes = None
+    self.synthesis_nodes = None
     self.constitutive_nodes = None
     self.aspec_nodes = None
     self.amax_nodes = None
@@ -887,6 +897,8 @@ and may be disabled in the future.
     s = s + '%s\n' % str(self.decayTransformation)
     s = s + 'diffusibilityTransformation\n'
     s = s + '%s\n' % str(self.diffusibilityTransformation)
+    s = s + 'synthesisTransformation\n'
+    s = s + '%s\n' % str(self.synthesisTransformation)
     s = s + 'constitutiveTransformation\n'
     s = s + '%s\n' % str(self.constitutiveTransformation)
     s = s + 'aspecTransformation\n'
@@ -908,6 +920,7 @@ and may be disabled in the future.
 """
     self.decayTransformation = transformation
     self.diffusibilityTransformation = transformation
+    self.synthesisTransformation = transformation
     self.constitutiveTransformation = transformation
     self.aspecTransformation = transformation
     self.amaxTransformation = transformation
@@ -922,6 +935,7 @@ and may be disabled in the future.
 """
     self.decayTransformation = SigmoidFunction()
     self.diffusibilityTransformation = SigmoidFunction()
+    self.synthesisTransformation = SigmoidFunction()
     self.constitutiveTransformation = ExponentialFunction()
     self.aspecTransformation = ExponentialFunction()
     self.amaxTransformation = ExponentialFunction()
@@ -944,6 +958,10 @@ and may be disabled in the future.
     if l != 'diffusibilityTransformation' :
       raise StandardError, 'expected "diffusibilityTransformation", got "%s"' % l
     self.diffusibilityTransformation = parse_transformation_function(f)
+    l = f.readline().strip()
+    if l != 'synthesisTransformation' :
+      raise StandardError, 'expected "synthesisTransformation", got "%s"' % l
+    self.synthesisTransformation = parse_transformation_function(f)
     l = f.readline().strip()
     if l != 'constitutiveTransformation' :
       raise StandardError, 'expected "constitutiveTransformation", got "%s"' % l
@@ -972,13 +990,16 @@ and may be disabled in the future.
     if factor_name_list is None :
       self.decay_nodes = transsys_program.getDecayValueNodes()
       self.diffusibility_nodes = transsys_program.getDiffusibilityValueNodes()
+      self.synthesis_nodes = transsys_program.getSynthesisValueNodes()
     else :
       self.decay_nodes = []
       self.diffusibility_nodes = []
+      self.synthesis_nodes = []
       for factor_name in factor_name_list :
         factor = self.transsys_program.find_factor(factor_name)
         self.decay_nodes.extend(factor.getDecayValueNodes())
         self.diffusibility_nodes.extend(factor.getDiffusibilityValueNodes())
+        self.synthesis_nodes.extend(factor.getSynthesisValueNodes())
     if gene_name_list is None :
       self.constitutive_nodes = transsys_program.getConstitutiveValueNodes()
       self.aspec_nodes = transsys_program.getActivateSpecValueNodes()
@@ -1007,6 +1028,8 @@ and may be disabled in the future.
       n.value = self.decayTransformation.clip(n.value)
     for n in self.diffusibility_nodes :
       n.value = self.diffusibilityTransformation.clip(n.value)
+    for n in self.synthesis_nodes :
+      n.value = self.synthesisTransformation.clip(n.value)
     for n in self.constitutive_nodes :
       n.value = self.constitutiveTransformation.clip(n.value)
     for n in self.aspec_nodes :
@@ -1029,6 +1052,8 @@ and may be disabled in the future.
       parameter_list.append(self.decayTransformation.inverse(p))
     for p in map(lambda n : n.value, self.diffusibility_nodes) :
       parameter_list.append(self.diffusibilityTransformation.inverse(p))
+    for p in map(lambda n : n.value, self.synthesis_nodes) :
+      parameter_list.append(self.synthesisTransformation.inverse(p))
     for p in map(lambda n : n.value, self.constitutive_nodes) :
       parameter_list.append(self.constitutiveTransformation.inverse(p))
     for p in map(lambda n : n.value, self.aspec_nodes) :
@@ -1050,7 +1075,7 @@ by C{getParameters}.
 
 @raise StandardError: if the parameter list is too long or too short
 """
-    if len(parameter_list) != len(self.decay_nodes) + len(self.diffusibility_nodes) + len(self.constitutive_nodes) + len(self.aspec_nodes) + len(self.amax_nodes) + len(self.rspec_nodes) + len(self.rmax_nodes):
+    if len(parameter_list) != len(self.decay_nodes) + len(self.diffusibility_nodes) + len(self.synthesis_nodes) + len(self.constitutive_nodes) + len(self.aspec_nodes) + len(self.amax_nodes) + len(self.rspec_nodes) + len(self.rmax_nodes):
       raise StandardError, 'parameter list incompatible with transsys program'
     i = 0
     for n in self.decay_nodes :
@@ -1058,6 +1083,9 @@ by C{getParameters}.
       i = i + 1
     for n in self.diffusibility_nodes :
       n.value = self.diffusibilityTransformation(parameter_list[i])
+      i = i + 1
+    for n in self.synthesis_nodes :
+      n.value = self.synthesisTransformation(parameter_list[i])
       i = i + 1
     for n in self.constitutive_nodes :
       n.value = self.constitutiveTransformation(parameter_list[i])
