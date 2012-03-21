@@ -5,7 +5,6 @@ import copy
 import math
 import types
 import os
-import popen2
 import random
 import string
 # import collections
@@ -148,7 +147,7 @@ is 50:50.
   if n_all == 0 :
     return 1.0
   return float(min(n_minus, n_plus)) / float(n_all) * 2.0
-  
+
 
 
 def overlap_disparity(rule, instance_series, factor_index) :
@@ -243,7 +242,7 @@ def flat_symbol_instance_list(lstring_list, transsys_program = None) :
     if si.transsys_instance.transsys_program is transsys_program :
       return True
     return False
-  
+
   flat_list = []
   for lstring in lstring_list :
     for si in lstring.symbol_list :
@@ -466,7 +465,7 @@ point overflow.
     if y < self.minValue :
       return None
       # raise StandardError, 'argument %f < minimal value %f' % (y, self.minValue)
-    xmin = -700.0 / self.exponentMultiplier 
+    xmin = -700.0 / self.exponentMultiplier
     v = (y - self.minValue) / self.coefficient
     # print '%1.17e %1.17e %s' % (y, v, str(v == 0.0))
     if v == 0.0 :
@@ -486,7 +485,7 @@ greatest possible range without incurring floating point limitations.
 """
 
   functionName = 'ArctanFunction'
-  
+
   def __init__(self, minValue = 0.0, maxValue = 1.0) :
     self.minValue = minValue
     self.valueRange = maxValue - minValue
@@ -1966,7 +1965,7 @@ beginning of a valid save file.
     s = s + '%s\n' % transsys.utils.name_value_pair(self.eliminateFlatComponents, 'eliminateFlatComponents')
     s = s + '%s\n' % str(self.transformer)
     return s[:-1]
-    
+
 
   def terminationCondition(self, stepsize, objective, improvement, iteration, numEvaluations, gradient) :
     """Check whether termination condition is satisfied.
@@ -2016,7 +2015,7 @@ beginning of a valid save file.
         return True
     if max(map(abs, gradient)) == 0.0 :
       return True
-    
+
 
   def optimise(self, transsys_program, objective_function, factor_name_list = None, gene_name_list = None) :
     tp = copy.deepcopy(transsys_program)

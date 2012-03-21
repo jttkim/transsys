@@ -125,7 +125,6 @@ import copy
 import types
 import os
 import sys
-import popen2
 import string
 import StringIO
 import math
@@ -965,7 +964,7 @@ class Factor(object) :
         if x.factor not in effecting_factor_list and x.factor not in synthesis_effecting_factor_list :
           effecting_factor_list.append(x.factor)
       for ef in effecting_factor_list :
-        f.write('  %s -> %s [%s];\n' % (ef.name, self.name, dot_attribute_string({}, dot_parameters.factorexpr_attributes)))    
+        f.write('  %s -> %s [%s];\n' % (ef.name, self.name, dot_attribute_string({}, dot_parameters.factorexpr_attributes)))
 
 
   def canonicalise(self) :
@@ -2214,70 +2213,6 @@ one.
     if lsys_lines is not None or lsys_symbol is not None :
       raise StandardError, 'lsys_lines and lsys_symbol are no longer supported -- try using time_series_old'
     return clib.timeseries(self, num_timesteps, sampling_period)
-
-
-  def time_series_old(self, num_timesteps, sampling_period = 1, lsys_lines = None, lsys_symbol = None) :
-    # FIXME: lsys_lines is a kludge that should be removed once lsys parsing
-    # is available.
-    cmd = 'transexpr -n %d -d %d' % (num_timesteps, sampling_period)
-    glue = ''
-    s = ''
-    for x in self.factor_concentration :
-      s = s + '%s%f' % (glue, x)
-      glue = ' '
-    cmd = cmd + ' -F \'%s\'' % s
-    if lsys_lines is not None :
-      cmd = cmd + ' -l -t \'%s\'' % self.transsys_program.name
-    if lsys_symbol is not None :
-      cmd = cmd + ' -y \'%s\'' % lsys_symbol
-    # sys.stderr.write('%s\n' % cmd)
-    p = popen2.Popen3(cmd, 1)
-    sys.stdout.flush()
-    sys.stderr.flush()
-    pid = os.fork()
-    if pid == 0 :
-      p.fromchild.close()
-      p.tochild.write(str(self.transsys_program))
-      if lsys_lines is not None :
-        for l in lsys_lines :
-          p.tochild.write('%s\n' % l)
-      #sys.stdout.write(str(self.transsys_program))
-      p.tochild.close()
-      os._exit(os.EX_OK)
-    p.tochild.close()
-    tseries = []
-    line = p.fromchild.readline()
-    magic = line.strip()
-    if magic != self.magic :
-      sys.stderr.write('bad "magic" first line: got "%s", expected "%s"\n' % (magic, self.magic))
-      raise StandardError, 'TranssysInstance.time_series: bad header (incompatible transexpr version?)'
-    while line :
-      line = string.strip(line)
-      if line :
-        # the second condition is a kludge to allow time_series_old to
-        # work with output containing a header line
-        if line[0] != '#' and line[:16] != 'time n.instances' :
-          l = string.split(line)
-          if len(l) != 3 * self.transsys_program.num_factors() + 2 :
-            raise StandardError, 'TranssysInstance.time_series: bad line format: expected %d words, got %d' % (3 * self.transsys_program.num_factors() + 2, len(l))
-          t = string.atoi(l[0])
-          ti = TranssysInstance(self.transsys_program, t)
-          for i in xrange(len(self.transsys_program.factor_list)) :
-            ti.factor_concentration[i] = float(l[3 * i + 2])
-            ti.factor_concentration_stddev[i] = float(l[3 * i + 3])
-            ti.factor_concentration_stddev[i] = float(l[3 * i + 4])
-          tseries.append(ti)
-      line = p.fromchild.readline()
-    p.fromchild.close()
-    status = p.wait()
-    if status != 0 :
-      errmsg = p.childerr.readline()
-      while errmsg :
-        sys.stderr.write(errmsg)
-        errmsg = p.childerr.readline()
-      raise StandardError, 'TranssysInstance::time_series: transexpr exit status %d ("%s")' % (status, errmsg.strip())
-    os.wait()
-    return tseries
 
 
 class CollectionStatistics(object) :

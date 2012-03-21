@@ -125,6 +125,9 @@ double evaluate_expression(const EXPRESSION_NODE *expr, const TRANSSYS_INSTANCE 
   case NT_ATAN:
     arg1 = evaluate_expression(expr->content.argument[0], ti_list);
     return (atan(arg1));
+  case NT_RAW_IDENTIFIER:
+    fprintf(stderr, "evaluate_expression: attempt to evaluate raw identifier \"%s\"\n", expr->content.raw_identifier.factor_name);
+    return (0.0);
   default:
     fprintf(stderr, "evaluate_expression: unknown expression type %d\n", (int) expr->type);
     return (0.0);
