@@ -10,15 +10,17 @@ def dot(argv) :
   dp = transsys.DotParameters()
   dp.factor_attributes = {'shape': 'hexagon'}
   dp.gene_attributes = {}
+  dp.synthesis_attributes = {'color': 'green', 'arrowhead': 'diamond'}
   dp.factorexpr_attributes = {'color': 'blue', 'arrowhead': 'dot'}
   dp.activate_attributes = {'arrowhead': 'normal'}
   dp.repress_attributes = {'arrowhead': 'tee'}
   dp.display_factors = 0
+  dp.display_synthesis = 0
   dp.cluster = 0
   dotpos = None
   gene_radius = 5.0
   factor_radius = 4.0
-  options, args = getopt.getopt(argv, 'r:p:cfxh')
+  options, args = getopt.getopt(argv, 'r:p:cfxsh')
   for opt, par in options :
     if opt == '-h' :
       print 'dot: create a representation of a transsys program in the dot language (see www.graphviz.org)'
@@ -26,6 +28,7 @@ def dot(argv) :
       print '-r <radius>: specify radius for gene and factor circular placement, separated by comma'
       print '-c: cluster genes with factors they encode'
       print '-f: display factors'
+      print '-s: show interactions affecting synthesis'
       print '-x: show factors occurring in mathematical expressions as edges'
       sys.exit()
     elif opt == '-p' :
@@ -39,6 +42,8 @@ def dot(argv) :
       dp.display_factors = 1
     elif opt == '-x' :
       dp.display_factorexprs = 1
+    elif opt == '-s' :
+      dp.display_synthesis = 1
     elif opt == '-c' :
       dp.cluster = 1
     else :

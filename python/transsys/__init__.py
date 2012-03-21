@@ -899,10 +899,11 @@ class Factor(object) :
   def resolve(self, tp) :
     self.decay_expression.resolve(tp)
     self.diffusibility_expression.resolve(tp)
+    self.synthesis_expression.resolve(tp)
 
 
   def unresolved_copy(self) :
-    return self.__class__(self.name, self.decay_expression.unresolved_copy(), self.diffusibility_expression.unresolved_copy(), self.dot_attributes)
+    return self.__class__(self.name, self.decay_expression.unresolved_copy(), self.diffusibility_expression.unresolved_copy(), self.synthesis_expression.unresolved_copy(), self.dot_attributes)
 
 
   def getDecayValueNodes(self) :
@@ -950,21 +951,32 @@ class Factor(object) :
 
 
   def write_dot_edges(self, f, dot_parameters, transsys) :
+    synthesis_effecting_factor_list = []
+    effecting_factor_list = []
+    if dot_parameters.display_synthesis :
+      for x in self.getSynthesisIdentifierNodes() :
+        if x.factor not in synthesis_effecting_factor_list :
+          synthesis_effecting_factor_list.append(x.factor)
+      for ef in synthesis_effecting_factor_list :
+        f.write('  %s -> %s [%s];\n' % (ef.name, self.name, dot_attribute_string({}, dot_parameters.synthesis_attributes)))
     if dot_parameters.display_factorexprs :
-      effecting_factor_list = []
+      # display only edges that haven't been displayed previously -- hence "... and not in synthesis_effecting_factor_list
       for x in self.getIdentifierNodes() :
-        if x.factor not in effecting_factor_list :
+        if x.factor not in effecting_factor_list and x.factor not in synthesis_effecting_factor_list :
           effecting_factor_list.append(x.factor)
       for ef in effecting_factor_list :
-        f.write('  %s -> %s [%s];\n' % (ef.name, self.name, dot_attribute_string({}, dot_parameters.factorexpr_attributes)))
+        f.write('  %s -> %s [%s];\n' % (ef.name, self.name, dot_attribute_string({}, dot_parameters.factorexpr_attributes)))    
 
 
   def canonicalise(self) :
     """"""
+    # FIXME: canonicalisation depends on expression being value nodes
     if isinstance(self.decay_expression, ExpressionNodeValue) :
       self.decay_expression.clip(0.0, 1.0)
     if isinstance(self.diffusibility_expression, ExpressionNodeValue) :
       self.diffusibility_expression.clip(0.0, 1.0)
+    if isinstance(self.synthesis_expression, ExpressionNodeValue) :
+      self.diffusibility_expression.clip(0.0, None)
 
 
 class Gene(object) :
@@ -2557,10 +2569,12 @@ class DotParameters(object) :
     self.display_factors = 1
     self.cluster = 0
     self.display_factorexprs = 0
+    self.display_synthesis = 0
     self.gene_attributes = {}
     self.factor_attributes = {}
     self.activate_attributes = {}
     self.repress_attributes = {}
+    self.synthesis_attributes = {}
     self.factorexpr_attributes = {}
 
 
