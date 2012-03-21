@@ -317,6 +317,7 @@ int resolve_transsys(TRANSSYS *tr)
   {
     resolve_identifiers(fe->diffusibility_expression, tr, NULL, NULL);
     resolve_identifiers(fe->decay_expression, tr, NULL, NULL);
+    resolve_identifiers(fe->synthesis_expression, tr, NULL, NULL);
   }
   for (ge = tr->gene_list; ge; ge = ge->next)
   {
