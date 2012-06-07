@@ -1686,6 +1686,7 @@ static EXPRESSION_NODE *getExpressionString(PyObject *o, char *attr)
 
 static FACTOR_ELEMENT *extract_factor(PyObject *python_factor)
 {
+  PyObject *python_expression;
   EXPRESSION_NODE *decay_expression = NULL, *diffusibility_expression = NULL, *synthesis_expression = NULL;
   FACTOR_ELEMENT *factor = NULL;
   const char *name;
@@ -1695,31 +1696,80 @@ static FACTOR_ELEMENT *extract_factor(PyObject *python_factor)
   {
     return (NULL);
   }
-  decay_expression = getExpressionString(python_factor, "decay_expression");
-  clib_message(CLIB_MSG_TRACE, "extract_factor: extracted decay expression: %p\n", (void *) decay_expression);
-  if (decay_expression == NULL)
+  python_expression = PyObject_GetAttrString(python_factor, "decay_expression");
+  if (python_expression == NULL)
   {
-    clib_message(CLIB_MSG_ERROR, "extract_factor: decay expression extraction failed\n");
+    clib_message(CLIB_MSG_TRACE, "extract_factor: PyObject_GetAttrString failed for \"decay_expression\"\n");
     return (NULL);
   }
-  clib_message(CLIB_MSG_TRACE, "extract_factor: got decay\n");
-  diffusibility_expression = getExpressionString(python_factor, "diffusibility_expression");
-  if (diffusibility_expression == NULL)
+  if (python_expression == Py_None)
   {
-    clib_message(CLIB_MSG_ERROR, "extract_factor: diffusibility expression extraction failed\n");
-    free_expression_tree(decay_expression);
+    decay_expression = NULL;
+  }
+  else
+  {
+    decay_expression = extract_expression(python_expression);
+    if (decay_expression == NULL)
+    {
+      clib_message(CLIB_MSG_TRACE, "extract_factor: extract_expression failed for \"decay_expression\"\n");
+      Py_DECREF(python_expression);
+      return (NULL);
+    }
+    clib_message(CLIB_MSG_TRACE, "extract_factor: extracted decay expression\n");
+  }
+  Py_DECREF(python_expression);
+  clib_message(CLIB_MSG_TRACE, "extract_factor: got decay expression: %p\n", (void *) decay_expression);
+  python_expression = PyObject_GetAttrString(python_factor, "diffusibility_expression");
+  if (python_expression == NULL)
+  {
+    clib_message(CLIB_MSG_TRACE, "extract_factor: PyObject_GetAttrString failed for \"diffusibility_expression\"\n");
     return (NULL);
   }
-  clib_message(CLIB_MSG_TRACE, "extract_factor: got diffusibility\n");
-  synthesis_expression = getExpressionString(python_factor, "synthesis_expression");
-  if (synthesis_expression == NULL)
+  if (python_expression == Py_None)
   {
-    clib_message(CLIB_MSG_ERROR, "extract_factor: synthesis expression extraction failed\n");
-    free_expression_tree(decay_expression);
-    free_expression_tree(diffusibility_expression);
+    diffusibility_expression = NULL;
+  }
+  else
+  {
+    diffusibility_expression = extract_expression(python_expression);
+    if (diffusibility_expression == NULL)
+    {
+      clib_message(CLIB_MSG_TRACE, "extract_factor: extract_expression failed for \"diffusibility_expression\"\n");
+      free_expression_tree(decay_expression);
+      Py_DECREF(python_expression);
+      return (NULL);
+    }
+    clib_message(CLIB_MSG_TRACE, "extract_factor: extracted diffusibility expression\n");
+  }
+  Py_DECREF(python_expression);
+  clib_message(CLIB_MSG_TRACE, "extract_factor: got diffusibility expression: %p\n", (void *) diffusibility_expression);
+
+
+  python_expression = PyObject_GetAttrString(python_factor, "synthesis_expression");
+  if (python_expression == NULL)
+  {
+    clib_message(CLIB_MSG_TRACE, "extract_factor: PyObject_GetAttrString failed for \"synthesis_expression\"\n");
     return (NULL);
   }
-  clib_message(CLIB_MSG_TRACE, "extract_factor: got synthesis\n");
+  if (python_expression == Py_None)
+  {
+    synthesis_expression = NULL;
+  }
+  else
+  {
+    synthesis_expression = extract_expression(python_expression);
+    if (synthesis_expression == NULL)
+    {
+      clib_message(CLIB_MSG_TRACE, "extract_factor: extract_expression failed for \"synthesis_expression\"\n");
+      free_expression_tree(decay_expression);
+      free_expression_tree(diffusibility_expression);
+      Py_DECREF(python_expression);
+      return (NULL);
+    }
+    clib_message(CLIB_MSG_TRACE, "extract_factor: extracted synthesis expression\n");
+  }
+  Py_DECREF(python_expression);
+  clib_message(CLIB_MSG_TRACE, "extract_factor: got synthesis expression: %p\n", (void *) synthesis_expression);
   name = getStringAttribute(python_factor, "name");
   if (name == NULL)
   {

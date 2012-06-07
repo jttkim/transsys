@@ -108,27 +108,7 @@ static void ignore_message(char *format, ...)
 
 static int setup_current_factor(const char *name)
 {
-  EXPRESSION_NODE *de, *di, *synthesis_expr;
-
-  de = new_expression_node(NT_VALUE, 1.0);
-  if (de == NULL)
-  {
-    yyerror("new_expression_node for decay failed in setup_current_factor");
-    return (-1);
-  }
-  di = new_expression_node(NT_VALUE, 1.0);
-  if (di == NULL)
-  {
-    yyerror("new_expression_node for diffusibility failed in setup_current_factor");
-    return (-1);
-  }
-  synthesis_expr = new_expression_node(NT_VALUE, 0.0);
-  if (synthesis_expr == NULL)
-  {
-    yyerror("new_expression_node for synthesis failed in setup_current_factor");
-    return (-1);
-  }
-  current_factor = new_factor_element(name, de, di, synthesis_expr);
+  current_factor = new_factor_element(name, NULL, NULL, NULL);
   if (current_factor == NULL)
   {
     yyerror("setup_current_factor failed");

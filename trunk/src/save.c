@@ -242,15 +242,24 @@ static void fprint_factor(FILE *f, int indent_depth, const FACTOR_ELEMENT *facto
 {
   fprint_indented(f, indent_depth, "factor %s\n", factor->name);
   fprint_indented(f, indent_depth, "{\n");
-  fprint_indented(f, indent_depth + 2, "decay: ");
-  fprint_expression_tree(f, factor->decay_expression, factor_array, NULL);
-  fprintf(f, ";\n");
-  fprint_indented(f, indent_depth + 2, "diffusibility: ");
-  fprint_expression_tree(f, factor->diffusibility_expression, factor_array, NULL);
-  fprintf(f, ";\n");
-  fprint_indented(f, indent_depth + 2, "synthesis: ");
-  fprint_expression_tree(f, factor->synthesis_expression, factor_array, NULL);
-  fprintf(f, ";\n");
+  if (factor->decay_expression != NULL)
+  {
+    fprint_indented(f, indent_depth + 2, "decay: ");
+    fprint_expression_tree(f, factor->decay_expression, factor_array, NULL);
+    fprintf(f, ";\n");
+  }
+  if (factor->diffusibility_expression != NULL)
+  {
+    fprint_indented(f, indent_depth + 2, "diffusibility: ");
+    fprint_expression_tree(f, factor->diffusibility_expression, factor_array, NULL);
+    fprintf(f, ";\n");
+  }
+  if (factor->synthesis_expression != NULL)
+  {
+    fprint_indented(f, indent_depth + 2, "synthesis: ");
+    fprint_expression_tree(f, factor->synthesis_expression, factor_array, NULL);
+    fprintf(f, ";\n");
+  }
   fprint_indented(f, indent_depth, "}\n");
 }
 

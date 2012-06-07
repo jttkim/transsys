@@ -157,10 +157,9 @@ def timeseries(argv) :
     for factor in tp.factor_list :
       outfile.write(' %1.17e' % ti.get_factor_concentration(factor.name))
     outfile.write('\n')
-
-
 if len(sys.argv) < 2 :
-  print 'usage: %s <command> [options]'
+  print 'usage: %s <command> [options]' % sys.argv[0]
+  print 'commands are: constitutiveonly, deletelinks, timeseries'
   sys.exit()
 cmd = sys.argv[1]
 argv = sys.argv[2:]
