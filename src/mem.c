@@ -158,6 +158,11 @@ INTEGER_ARRAY *extend_integer_array(INTEGER_ARRAY *ia, int v)
 
 void free_expression_tree(EXPRESSION_NODE *node)
 {
+  if (node == NULL)
+  {
+    /* allow attempts to free nonexisting nodes to support optional expressions in factors etc. */
+    return;
+  }
   switch(node->type)
   {
   case NT_VALUE:
@@ -330,9 +335,13 @@ EXPRESSION_CONTEXT_ENTRY *new_expression_context_entry(const TRANSSYS *transsys,
 static void free_promoter_components(PROMOTER_ELEMENT *a)
 {
   if (a->num_binding_factors)
+  {
     free(a->factor_index);
+  }
   if (a->type == PROMOTERELEMENT_CONSTITUTIVE)
+  {
     free_expression_tree(a->expr1);
+  }
   else
   {
     free_expression_tree(a->expr1);
@@ -388,18 +397,9 @@ PROMOTER_ELEMENT *new_promoter_element(PROMOTERELEMENT_TYPE type, int num_bindin
 
 static void free_factor_components(FACTOR_ELEMENT *fe)
 {
-  if (fe->diffusibility_expression)
-  {
-    free_expression_tree(fe->diffusibility_expression);
-  }
-  if (fe->decay_expression)
-  {
-    free_expression_tree(fe->decay_expression);
-  }
-  if (fe->synthesis_expression)
-  {
-    free_expression_tree(fe->synthesis_expression);
-  }
+  free_expression_tree(fe->decay_expression);
+  free_expression_tree(fe->diffusibility_expression);
+  free_expression_tree(fe->synthesis_expression);
   if (fe->num_producing_genes)
   {
     free(fe->gene_index);
@@ -668,9 +668,13 @@ void free_graphics_primitive_components(GRAPHICS_PRIMITIVE *gp)
   int i;
 
   for (i = 0; i < gp->num_arguments; i++)
+  {
     free_expression_tree(gp->argument[i]);
+  }
   if (gp->argument)
+  {
     free(gp->argument);
+  }
 }
 
 

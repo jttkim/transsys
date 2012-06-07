@@ -56,7 +56,8 @@ int process_expression(TRANSSYS_INSTANCE *ti)
 {
   double *nc;
   int i;
-  double d, s, a, r, cmin, km, max, f_inc;
+  double d, s;
+  double a, r, cmin, km, max, f_inc;
   PROMOTER_ELEMENT *ae;
   const TRANSSYS_INSTANCE *const_ti = ti;
 
@@ -72,7 +73,11 @@ int process_expression(TRANSSYS_INSTANCE *ti)
   for (i = 0; i < ti->transsys->num_factors; i++)
   {
     /* fprintf(stderr, "process_espression/decay: i = %d, new_concentration = %p\n", i, (void *) ti->new_concentration); */
-    d = evaluate_expression(ti->transsys->factor_list[i].decay_expression, &const_ti);
+    d = 0.0;
+    if (ti->transsys->factor_list[i].decay_expression)
+    {
+      d = evaluate_expression(ti->transsys->factor_list[i].decay_expression, &const_ti);
+    }
     /* fprintf(stderr, "process_expression: decay is %f\n", d); */
     /* fprintf(stderr, "factor_concentration[%d] is currently %e\n", i, ti->factor_concentration[i]); */
     /* fprintf(stderr, "new_concentration[%d] is currently %e\n", i, ti->new_concentration[i]); */
@@ -84,7 +89,11 @@ int process_expression(TRANSSYS_INSTANCE *ti)
     {
       d = 1.0;
     }
-    s = evaluate_expression(ti->transsys->factor_list[i].synthesis_expression, &const_ti);
+    s = 0.0;
+    if (ti->transsys->factor_list[i].synthesis_expression)
+    {
+      s = evaluate_expression(ti->transsys->factor_list[i].synthesis_expression, &const_ti);
+    }
     if (s < 0.0)
     {
       s = 0.0;

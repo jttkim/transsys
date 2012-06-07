@@ -868,11 +868,11 @@ class Factor(object) :
   attribute values
 """
   def __init__(self, name, decay_expr, diffusibility_expr, synthesis_expr, dot_attrs = None) :
-    if not isinstance(decay_expr, ExpressionNode) :
+    if decay_expr is not None and not isinstance(decay_expr, ExpressionNode) :
       raise StandardError, 'Factor::__init__: bad decay_expr type'
-    if not isinstance(diffusibility_expr, ExpressionNode) :
+    if diffusibility_expr is not None and not isinstance(diffusibility_expr, ExpressionNode) :
       raise StandardError, 'Factor::__init__: bad diffusibility_expr type'
-    if not isinstance(synthesis_expr, ExpressionNode) :
+    if synthesis_expr is not None and not isinstance(synthesis_expr, ExpressionNode) :
       raise StandardError, 'Factor::__init__: bad synthesis_expr type'
     self.name = name
     self.decay_expression = decay_expr
@@ -886,37 +886,59 @@ class Factor(object) :
 
 
   def __str__(self) :
-    return """  factor %s
+    s = """  factor %s
   {
-%s    decay: %s;
-    diffusibility: %s;
-    synthesis: %s;
-  }
-""" % (self.name, _comment_lines(self.comments, '    '), str(self.decay_expression), str(self.diffusibility_expression), str(self.synthesis_expression))
+%s""" % (self.name, _comment_lines(self.comments, '    '))
+    if self.decay_expression is not None :
+      s = s + '    decay: %s;\n' % str(self.decay_expression)
+    if self.diffusibility_expression is not None :
+      s = s + '    diffusibility: %s;\n' % str(self.diffusibility_expression)
+    if self.synthesis_expression is not None :
+      s = s + '    synthesis: %s;\n' % str(self.synthesis_expression)
+    s = s + '  }\n'
+    return s
 
 
   def resolve(self, tp) :
-    self.decay_expression.resolve(tp)
-    self.diffusibility_expression.resolve(tp)
-    self.synthesis_expression.resolve(tp)
+    if self.decay_expression is not None :
+      self.decay_expression.resolve(tp)
+    if self.diffusibility_expression is not None :
+      self.diffusibility_expression.resolve(tp)
+    if self.synthesis_expression is not None :
+      self.synthesis_expression.resolve(tp)
 
 
   def unresolved_copy(self) :
-    return self.__class__(self.name, self.decay_expression.unresolved_copy(), self.diffusibility_expression.unresolved_copy(), self.synthesis_expression.unresolved_copy(), self.dot_attributes)
+    decay_expression = None
+    if self.decay_expression is not None :
+      decay_expression = self.decay_expresssion.unresolved_copy()
+    diffusibility_expression = None
+    if self.diffusibility_expression is not None :
+      diffusibility_expression = self.diffusibility_expresssion.unresolved_copy()
+    synthesis_expression = None
+    if self.synthesis_expression is not None :
+      synthesis_expression = self.synthesis_expresssion.unresolved_copy()
+    return self.__class__(self.name, decay_expression, diffusibility_expression, synthesis_expression, self.dot_attributes)
 
 
   def getDecayValueNodes(self) :
     """get all constant value expression nodes in the decay expression."""
+    if self.decay_expression is None :
+      return []
     return self.decay_expression.getValueNodes()
 
 
   def getDiffusibilityValueNodes(self) :
     """get all constant value expression nodes in the diffusiblility expression."""
+    if self.diffusibility_expression is None :
+      return []
     return self.diffusibility_expression.getValueNodes()
 
 
   def getSynthesisValueNodes(self) :
     """get all constant value expression nodes in the diffusiblility expression."""
+    if self.synthesis_expression is None :
+      return []
     return self.synthesis_expression.getValueNodes()
 
 
@@ -927,16 +949,22 @@ class Factor(object) :
 
   def getDecayIdentifierNodes(self) :
     """get all identifier expression nodes in the decay expression."""
+    if self.decay_expression is None :
+      return []
     return self.decay_expression.getIdentifierNodes()
 
 
   def getDiffusibilityIdentifierNodes(self) :
     """get all identifier expression nodes in the diffusiblility expression."""
+    if self.diffusibility_expression is None :
+      return []
     return self.diffusibility_expression.getIdentifierNodes()
 
 
   def getSynthesisIdentifierNodes(self) :
     """get all identifier expression nodes in the diffusiblility expression."""
+    if self.synthesis_expression is None :
+      return []
     return self.synthesis_expression.getIdentifierNodes()
 
 
@@ -968,8 +996,10 @@ class Factor(object) :
 
 
   def canonicalise(self) :
-    """"""
-    # FIXME: canonicalisation depends on expression being value nodes
+    """Canonicalise factor by clipping decay, diffusibility and synthesis expressions.
+Canonicalisation works only if the respective expression nodes are value nodes. Otherwise,
+canonicalisation has no effect.
+"""
     if isinstance(self.decay_expression, ExpressionNodeValue) :
       self.decay_expression.clip(0.0, 1.0)
     if isinstance(self.diffusibility_expression, ExpressionNodeValue) :
@@ -2864,7 +2894,6 @@ function."""
     def gene_name(i) :
       return 'g%04d' % i
 
-
     def random_nk_linklist(n, k, rng) :
       if rng is None :
         raise StandardError, 'RandomTranssysParameters::generate_transsys: cannot generate random NK linklist without RNG'
@@ -3345,9 +3374,9 @@ class TranssysProgramParser(object) :
     self.expect_token('factor')
     factor_name = self.expect_token('identifier')
     self.expect_token('{')
-    decay_expr = ExpressionNodeValue(1.0)
-    diffusibility_expr = ExpressionNodeValue(1.0)
-    synthesis_expr = ExpressionNodeValue(0.0)
+    decay_expr = None
+    diffusibility_expr = None
+    synthesis_expr = None
     while 1 :
       l = self.scanner.lookahead()
       if l == 'decay' :

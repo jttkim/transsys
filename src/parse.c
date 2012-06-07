@@ -315,9 +315,18 @@ int resolve_transsys(TRANSSYS *tr)
   }
   for (fe = tr->factor_list; fe; fe = fe->next)
   {
-    resolve_identifiers(fe->diffusibility_expression, tr, NULL, NULL);
-    resolve_identifiers(fe->decay_expression, tr, NULL, NULL);
-    resolve_identifiers(fe->synthesis_expression, tr, NULL, NULL);
+    if (fe->decay_expression)
+    {
+      resolve_identifiers(fe->decay_expression, tr, NULL, NULL);
+    }
+    if (fe->diffusibility_expression)
+    {
+      resolve_identifiers(fe->diffusibility_expression, tr, NULL, NULL);
+    }
+    if (fe->synthesis_expression)
+    {
+      resolve_identifiers(fe->synthesis_expression, tr, NULL, NULL);
+    }
   }
   for (ge = tr->gene_list; ge; ge = ge->next)
   {
