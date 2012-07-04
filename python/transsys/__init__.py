@@ -214,6 +214,15 @@ is the default implementation which returns an empty list."""
     return []
 
 
+  def structureEquals(self, other) :
+    """Determine whether the structure of this expression node
+is equal to that of the other expression node.
+
+@see: L{TranssysProgram.structureEquals}
+"""
+    raise StandardError, 'abstract method called'
+    
+
 class ExpressionNodeValue(ExpressionNode) :
   """Expression node holding a constant floating point value.
 
@@ -256,6 +265,19 @@ Both parameters may be C{None} to specify an open-ended interval.
     if maxValue is not None :
       self.value = min(maxValue, self.value)
     # print '--> %f' % self.value
+
+      
+  def structureEquals(self, other) :
+    """Determine whether the structure of this expression node
+is equal to that of the other expression node.
+
+Returns C{True} if the other expression node is a
+L{ExpressionNodeValue} instance as well, as structural equality
+ignores numerical values.
+
+@see: L{TranssysProgram.structureEquals}
+"""
+    return isinstance(other, self.__class__)
 
 
 class ExpressionNodeIdentifier(ExpressionNode) :
@@ -319,6 +341,16 @@ instances (in a L-transsys context)"""
       return transsys_instance[self.transsys_label].factor_concentration[self.factor.index]
 
 
+  def structureEquals(self, other) :
+    if not isinstance(other, self.__class__) :
+      return False
+    if self.transsys_label != other.transsys_label :
+      return False
+    if self.factor_name() != other.factor_name() :
+      return False
+    return True
+
+
 class ExpressionNodeBinary(ExpressionNode) :
 
   def __init__(self, op1, op2, operator_sym = None) :
@@ -335,6 +367,16 @@ class ExpressionNodeBinary(ExpressionNode) :
     return '(%s %s %s)' % (str(self.operand1), self.operator_sym, str(self.operand2))
 
 
+  def structureEquals(self, other) :
+    if not isinstance(other, self.__class__) :
+      return False
+    if not self.operand1.structureEquals(other.operand1) :
+      return False
+    if not self.operand2.structureEquals(other.operand2) :
+      return False
+    return True
+
+    
   def resolve(self, tp) :
     self.operand1.resolve(tp)
     self.operand2.resolve(tp)
@@ -470,6 +512,14 @@ class ExpressionNodeNot(ExpressionNode) :
     return '(!(%s))' % str(self.operand)
 
 
+  def structureEquals(self, other) :
+    if not isinstance(other, self.__class__) :
+      return False
+    if not self.operand.structureEquals(other.operand) :
+      return False
+    return True
+
+    
   def evaluate(self, transsys_instance) :
     return not self.operand.evaluate(transsys_instance)
 
@@ -531,6 +581,14 @@ class ExpressionNodeFunction(ExpressionNode) :
     return s
 
 
+  def structureEquals(self, other) :
+    if not isinstance(other, self.__class__) :
+      return False
+    if not self.operand.structureEquals(other.operand) :
+      return False
+    return True
+
+    
   def evaluate(self, transsys_instance) :
     raise StandardError, 'cannot evaluate undefined function'
 
@@ -633,6 +691,15 @@ class PromoterElement(object) :
 """
     raise StandardError, 'abstract method called'
 
+  
+  def structureEquals(self, other) :
+    """Determine whether the structure of this promoter element
+is equal to that of the other promoter element.
+
+@see: L{TranssysProgram.structureEquals}
+"""
+    raise StandardError, 'abstract method called'
+    
 
 class PromoterElementConstitutive(PromoterElement) :
 
@@ -689,6 +756,11 @@ should be used sparingly and avoided where possible.
     pass
     # if isinstance(self.expression, ExpressionNodeValue) :
     #  self.expression.clip(0.0, None)
+
+  
+  def structureEquals(self, other) :
+    return self.expression.structureEquals(other.expression)
+  
 
 
 class PromoterElementLink(PromoterElement) :
@@ -817,7 +889,22 @@ negative max constants to their antagonistic counterparts.
           f.write('  %s -> %s [%s];\n' % (gene.name, target_name, dot_attribute_string(attribute_dict, classattribute_dict)))
 
 
-# FIXME: there should be a "Michaelis-Menten" parent class for
+  def structureEquals(self, other) :
+    if not isinstance(other, self.__class__) :
+      return False
+    if len(self.factor_list) != len(other.factor_list) :
+      return False
+    for i in xrange(len(self.factor_list)) :
+      if not self.factor_list[i].structureEquals(other.factor_list[i]) :
+        return False
+    if not self.expression1.structureEquals(other.expression1) :
+      return False
+    if not self.expression2.structureEquals(other.expression2) :
+      return False
+    return True
+
+  
+  # FIXME: there should be a "Michaelis-Menten" parent class for
 # activate and repress
 
 class PromoterElementActivate(PromoterElementLink) :
@@ -884,7 +971,7 @@ class Factor(object) :
     else :
       self.dot_attributes = copy.deepcopy(dot_attrs)
 
-
+      
   def __str__(self) :
     s = """  factor %s
   {
@@ -1008,6 +1095,23 @@ canonicalisation has no effect.
       self.diffusibility_expression.clip(0.0, None)
 
 
+  def structureEquals(self, other) :
+    """Determine whether the structure of this factor
+is equal to that of the other factor.
+
+@see: L{TranssysProgram.structureEquals}
+"""
+    if self.name != other.name :
+      return False
+    if not self.decay_expression.structureEquals(other.decay_expression) :
+      return False
+    if not self.diffusibility_expression.structureEquals(other.diffusibility_expression) :
+      return False
+    if not self.synthesis_expression.structureEquals(other.synthesis_expression) :
+      return False
+    return True
+
+    
 class Gene(object) :
   """Class to represent a gene.
 
@@ -1036,6 +1140,24 @@ class Gene(object) :
       self.dot_attributes = {}
     else :
       self.dot_attributes = copy.deepcopy(dot_attrs)
+
+      
+  def structureEquals(self, other) :
+    """Determine whether the structure of this gene
+is equal to that of the other gene.
+
+@see: L{TranssysProgram.structureEquals}
+"""
+    if self.name != other.name :
+      return False
+    if not self.product.structureEquals(other.product) :
+      return False
+    if len(self.promoter) != len(other.promoter) :
+      return False
+    for i in xrange(len(self.promoter)) :
+      if not self.promoter[i].structureEquals(other.promoter[i]) :
+        return False
+    return True
 
 
   def __str__(self) :
@@ -1658,6 +1780,32 @@ may have identical dynamics even though their canonical forms differ.
     for gene in self.gene_list :
       gene.canonicalise()
 
+      
+  def structureEquals(self, other) :
+    """Determine whether the structure of this transsys program
+is equal to that of the other program.
+
+Structural equality means that programs are identical, with the
+exception of numerical values (contained in ExpressionNodeValue
+instances). The transsys program name and comments are also allowed
+to differ.
+
+At this time, the order of genes and factors matters, if the order
+is not the same in both programs, the method considers them not to
+be structurally equal and returns C{False} accordingly.
+"""
+    if len(self.factor_list) != len(other.factor_list) :
+      return False
+    if len(self.gene_list) != len(other.gene_list) :
+      return False
+    for i in xrange(len(self.factor_list)) :
+      if not self.factor_list[i].structureEquals(other.factor_list[i]) :
+        return False
+    for i in xrange(len(self.gene_list)) :
+      if not self.gene_list[i].structureEquals(other.gene_list[i]) :
+        return False
+    return True
+    
 
 class GraphicsPrimitive(object) :
 

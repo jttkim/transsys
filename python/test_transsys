@@ -18,6 +18,7 @@ sys.path[0:0] = ['test/lib/python']
 # print sys.path
 
 import os
+import StringIO
 import unittest
 
 import transsys
@@ -734,6 +735,9 @@ timestep: 99
     rtp.parse(open('test.rtp', 'r'))
     os.unlink('test.rtp')
     tp = rtp.generate_transsys('test')
+    f = open('t.tra', 'w')
+    f.write('%s\n' % str(tp))
+    f.close()
     tp_expect = """transsys test
 // topology: random_nk
 // n: 8
@@ -754,48 +758,56 @@ timestep: 99
   {
     decay: 0.2;
     diffusibility: 0.0;
+    synthesis: 0.0;
   }
 
   factor f0001
   {
     decay: 0.2;
     diffusibility: 0.0;
+    synthesis: 0.0;
   }
 
   factor f0002
   {
     decay: 0.2;
     diffusibility: 0.0;
+    synthesis: 0.0;
   }
 
   factor f0003
   {
     decay: 0.2;
     diffusibility: 0.0;
+    synthesis: 0.0;
   }
 
   factor f0004
   {
     decay: 0.2;
     diffusibility: 0.0;
+    synthesis: 0.0;
   }
 
   factor f0005
   {
     decay: 0.2;
     diffusibility: 0.0;
+    synthesis: 0.0;
   }
 
   factor f0006
   {
     decay: 0.2;
     diffusibility: 0.0;
+    synthesis: 0.0;
   }
 
   factor f0007
   {
     decay: 0.2;
     diffusibility: 0.0;
+    synthesis: 0.0;
   }
 
   gene g0000
@@ -971,12 +983,16 @@ ParameterTransformer
     optimiser.randomInitRange = 1.0
     os.unlink('testgrad.txt')
     f = file('testtransf.txt', 'w')
-    f.write("""TranssysTypedParameterTransformer
+    f.write("""TranssysTypedParameterTransformer-1.1
 decayTransformation
 ArctanFunction
 minValue: 0.0
 maxValue: 1.0
 diffusibilityTransformation
+ArctanFunction
+minValue: 0.0
+maxValue: 1.0
+synthesisTransformation
 ArctanFunction
 minValue: 0.0
 maxValue: 1.0
@@ -1025,7 +1041,166 @@ maxValue: 100.0
     self.assert_(optResult.objectiveOptimum.fitness < 1e-5, 'excessive objective function value')
     self.assert_(abs(tp.factor_list[0].decay_expression.value - tp_opt.factor_list[0].decay_expression.value) < 1e-4, 'excessive deviation of decay values')
     self.assert_(abs(tp.gene_list[0].promoter[0].expression.value - tp_opt.gene_list[0].promoter[0].expression.value) < 1e-4, 'excessive deviation of constitutive values')
-    
+  
+  
+  def testStructureEquals(self) :
+    tp1Str = """transsys tp1
+{
+  factor f1
+  {
+    decay: 0.0;
+    diffusibility: 0.1;
+    synthesis: 0.2;
+  }
+
+  gene g1
+  {
+    promoter
+    {
+      constitutive: 0.3;
+      constitutive: 0.4 + (f1 > 0.5) * 0.6;
+      f1: activate(0.7, 0.8);
+    }
+    product
+    {
+      default: f1;
+    }
+  }
+}
+"""
+    tp1equalStr = """transsys tp1equal // name different
+{
+  factor f1
+  {
+    decay: 0.7;
+    diffusibility: 0.3;
+    synthesis: 0.1;
+  }
+
+  gene g1
+  {
+    promoter
+    {
+      constitutive: 0.8;
+      constitutive: 0.2 + (f1 > 0.3) * 0.5;
+      f1: activate(0.7, 0.2);
+    }
+    product
+    {
+      default: f1;
+    }
+  }
+}
+"""
+    tp2Str = """transsys tp2
+{
+  factor f1
+  {
+    decay: 0.0;
+    diffusibility: 0.1;
+    synthesis: 0.2;
+  }
+
+  gene g1
+  {
+    promoter
+    {
+      constitutive: 0.4 + (f1 > 0.5) * 0.6;  // statements switched
+      constitutive: 0.3;
+      f1: activate(0.7, 0.8);
+    }
+    product
+    {
+      default: f1;
+    }
+  }
+}
+"""
+    tp3Str = """transsys tp3
+{
+  factor f1
+  {
+    decay: 0.0;
+    diffusibility: 0.1;
+    // synthesis statement missing
+  }
+
+  gene g1
+  {
+    promoter
+    {
+      constitutive: 0.3;
+      constitutive: 0.4 + (f1 > 0.5) * 0.6;
+      f1: activate(0.7, 0.8);
+    }
+    product
+    {
+      default: f1;
+    }
+  }
+}
+"""
+    tp4Str = """transsys tp4
+{
+  factor f1
+  {
+    decay: 0.0 + f1;  // different expression
+    diffusibility: 0.1;
+    synthesis: 0.2;
+  }
+
+  gene g1
+  {
+    promoter
+    {
+      constitutive: 0.3;
+      constitutive: 0.4 + (f1 > 0.5) * 0.6;
+      f1: activate(0.7, 0.8);
+    }
+    product
+    {
+      default: f1;
+    }
+  }
+}
+"""
+    tp5Str = """transsys tp5
+{
+  factor f // different name
+  {
+    decay: 0.0;
+    diffusibility: 0.1;
+    synthesis: 0.2;
+  }
+
+  gene g1
+  {
+    promoter
+    {
+      constitutive: 0.3;
+      constitutive: 0.4 + (f > 0.5) * 0.6;
+      f: activate(0.7, 0.8);
+    }
+    product
+    {
+      default: f;
+    }
+  }
+}
+"""
+    tp1 = transsys.TranssysProgramParser(StringIO.StringIO(tp1Str)).parse()
+    tp1equal = transsys.TranssysProgramParser(StringIO.StringIO(tp1equalStr)).parse()
+    tp2 = transsys.TranssysProgramParser(StringIO.StringIO(tp2Str)).parse()
+    tp3 = transsys.TranssysProgramParser(StringIO.StringIO(tp3Str)).parse()
+    tp4 = transsys.TranssysProgramParser(StringIO.StringIO(tp4Str)).parse()
+    tp5 = transsys.TranssysProgramParser(StringIO.StringIO(tp5Str)).parse()
+    self.assertTrue(tp1.structureEquals(tp1))
+    self.assertTrue(tp1.structureEquals(tp1equal))
+    self.assertFalse(tp1.structureEquals(tp2))
+    self.assertFalse(tp1.structureEquals(tp3))
+    self.assertFalse(tp1.structureEquals(tp4))
+    self.assertFalse(tp1.structureEquals(tp5))
+
 
 suite = unittest.TestSuite()
 suite.addTest(unittest.makeSuite(TestTranssysParser))
