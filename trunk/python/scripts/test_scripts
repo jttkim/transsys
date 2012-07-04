@@ -11,7 +11,7 @@
 # $Date$
 
 
-function runcmd ()
+runcmd ()
 {
   cmd=$*
   echo $cmd
