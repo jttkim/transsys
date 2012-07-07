@@ -1103,12 +1103,30 @@ is equal to that of the other factor.
 """
     if self.name != other.name :
       return False
-    if not self.decay_expression.structureEquals(other.decay_expression) :
-      return False
-    if not self.diffusibility_expression.structureEquals(other.diffusibility_expression) :
-      return False
-    if not self.synthesis_expression.structureEquals(other.synthesis_expression) :
-      return False
+    if self.decay_expression is None :
+      if other.decay_expression is not None :
+        return False
+    else :
+      if other.decay_expression is None :
+        return False
+      if not self.decay_expression.structureEquals(other.decay_expression) :
+        return False
+    if self.diffusibility_expression is None :
+      if other.diffusibility_expression is not None :
+        return False
+    else :
+      if other.diffusibility_expression is None :
+        return False
+      if not self.diffusibility_expression.structureEquals(other.diffusibility_expression) :
+        return False
+    if self.synthesis_expression is None :
+      if other.synthesis_expression is not None :
+        return False
+    else :
+      if other.synthesis_expression is None :
+        return False
+      if not self.synthesis_expression.structureEquals(other.synthesis_expression) :
+        return False
     return True
 
     
@@ -1790,9 +1808,20 @@ exception of numerical values (contained in ExpressionNodeValue
 instances). The transsys program name and comments are also allowed
 to differ.
 
+As a main result of this definition, for each numerical value in a
+transsys program, an umambiguously defined corresponding value exists
+in any structurally equal transsys program. Operationally,
+corresponding values can be identified by having the same position in
+the list of value nodes obtained via L{Factor.getValueNodes} or
+L{Gene.getValueNodes}, respectively. Corresponding factors or genes
+are identified by having the same name.
+
 At this time, the order of genes and factors matters, if the order
 is not the same in both programs, the method considers them not to
-be structurally equal and returns C{False} accordingly.
+be structurally equal and returns C{False} accordingly. While this
+means that corresponding value nodes can also be found by position
+within the value node list of the entire transsys programs, 
+relying on this property is strongly recommended against.
 """
     if len(self.factor_list) != len(other.factor_list) :
       return False

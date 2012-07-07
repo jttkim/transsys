@@ -69,6 +69,49 @@ def dot(argv) :
   tp.write_dot(outfile, dp)
 
 
+def valuesets(argv) :
+  options, args = getopt.getopt(argv, 'h')
+  for opt, par in options :
+    if opt == '-h' :
+      print 'valuesets: write a table of numerical values for each position within the program\'s structure'
+      print '    notice that all transsys programs must have equal structure'
+      sys.exit()
+    else :
+      raise StandardError, 'unknown option "%s"' % opt
+  if len(args) > 0 :
+    infile = open(args[0], 'r')
+  else :
+    infile = sys.stdin
+  if len(args) > 1 :
+    outfile = open(args[1], 'w')
+  else :
+    outfile = sys.stdout
+  p = transsys.TranssysProgramParser(infile)
+  tp = p.parse()
+  referenceTp = tp
+  outfile.write('prg')
+  for factor in referenceTp.factor_list :
+    for i in xrange(len(factor.getValueNodes())) :
+      outfile.write('\t%s.%d' % (factor.name, i))
+  for gene in referenceTp.gene_list :
+    for i in xrange(len(gene.getValueNodes())) :
+      outfile.write('\t%s.%d' % (gene.name, i))
+  outfile.write('\n')
+  while tp is not None :
+    if not referenceTp.structureEquals(tp) :
+      raise StandardError, 'transsys program "%s" is not structurally equal to reference transsys program "%s"' % (referenceTp.name, tp.name)
+    outfile.write('%s' % tp.name)
+    for factor in tp.factor_list :
+      for n in factor.getValueNodes() :
+        outfile.write('\t%1.17e' % n.value)
+    for gene in tp.gene_list :
+      for n in gene.getValueNodes() :
+        outfile.write('\t%1.17e' % n.value)
+    outfile.write('\n')
+    outfile.flush()
+    tp = p.parse()
+
+
 def deletelinks(argv) :
   options, args = getopt.getopt(argv, 'h')
   for opt, par in options :
@@ -159,7 +202,7 @@ def timeseries(argv) :
     outfile.write('\n')
 if len(sys.argv) < 2 :
   print 'usage: %s <command> [options]' % sys.argv[0]
-  print 'commands are: constitutiveonly, deletelinks, timeseries'
+  print 'commands are: constitutiveonly, deletelinks, timeseries valuesets'
   sys.exit()
 cmd = sys.argv[1]
 argv = sys.argv[2:]
@@ -171,5 +214,7 @@ elif cmd == 'deletelinks' :
   deletelinks(argv)
 elif cmd == 'timeseries' :
   timeseries(argv)
+elif cmd == 'valuesets' :
+  valuesets(argv)
 else :
   raise StandardError, 'command %s not known' % cmd
