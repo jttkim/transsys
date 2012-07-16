@@ -142,6 +142,39 @@ def deletelinks(argv) :
   outfile.write(str(tp))
 
 
+def stats(argv) :
+  options, args = getopt.getopt(argv, 'h')
+  for opt, par in options :
+    if opt == '-h' :
+      print 'stats: print some stats for each transsys program in the input stream'
+      print '    Note: this is intended to be human readable, not for further processing'
+      sys.exit()
+    else :
+      raise StandardError, 'unknown option "%s"' % opt
+  if len(args) > 0 :
+    infile = open(args[0], 'r')
+  else :
+    infile = sys.stdin
+  if len(args) > 1 :
+    outfile = open(args[1], 'w')
+  else :
+    outfile = sys.stdout
+  p = transsys.TranssysProgramParser(infile)
+  tp = p.parse()
+  while tp is not None :
+    numValuesFactor = 0
+    numValuesGene = 0
+    for factor in tp.factor_list :
+      numValuesFactor = numValuesFactor + len(factor.getValueNodes())
+    for gene in tp.gene_list :
+      numValuesGene = numValuesGene + len(gene.getValueNodes())
+    numValues = numValuesFactor + numValuesGene
+    outfile.write('%s: %d factors, %d genes\n' % (tp.name, len(tp.factor_list), len(tp.gene_list)))
+    outfile.write('  total values: %d, values in factors: %d, values in genes: %d\n' % (numValues, numValuesFactor, numValuesGene))
+    outfile.write('\n')
+    tp = p.parse()
+
+
 def deletesinglelinks(argv) :
   options, args = getopt.getopt(argv, 'h')
   for opt, par in options :
@@ -269,6 +302,8 @@ elif cmd == 'constitutiveonly' :
   constitutiveonly(argv)
 elif cmd == 'deletelinks' :
   deletelinks(argv)
+elif cmd == 'stats' :
+  stats(argv)
 elif cmd == 'timeseries' :
   timeseries(argv)
 elif cmd == 'valuesets' :
