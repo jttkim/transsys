@@ -221,7 +221,7 @@ is equal to that of the other expression node.
 @see: L{TranssysProgram.structureEquals}
 """
     raise StandardError, 'abstract method called'
-    
+
 
 class ExpressionNodeValue(ExpressionNode) :
   """Expression node holding a constant floating point value.
@@ -266,7 +266,7 @@ Both parameters may be C{None} to specify an open-ended interval.
       self.value = min(maxValue, self.value)
     # print '--> %f' % self.value
 
-      
+
   def structureEquals(self, other) :
     """Determine whether the structure of this expression node
 is equal to that of the other expression node.
@@ -376,7 +376,7 @@ class ExpressionNodeBinary(ExpressionNode) :
       return False
     return True
 
-    
+
   def resolve(self, tp) :
     self.operand1.resolve(tp)
     self.operand2.resolve(tp)
@@ -519,7 +519,7 @@ class ExpressionNodeNot(ExpressionNode) :
       return False
     return True
 
-    
+
   def evaluate(self, transsys_instance) :
     return not self.operand.evaluate(transsys_instance)
 
@@ -588,7 +588,7 @@ class ExpressionNodeFunction(ExpressionNode) :
       return False
     return True
 
-    
+
   def evaluate(self, transsys_instance) :
     raise StandardError, 'cannot evaluate undefined function'
 
@@ -691,7 +691,7 @@ class PromoterElement(object) :
 """
     raise StandardError, 'abstract method called'
 
-  
+
   def structureEquals(self, other) :
     """Determine whether the structure of this promoter element
 is equal to that of the other promoter element.
@@ -699,7 +699,7 @@ is equal to that of the other promoter element.
 @see: L{TranssysProgram.structureEquals}
 """
     raise StandardError, 'abstract method called'
-    
+
 
 class PromoterElementConstitutive(PromoterElement) :
 
@@ -757,10 +757,10 @@ should be used sparingly and avoided where possible.
     # if isinstance(self.expression, ExpressionNodeValue) :
     #  self.expression.clip(0.0, None)
 
-  
+
   def structureEquals(self, other) :
     return self.expression.structureEquals(other.expression)
-  
+
 
 
 class PromoterElementLink(PromoterElement) :
@@ -903,7 +903,7 @@ negative max constants to their antagonistic counterparts.
       return False
     return True
 
-  
+
   # FIXME: there should be a "Michaelis-Menten" parent class for
 # activate and repress
 
@@ -971,7 +971,7 @@ class Factor(object) :
     else :
       self.dot_attributes = copy.deepcopy(dot_attrs)
 
-      
+
   def __str__(self) :
     s = """  factor %s
   {
@@ -1092,7 +1092,7 @@ canonicalisation has no effect.
     if isinstance(self.diffusibility_expression, ExpressionNodeValue) :
       self.diffusibility_expression.clip(0.0, 1.0)
     if isinstance(self.synthesis_expression, ExpressionNodeValue) :
-      self.diffusibility_expression.clip(0.0, None)
+      self.synthesis_expression.clip(0.0, None)
 
 
   def structureEquals(self, other) :
@@ -1129,7 +1129,7 @@ is equal to that of the other factor.
         return False
     return True
 
-    
+
 class Gene(object) :
   """Class to represent a gene.
 
@@ -1159,7 +1159,7 @@ class Gene(object) :
     else :
       self.dot_attributes = copy.deepcopy(dot_attrs)
 
-      
+
   def structureEquals(self, other) :
     """Determine whether the structure of this gene
 is equal to that of the other gene.
@@ -1798,7 +1798,7 @@ may have identical dynamics even though their canonical forms differ.
     for gene in self.gene_list :
       gene.canonicalise()
 
-      
+
   def structureEquals(self, other) :
     """Determine whether the structure of this transsys program
 is equal to that of the other program.
@@ -1820,7 +1820,7 @@ At this time, the order of genes and factors matters, if the order
 is not the same in both programs, the method considers them not to
 be structurally equal and returns C{False} accordingly. While this
 means that corresponding value nodes can also be found by position
-within the value node list of the entire transsys programs, 
+within the value node list of the entire transsys programs,
 relying on this property is strongly recommended against.
 """
     if len(self.factor_list) != len(other.factor_list) :
@@ -1834,7 +1834,7 @@ relying on this property is strongly recommended against.
       if not self.gene_list[i].structureEquals(other.gene_list[i]) :
         return False
     return True
-    
+
 
 class GraphicsPrimitive(object) :
 
@@ -2854,7 +2854,7 @@ FIXME: no support yet for synthesis expressions, to maintain backwards compatibi
     s = s + 'vmax_repression: %s\n' % str(self.vmax_repression)
     s = s + 'decay: %s\n' % str(self.decay)
     s = s + 'diffusibility: %s\n' % str(self.diffusibility)
-    # FIXME: synthesis should go here -- uncomment line below ehen ready...
+    # FIXME: synthesis should go here -- uncomment line below when ready...
     # s = s + 'synthesis: %s\n' % str(self.synthesis)
     s = s + 'rndseed: %d\n' % self.rndseed
     return s
@@ -3557,14 +3557,20 @@ class TranssysProgramParser(object) :
     while 1 :
       l = self.scanner.lookahead()
       if l == 'decay' :
+        if decay_expr is not None :
+          raise StandardError, 'line %d: duplicate decay expression' % self.scanner.lineno
         self.expect_token('decay')
         self.expect_token(':')
         decay_expr = self.parse_expr([])
       elif l == 'diffusibility' :
+        if diffusibility_expr is not None :
+          raise StandardError, 'line %d: duplicate diffusibility expression' % self.scanner.lineno
         self.expect_token('diffusibility')
         self.expect_token(':')
         diffusibility_expr = self.parse_expr([])
       elif l == 'synthesis' :
+        if synthesis_expr is not None :
+          raise StandardError, 'line %d: duplicate synthesis expression' % self.scanner.lineno
         self.expect_token('synthesis')
         self.expect_token(':')
         synthesis_expr = self.parse_expr([])

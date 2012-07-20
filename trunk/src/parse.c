@@ -40,6 +40,10 @@ void add_gene_definition(TRANSSYS *ts, GENE_ELEMENT *ge)
 
 void add_factordef_decay(EXPRESSION_NODE *decay_expression, FACTOR_ELEMENT *fe)
 {
+  if (fe->decay_expression != NULL)
+  {
+    fprintf(stderr, "duplicate decay expression\n");
+  }
   free_expression_tree(fe->decay_expression);
   fe->decay_expression = decay_expression;
 }
@@ -47,6 +51,10 @@ void add_factordef_decay(EXPRESSION_NODE *decay_expression, FACTOR_ELEMENT *fe)
 
 void add_factordef_diffusibility(EXPRESSION_NODE *diffusibility_expression, FACTOR_ELEMENT *fe)
 {
+  if (fe->diffusibility_expression != NULL)
+  {
+    fprintf(stderr, "duplicate diffusibility expression\n");
+  }
   free_expression_tree(fe->diffusibility_expression);
   fe->diffusibility_expression = diffusibility_expression;
 }
@@ -54,6 +62,10 @@ void add_factordef_diffusibility(EXPRESSION_NODE *diffusibility_expression, FACT
 
 void add_factordef_synthesis(EXPRESSION_NODE *synthesis_expression, FACTOR_ELEMENT *fe)
 {
+  if (fe->synthesis_expression != NULL)
+  {
+    fprintf(stderr, "duplicate synthesis expression\n");
+  }
   free_expression_tree(fe->synthesis_expression);
   fe->synthesis_expression = synthesis_expression;
 }
