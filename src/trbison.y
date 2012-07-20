@@ -155,6 +155,45 @@ static RULE_ELEMENT *complete_rule(const char *name, RULE_ELEMENT *re)
 }
 
 
+/*
+ * the set_factordef functions don't allow superseding an expression as multiple specification
+ * of expressions is not useful and potentially dangerous.
+ */
+static int set_factordef_decay(EXPRESSION_NODE *decay_expression, FACTOR_ELEMENT *fe)
+{
+  if (fe->decay_expression != NULL)
+  {
+    yyerror("duplicate decay expression");
+    return (-1);
+  }
+  add_factordef_decay(decay_expression, fe);
+  return (0);
+}
+
+
+static int set_factordef_diffusibility(EXPRESSION_NODE *diffusibility_expression, FACTOR_ELEMENT *fe)
+{
+  if (fe->diffusibility_expression != NULL)
+  {
+    yyerror("duplicate diffusibility expression");
+    return (-1);
+  }
+  add_factordef_diffusibility(diffusibility_expression, fe);
+  return (0);
+}
+
+
+static int set_factordef_synthesis(EXPRESSION_NODE *synthesis_expression, FACTOR_ELEMENT *fe)
+{
+  if (fe->synthesis_expression != NULL)
+  {
+    yyerror("duplicate synthesis expression");
+    return (-1);
+  }
+  add_factordef_synthesis(synthesis_expression, fe);
+  return (0);
+}
+
 %}
 
 
@@ -187,7 +226,7 @@ static RULE_ELEMENT *complete_rule(const char *name, RULE_ELEMENT *re)
 %token FACTOR_DEF GENE_DEF PROMOTER_DEF PRODUCT_DEF CONSTITUTIVE ACTIVATE REPRESS DEFAULT TRANSSYS_DEF DECAY_DEF DIFFUSIBILITY_DEF SYNTHESIS_DEF
 %token LSYS_DEF SYMBOL_DEF RULE_DEF AXIOM_DEF DIFFUSIONRANGE_DEF GRAPHICS_DEF ARROW MOVE COLOR SPHERE CYLINDER BOX TURN ROLL BANK PUSH POP
 %token LOWER_EQUAL GREATER_EQUAL EQUAL UNEQUAL LOGICAL_AND LOGICAL_OR
-%token NUMERIC_RANDOM NUMERIC_GAUSS NUMERIC_POW, NUMERIC_LOG, NUMERIC_ATAN
+%token NUMERIC_RANDOM NUMERIC_GAUSS NUMERIC_POW NUMERIC_LOG NUMERIC_ATAN
 
 %type <factor> factor_definition
 %type <gene> gene_definition
@@ -368,9 +407,9 @@ factordef_components
 	;
 
 factordef_component
-	: DECAY_DEF ':' expr ';' { add_factordef_decay($3, current_factor); }
-	| DIFFUSIBILITY_DEF ':' expr ';' { add_factordef_diffusibility($3, current_factor); }
-	| SYNTHESIS_DEF ':' expr ';' { add_factordef_synthesis($3, current_factor); }
+	: DECAY_DEF ':' expr ';' { if (set_factordef_decay($3, current_factor) != 0) YYABORT; }
+	| DIFFUSIBILITY_DEF ':' expr ';' { if (set_factordef_diffusibility($3, current_factor) != 0) YYABORT; }
+	| SYNTHESIS_DEF ':' expr ';' { if (set_factordef_synthesis($3, current_factor) != 0) YYABORT; }
 	;
 
 gene_definition
@@ -386,7 +425,7 @@ product_component
 	;
 
 promoter_statements
-	: promoter_statement { $$ = $1; }
+	: /* empty */ { $$ = (PROMOTER_ELEMENT *) NULL; }
 	| promoter_statements promoter_statement { $$ = extend_promoter_list($1, $2); }
 	;
 
