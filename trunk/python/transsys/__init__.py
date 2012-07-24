@@ -1489,6 +1489,15 @@ this instance itself.
     return self.gene_list[i]
 
 
+  def remove_gene(self, g_name) :
+    """Remove the gene specified by C{g_name}.
+
+@raise StandardError: if the specified gene does not exist
+"""
+    g = self.find_gene(g_name)
+    self.gene_list.remove(g)
+
+
   def check_uniqueness(self) :
     """Verify that factor and gene names are unique.
 
@@ -1550,10 +1559,7 @@ it is invoked. This is not a mutator method.
 @rtype: L{TranssysProgram}
 """
     tp_knockout = copy.deepcopy(self)
-    gene_index = tp_knockout.find_gene_index(gene_name)
-    if gene_index == -1 :
-      raise StandardError, 'no gene "%s" to be knocked out' % gene_name
-    del tp_knockout.gene_list[gene_index]
+    tp_knockout.remove_gene(gene_name)
     return tp_knockout
 
 
