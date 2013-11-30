@@ -105,7 +105,7 @@ static const TRANSSYS_INSTANCE **transsys_instance_list(const SYMBOL_INSTANCE *s
       fprintf(stderr, "transsys_instance_list: rule mismatch in rule \"%s\"-- expected symbol #%d, found #%d\n", rule->name, rule->lhs->symbol_list[i].symbol_index, si->symbol_index);
       free_transsys_instance_list(ti_list);
       return (NULL);
-    }      
+    }
     ti_list[i] = &(si->transsys_instance);
     si = si->next;
   }
@@ -689,7 +689,11 @@ int lsys_string_diffusion(LSYS_STRING *lstr)
 	  si = lstr->symbol + i;
 	  ti = &(si->transsys_instance);
 	  transsys = ti->transsys;
-	  diffusibility = evaluate_expression(transsys->factor_list[f].diffusibility_expression, &ti);
+	  diffusibility = 0.0;
+	  if (transsys->factor_list[f].diffusibility_expression != NULL)
+	  {
+	    diffusibility = evaluate_expression(transsys->factor_list[f].diffusibility_expression, &ti);
+	  }
 	  if (diffusibility < 0.0)
 	  {
 	    diffusibility = 0.0;
