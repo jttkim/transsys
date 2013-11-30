@@ -90,6 +90,8 @@ def valuesets(argv) :
     outfile = sys.stdout
   p = transsys.TranssysProgramParser(infile)
   tp = p.parse()
+  if tp is None :
+    return
   referenceTp = tp
   outfile.write('prg')
   for factor in referenceTp.factor_list :
