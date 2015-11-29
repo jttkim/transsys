@@ -206,7 +206,7 @@ spewPrimitiveEPS(FILE * file, GLfloat * loc)
 
 #define Max(a,b) (((a)>(b))?(a):(b))
 
-#define EPS_SMOOTH_LINE_FACTOR 0.06  /* Lower for better smooth 
+#define EPS_SMOOTH_LINE_FACTOR 0.06  /* Lower for better smooth
 
                                         lines. */
 
@@ -461,7 +461,7 @@ spewSortedFeedback(FILE * file, GLint size, GLfloat * buffer)
   free(prims);
 }
 
-#define EPS_GOURAUD_THRESHOLD 0.1  /* Lower for better (slower) 
+#define EPS_GOURAUD_THRESHOLD 0.1  /* Lower for better (slower)
 
                                       smooth shading. */
 
@@ -1105,7 +1105,7 @@ void display(void)
 }
 
 
-void myinit (void) 
+void myinit (void)
 {
   glShadeModel(GL_FLAT);
 }
@@ -1122,13 +1122,19 @@ void tick(int t)
 {
   int i;
 
+  /* fprintf(stderr, "tick: started\n"); */
   if (time_running)
   {
     for (i = 0; i < cone.num_cells; i++)
+    {
       process_expression(&(cone.cell[0][0][i].transsys_instance));
+    }
+    /* fprintf(stderr, "tick: processed expression\n"); */
     diffuse(cone.num_cells, cone.cell[0][0]);
+    /* fprintf(stderr, "tick: processed diffusion\n"); */
     time_step++;
     extend_extrusion(&cone);
+    /* fprintf(stderr, "tick: extended extrusion\n"); */
     if (trace_flag)
     {
       trace_flag = 0;
@@ -1136,11 +1142,14 @@ void tick(int t)
     }
   }
   if (time_running)
+  {
     glutTimerFunc(10, tick, t);
+  }
   display_parameters.angles.x += display_parameters.spin_angles.x;
   display_parameters.angles.y += display_parameters.spin_angles.y;
   display_parameters.angles.z += display_parameters.spin_angles.z;
   glutPostRedisplay();
+  /* fprintf(stderr, "tick: finishing\n"); */
 }
 
 
@@ -1153,7 +1162,9 @@ void toggle_running(void)
     glutTimerFunc(10, tick, 1);
   }
   else
+  {
     fprintf(stderr, "pausing at time step %lu\n", time_step);
+  }
 }
 
 
@@ -1638,6 +1649,7 @@ int main(int argc, char** argv)
   extern int optind;
   extern char *optarg;
 
+  glutInit(&argc, argv);
   while ((oc = getopt(argc, argv, "m:l:s:x:y:z:h")) != -1)
   {
     switch(oc)
@@ -1737,4 +1749,3 @@ int main(int argc, char** argv)
     fclose(outfile);
   return (EXIT_SUCCESS);
 }
-

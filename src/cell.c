@@ -107,40 +107,63 @@ int diffuse(int num_cells, CELL *cell)
   double d, d1, diff;
   const TRANSSYS_INSTANCE *ti;
 
-  for (cn = 0; cn < num_cells; cn++)
-  {
-    if (cell[cn].existing)
-    {
-      for (i = 0; i < cell[cn].transsys_instance.transsys->num_factors; i++)
-	cell[cn].transsys_instance.new_concentration[i] = cell[cn].transsys_instance.factor_concentration[i];
-    }
-  }
+  /* fprintf(stderr, "diffuse: starting\n"); */
   for (cn = 0; cn < num_cells; cn++)
   {
     if (cell[cn].existing)
     {
       for (i = 0; i < cell[cn].transsys_instance.transsys->num_factors; i++)
       {
+	cell[cn].transsys_instance.new_concentration[i] = cell[cn].transsys_instance.factor_concentration[i];
+      }
+    }
+  }
+  /* fprintf(stderr, "diffuse: initialised new_concentration\n"); */
+  for (cn = 0; cn < num_cells; cn++)
+  {
+    /* fprintf(stderr, "diffuse: processing cell %d\n", cn); */
+    if (cell[cn].existing)
+    {
+      /* fprintf(stderr, "diffuse: processing existing cell %d\n", cn); */
+      for (i = 0; i < cell[cn].transsys_instance.transsys->num_factors; i++)
+      {
 	d = cell[cn].transsys_instance.factor_concentration[i] / (cell[cn].num_neighbors + 1);
 	for (n = 0; n < cell[cn].num_neighbors; n++)
 	{
+          /* fprintf(stderr, "diffuse: processing cell %d, neighbour %d of %d\n", cn, n, cell[cn].num_neighbors); */
 	  ti = &(cell[cn].transsys_instance);
-	  diff = evaluate_expression(ti->transsys->factor_list[i].diffusibility_expression, &ti);
+          /* fprintf(stderr, "diffuse:   got transsys instance\n"); */
+          if (ti->transsys->factor_list[i].diffusibility_expression == NULL)
+          {
+            diff = 0.0;
+            fprintf(stderr, "diffuse: transsys %s, factor %s has no diffusibility expression, assuming %f\n", ti->transsys->name, ti->transsys->factor_list[i].name, diff);
+          }
+          else
+          {
+            diff = evaluate_expression(ti->transsys->factor_list[i].diffusibility_expression, &ti);
+          }
+          /* fprintf(stderr, "diffuse:   evaluated diffusibility, %f\n", diff); */
 	  d1 = d * diff * cell[cn].contact_weight[n];
 	  ti->new_concentration[i] -= d1;
+          /* fprintf(stderr, "diffuse:   updated cell's new_concentration\n"); */
 	  cell[cn].neighbor[n]->transsys_instance.new_concentration[i] += d1;
+          /* fprintf(stderr, "diffuse:   updated neighbour's new_concentration\n"); */
 	}
       }
     }
   }
+  /* fprintf(stderr, "diffuse: updated new_concentration\n"); */
   for (cn = 0; cn < num_cells; cn++)
   {
     if (cell[cn].existing)
     {
       for (i = 0; i < cell[cn].transsys_instance.transsys->num_factors; i++)
+      {
 	cell[cn].transsys_instance.factor_concentration[i] = cell[cn].transsys_instance.new_concentration[i];
+      }
     }
   }
+  /* fprintf(stderr, "diffuse: finishing\n"); */
   return (0);
 }
 
@@ -185,4 +208,3 @@ double max_concentration(int num_cells, const CELL *cell, int factor_no)
   }
   return (s);
 }
-
