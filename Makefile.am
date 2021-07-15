@@ -34,7 +34,7 @@ ACLOCAL_AMFLAGS = -I m4
 
 AM_CFLAGS = -Wall -pedantic
 
-EXTRA_DIST = BUGS toolbox/transsys
+EXTRA_DIST = BUGS
 
-SUBDIRS = src doc toolbox python testdata
+SUBDIRS = src doc python testdata
 
